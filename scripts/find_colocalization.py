@@ -15,92 +15,70 @@ import multiprocessing
 import gzip
 import collections
 
+if sys.version_info[0] < 3: 
+    from StringIO import StringIO
+else:
+    from io import StringIO
+
+# TODO: Add ArgumentParser to parse all of this input directly, in a separate function
 window = 1000000
 
+# Read command line arguments
 gwas_chrom = int(sys.argv[1].replace('chr', ''))
 gwas_pos = int(sys.argv[2])
 gwas_file = sys.argv[3]
 
 gwas_prefix = "/".join(gwas_file.split("/")[:-1])
-gwas_suffix = gwas_file.split("/")[-1]
+gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
 
 gwas_threshold = float(sys.argv[4])
-eqtl_threshold_text = sys.argv[5]
-eqtl_threshold = float(eqtl_threshold_text)
-adaptive_threshold = sys.argv[6] == "True"
 
-threshold_directory = '{0:.1e}_by_{1:.1e}'.format(eqtl_threshold, gwas_threshold)
-
-# Directory to be added to output path if not using adaptive thresholds
-if not adaptive_threshold:
-	adapt_dir = "fixed_threshold/"
-else:
-	adapt_dir = ""
-
-base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}/{1}{2}".format(gwas_suffix.replace(".", "_"), adapt_dir, threshold_directory)
+# Determine output directory
+threshold_directory = '{0:.1e}'.format(gwas_threshold)
+base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}/{1}".format(gwas_suffix.replace(".", "_"), threshold_directory)
 
 
 def main():
-	# Subset GWAS list to SNPs within 1MB of the GWAS position
+	# Subset GWAS list to SNPs near the GWAS position
 	gwas_table = pd.read_csv(gwas_file, sep="\t")
-
 	gwas_table = gwas_table[(gwas_table['snp_pos'] > gwas_pos - window) & (gwas_table['snp_pos'] < gwas_pos + window)]
 	gwas_table = gwas_table[(gwas_table['chr'] == gwas_chrom) | (gwas_table['chr'] == 'chr{0}'.format(gwas_chrom))]
 
 	# Keep track of which GWAS-eQTL pairs have colocalized in which tissues
 	coloc_status = {}
-	
-	# Get p-value thresholds for discovery within each tissue type.
-	if adaptive_threshold:
-		thresholds = load_tissue_thresholds(eqtl_threshold_text)
-
 	all_tissues = []
 
 	# Create base directory for output files, in case not already created
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/output/{0}".format(gwas_suffix.replace(".", "_")), shell=True)
-	if not adaptive_threshold:
-		subprocess.call("mkdir /users/mgloud/projects/brain_gwas/output/{0}/{1}".format(gwas_suffix.replace(".", "_"), adapt_dir), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/output/{0}".format(gwas_suffix), shell=True)
 	subprocess.call("mkdir {0}".format(base_output_dir), shell=True)
-
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/data/prefiltered_vcfs/{0}".format(gwas_suffix.replace(".", "_")), shell=True)
 
 	for tissue in os.listdir("/mnt/lab_data/montgomery/shared/datasets/gtex/GTEx_Analysis_2015-01-12/eqtl_data/MatrixEQTL/allCisSNPGenePairs/"):
 
 		tissue_prefix = "_".join(tissue.split(".")[0].split("_")[:-1])
 		all_tissues.append(tissue_prefix)
-
-		# If eqtl file already exists, go straight to it. Otherwise, we need to do the time-consuming step
-		# of creating it.
-		try:
-			eqtls = pd.read_csv("/users/mgloud/projects/brain_gwas/data/eqtls/{0}/{1}_{2}/{3}.txt".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), sep="\t")
-	
-		except:
-			subprocess.call("mkdir /users/mgloud/projects/brain_gwas/data/eqtls/{0}".format(gwas_suffix), shell=True)
-			subprocess.call("mkdir /users/mgloud/projects/brain_gwas/data/eqtls/{0}/{1}_{2}".format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
-			# This is really gnarly. I'm sorry for anyone who has to read this
-			subprocess.check_call('''echo "chr\tsnp_pos\tref\talt\tgenome\tgene\tbeta\tt-stat\tpvalue" > /users/mgloud/projects/brain_gwas/tmp/eqtl_subsets/{0}_{1}_{2}_header.txt'''.format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
-			subprocess.check_call('''zcat /mnt/lab_data/montgomery/shared/datasets/gtex/GTEx_Analysis_2015-01-12/eqtl_data/MatrixEQTL/allCisSNPGenePairs/{5} | sed 's/_/\t/g' | awk '{{if ($1 == {0} && $2 > {1} && $2 < {2}) print $0}}' > /users/mgloud/projects/brain_gwas/tmp/eqtl_subsets/{3}_{0}_{4}.tail.tmp'''.format(gwas_chrom, gwas_pos - window, gwas_pos + window, gwas_suffix, gwas_pos, tissue), shell=True)
-			subprocess.check_call('''cat /users/mgloud/projects/brain_gwas/tmp/eqtl_subsets/{0}_{1}_{2}_header.txt /users/mgloud/projects/brain_gwas/tmp/eqtl_subsets/{0}_{1}_{2}.tail.tmp > /users/mgloud/projects/brain_gwas/data/eqtls/{0}/{1}_{2}/{3}.txt'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
-			subprocess.check_call('''rm /users/mgloud/projects/brain_gwas/tmp/eqtl_subsets/{0}_{1}_{2}_header.txt'''.format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
-			subprocess.check_call('''rm /users/mgloud/projects/brain_gwas/tmp/eqtl_subsets/{0}_{1}_{2}.tail.tmp'''.format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
-
-			# Read in relevant eQTLs
-			eqtls = pd.read_csv("/users/mgloud/projects/brain_gwas/data/eqtls/{0}/{1}_{2}/{3}.txt".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), sep="\t")
+		
+		# Get eQTL data using tabix
+		header = subprocess.check_output("zcat /users/mgloud/projects/brain_gwas/data/" + \
+			"eqtls/tabix/{0}_Analysis.cis.eqtl.gz | head -n 1".format(tissue_prefix, \
+			 gwas_chrom, gwas_pos - window, gwas_pos + window), shell=True)
+		raw_eqtls = subprocess.check_output("tabix /users/mgloud/projects/brain_gwas/" + \
+			 "data/eqtls/tabix/{0}_Analysis.cis.eqtl.gz -h {1}:{2}-{3}".format(tissue_prefix, \
+			 gwas_chrom, gwas_pos - window, gwas_pos + window), shell=True)
+		eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
 
 		# Get full list of all genes whose eQTLs we're testing at this site
 		genes = set(eqtls['gene'])
 
 		# Make directory for storing plots to visualize associations
 		subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots".format(base_output_dir), shell=True)
-		subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos, adapt_dir), shell=True)
+		subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
 		subprocess.call("mkdir {0}/snp_overlaps".format(base_output_dir), shell=True)
 		subprocess.call("mkdir {0}/snp_overlaps/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
 
-		if adaptive_threshold:
-			pval_threshold = thresholds[tissue_prefix]
-		else:
-			pval_threshold = eqtl_threshold
-
+		# TODO: This section is designed to run fastQTL to find conditional eQTLs, but currently
+		# we've set the maximum conditional level to 0 so that it doesn't find conditional eQTLs.
+		# Decide whether to fix this or just eliminate it if not necessary.
+		
 		for gene in genes:
 			conditional_eqtls = eqtls[eqtls['gene'] == gene]
 			covariates = []
@@ -117,14 +95,18 @@ def main():
 					if not run_fastqtl(gene, covariates, tissue_prefix, gwas_suffix, gwas_chrom, gwas_pos, current_level):
 						break
 
-					with open("/users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_awked.txt".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, current_level, gwas_pos-window, gwas_pos+window), "w") as w:
+					with open("/users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_awked.txt".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level, gwas_pos-window, gwas_pos+window), "w") as w:
 						w.write("chr\tsnp_pos\tref\talt\tgenome\tgene\tbeta\tt-stat\tpvalue\n")
-					subprocess.check_call('''sed s/_/" "/g /users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt | awk '{{print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $1 "\t" $10 "\t" $9 "\t" $8}}' >> /users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_awked.txt'''.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, current_level, gwas_pos-window, gwas_pos+window), shell=True)
+					subprocess.check_call('''sed s/_/" "/g /users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt | awk '{{print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $1 "\t" $10 "\t" $9 "\t" $8}}' >> /users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_awked.txt'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level, gwas_pos-window, gwas_pos+window), shell=True)
 
-					# TODO: Load conditional eqtls from fastQTL results
-					conditional_eqtls = pd.read_csv('''/users/mgloud/projects/brain_gwas/tmp/fastQTL/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_awked.txt'''.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, current_level, gwas_pos-window, gwas_pos+window), sep="\t")
+					# Load conditional eqtls from fastQTL results
+					conditional_eqtls = \
+						pd.read_csv('''/users/mgloud/projects/brain_gwas/tmp/fastQTL/''' + \
+						'''{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_awked.txt'''.format(gwas_suffix, \
+						gwas_chrom, gwas_pos, tissue_prefix, gene, current_level, gwas_pos-window, gwas_pos+window), sep="\t")
 
-				if gene_by_eqtl_comparison(gwas_chrom, gwas_pos, gene, conditional_eqtls, gwas_table, gwas_suffix, coloc_status, tissue_prefix, pval_threshold, current_level) == False:
+				if gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, conditional_eqtls, \
+					gwas_table, gwas_suffix, tissue_prefix, current_level) == False:
 					break
 
 				top_index = conditional_eqtls['pvalue'].tolist().index(min(conditional_eqtls['pvalue']))
@@ -137,24 +119,17 @@ def main():
 				# For now, only go past conditional level 0 if it's a brain tissue.
 				if "Brain" not in tissue:
 					break
-				
-	subprocess.call("mkdir {0}/coloc_status/".format(base_output_dir), shell=True)
-	subprocess.call("mkdir {0}/coloc_status/chunks".format(base_output_dir), shell=True)
-
-	with open("{0}/coloc_status/chunks/{1}_{2}.txt".format(base_output_dir, gwas_chrom, gwas_pos), "w") as w:
-		w.write("snp\tgene\t{0}\n".format("\t".join(sorted(all_tissues))))
-		for gene in coloc_status.keys():
-			w.write("{0}_{1}\t{2}".format(gwas_chrom, gwas_pos, gene))
-			for t in sorted(all_tissues):
-				if t in coloc_status[gene]:
-					w.write("\t1")
-				else:
-					w.write("\t0")
-					
-			w.write("\n")
-
-			
-def gene_by_eqtl_comparison(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas_suffix, coloc_status, tissue_prefix, pval_threshold, current_level):
+		
+### Function gwas_eqtl_colocalization
+# Test whether a gwas SNP and an eQTL colocalize. Currently will
+# always return True unless it's impossible to perform the test.
+# In future, might return True/False to signal whether we should
+# run fastQTL again conditioned on the top remaining SNP.
+#
+# Input: gwas location, gene to test for eQTL colocalization, set of eqtls
+# Output: True if test ran, False if test did not occur.
+def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas_suffix, \
+	tissue_prefix, current_level):
 
 	# Get the set of genes we're interested in
 	eqtl_subset = eqtls[eqtls['gene'] == gene]
@@ -171,9 +146,6 @@ def gene_by_eqtl_comparison(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas_
 	if gwas_pos > max(eqtl_subset['snp_pos']) + 10000 or gwas_pos < min(eqtl_subset['snp_pos'] - 10000):
 		return False
 	
-	if gene not in coloc_status:
-		coloc_status[gene] = set([])
-
 	# Join the list of eQTL SNPs with the list of GWAS SNPs
 	combined = pd.merge(gwas_table, eqtl_subset, on="snp_pos")
 
@@ -182,15 +154,9 @@ def gene_by_eqtl_comparison(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas_
 	if combined.shape[0] == 0: 
 		return False
 
-	# Subset down to SNPs that have reached reasonable significance in both datasets
-	#passing = combined[(combined['pvalue_x'] < gwas_threshold) & (combined['pvalue_y'] < pval_threshold)]
-	#not_passing = combined[(combined['pvalue_x'] >= gwas_threshold) | (combined['pvalue_y'] >= pval_threshold)]
-	
-	# If any SNPs coincide between the two datasets, make a note of it and save a data table with the overlapping snps,
-	# as well as a scatterplot.
-	# If not, then just move on.
-	#if passing.shape[0] == 0:
-	#	return False
+	# TODO: Modify plotting code so that eCAVIAR only plots results with colocalization, instead of results
+	# passing a certain threshold. For now though, don't plot anything. (Could also delegate this 
+	# to an entirely different Python script.
 
 	#subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
 	#subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}/{3}".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
@@ -229,28 +195,17 @@ def gene_by_eqtl_comparison(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas_
 	#plt.savefig("{0}/gwas_by_eqtl_scatterplots/{1}_{2}/{3}/{4}_level{5}_lz.png".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level))
 	#plt.gcf().clear()
 
-	# Save table of overlapping SNPs in case we want to look back at it later.
-	#subprocess.call("mkdir {0}/snp_overlaps/{1}_{2}/{3}".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
-	#with open("{0}/snp_overlaps/{1}_{2}/{3}/{4}.txt".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene), "w") as w:
-	#	passing.to_csv(w, index=False, sep="\t")
-
-
 	# Run eCAVIAR on SNPs.
-	#if "Brain" in tissue_prefix:
-	# Subset down to only sites where either the GWAS or eQTL p-value (or both) is significant.
+	
+	
 	# This should make eCAVIAR run substantially faster. 
-	
-	# TODO: See to what extent this makes eCAVIAR run faster, and subset even further if necessary.
-	#ecaviar_set = combined[(combined['pvalue_x'] < 1e-3) | (combined['pvalue_y'] < 1e-3)]
-	
-	# NOTE: This is the newest version of subsetting.
-	# Keep the best 100 GWAS SNPs and best 100 eQTL SNPs,
-	# since none of the others will have that much effect on the eCAVIAR score anyway
-	# TODO: Verify this using test shown below:	
-	# TODO: Run this test at a bunch of sample sites with and without taking away low p-value
-	# sites, to prove that it doesn't make a big difference to get rid of low-scoring sites.
-	# TODO: Modify this so that we're always including exactly 200 (or exactly the same amount)
-	# so we don't have to worry about biasing results due to more overlap in actually colocalizing tissues.
+	# This is the newest version of subsetting.
+	# Keep the union between the best 100 GWAS SNPs and best 100 eQTL SNPs,
+	# since none of the others will have that much effect on the eCAVIAR score anyway.
+
+	# TODO: Modify the analysis below to use FINEMAP instead of subsetting.
+	# TODO: Run this test at a bunch of sample sites with FINEMAP and with eCAVIAR and
+	# compare results to see if they're similar. If not, investigate why.
 	combined = combined.sort_values(by='pvalue_x')
 	ecaviar_x = combined.head(100)
 	combined = combined.sort_values(by='pvalue_y')
@@ -261,44 +216,15 @@ def gene_by_eqtl_comparison(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas_
 	run_ecaviar(ecaviar_set, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level)
 
 	
-
-	# TODO: Modify plotting code so that eCAVIAR only plots results with colocalization, instead of results
-	# passing a certain threshold. For now though, don't plot anything.
-	
-	# TODO: Modify this statement to reflect the results of eCAVIAR instead.
-	# (The code below may not even be necessary anymore)
-	#if current_level == 0:
-	#	coloc_status[gene].add(tissue_prefix)
-
 	return True
-
-		
-def load_tissue_thresholds(eqtl_threshold_text):
-	thresholds = {}
-	with open("/users/mgloud/projects/brain_gwas/data/pvalue_thresholds.txt") as f:
-		header = f.readline().strip().split()
-
-
-		# Figure out which index in the quantiles file we want to use
-		for i in range(len(header)):
-			if eqtl_threshold_text in header[i]:
-				ind = i
-				break
-
-		# Get quantile-calibrated thresholds for each tissue
-		for line in f:
-			data = line.strip().split()
-			thresholds[data[0]] = float(data[ind])	
-
-	return thresholds
 
 
 # Function: run_fastqtl	
-#
 # Returns True if fastqtl has been successfully run at the locus/gene pair.
 # Returns False if we need to skip this locus/gene pair, probably due
-# to lack of expression data.
+# to lack of expression data. For now, we're not even using this function.
 #
+'''
 def run_fastqtl(gene, covariates, tissue_prefix, gwas_suffix, gwas_chrom, gwas_pos, conditional_level, replace_existing = False):
 	
 	# First check output directory to see if fastQTL has already been run for this locus.
@@ -401,25 +327,25 @@ def run_fastqtl(gene, covariates, tissue_prefix, gwas_suffix, gwas_chrom, gwas_p
 				--region {1}:{6}-{7} \
 				".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level, gwas_pos-window, gwas_pos+window), shell=True)
 	return True
-	
+'''	
 
 #def run_ecaviar(eqtl_chrom, eqtl_pos, gwas_pos, gene_list, gene, eqtls, gwas_table):
 def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level):
 
 	# Make required directories for eCAVIAR analysis
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/".format(gwas_suffix.replace(".", "_")), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/plink/{0}/".format(gwas_suffix.replace(".", "_")), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/".format(gwas_suffix.replace(".", "_")), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos), shell=True)
-	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/".format(gwas_suffix), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}".format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/plink/{0}/".format(gwas_suffix), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}".format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/".format(gwas_suffix), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}".format(gwas_suffix, gwas_chrom, gwas_pos), shell=True)
+	subprocess.call("mkdir /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
 	
 	# This step is critical. If we don't call it, then eCAVIAR will append results to the 
 	# previously generated list, which will probably screw everything up.
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/*".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/*".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
   
 	# For now, for simplicity, remove all positions that appear multiple times in the GWAS table.
 	# This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
@@ -432,21 +358,22 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 
 	snps = combined[['chr_y', 'snp_pos']]	
 	# Write list of SNPs to a file for vcftools
-	with open("/users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level) , "w") as w:
+	with open("/users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level) , "w") as w:
 		snps.to_csv(w, index=False, header=False, sep="\t")
 
-	# Pre-filter with VCFtools if we haven't already pre-filtered this site
-	if "{0}_{1}".format(gwas_chrom, gwas_pos) not in os.listdir("/users/mgloud/projects/brain_gwas/data/prefiltered_vcfs/{0}".format(gwas_suffix.replace(".", "_"))):
-		subprocess.check_call("mkdir /users/mgloud/projects/brain_gwas/data/prefiltered_vcfs/{2}/{0}_{1}".format(gwas_chrom, gwas_pos, gwas_suffix.replace(".", "_")), shell=True)
-		command = 'vcftools --gzvcf /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz --maf 0.01 --max-maf 0.99 --chr {0} --from-bp {1} --to-bp {2} --recode --recode-INFO-all --out /users/mgloud/projects/brain_gwas/data/prefiltered_vcfs/{4}/{0}_{3}/{0}_{3}_prefiltered'.format(gwas_chrom, gwas_pos-window, gwas_pos + window, gwas_pos, gwas_suffix.replace(".", "_"))
-		subprocess.check_call(command, shell=True)
+	# Get the region of interest from 1K genomes VCFs using tabix
+	subprocess.check_call("tabix -h /mnt/lab_data/montgomery/shared/1KG/ALL.chr{1}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {1}:{6}-{7} > /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level, gwas_pos-window, gwas_pos+window), shell=True)
 
 	# Use VCFtools to filter down to appropriate sites
-	command = 'vcftools --vcf /users/mgloud/projects/brain_gwas/data/prefiltered_vcfs/{0}/{1}_{2}/{1}_{2}_prefiltered.recode.vcf --positions /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt --recode --recode-INFO-all --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes'.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+	# TODO: For the sake of a speedy analysis, maybe require MAF above 0.05, since hard to find eQTLs otherwise.
+	# Only if necessary though.
+	command = 'vcftools --vcf /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf --positions /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt --recode --recode-INFO-all --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
         subprocess.check_call(command, shell=True)
 
 	# TODO: Consider whether we should be using GTEx VCFs to compute LD instead of
-	# using 1000 Genomes VCFs.
+	# using 1000 Genomes VCFs. Problem there is it's tough to do the
+	# computations, since many individuals are duplicated in these VCFs. Would have to
+	# get consensus genotypes for each person based on samples across all tissues, or something like that.
 
 	# Loop through the output file, saving only the sites that appear in both the VCF
 	# and in the combined SNPs list a single time (no more, no less!)
@@ -454,7 +381,7 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 	saved_list = set([])
 
 	# Find SNPs that appear exactly once in the VCF
-	with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)) as f:
+	with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)) as f:
 		for line in f:
 			if line.startswith("#"):
 				continue
@@ -469,8 +396,8 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 				used.add(pos)
 
 	# Remove SNPs from the VCF if they appear more than once
-	with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf'.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
-		with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)) as f:
+	with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
+		with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)) as f:
 			for line in f:
 				if line.startswith("#"):
 					w.write(line)
@@ -485,16 +412,16 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 	combined = combined[combined['pos_tuple'].isin(saved_list)]
 
 	# Use PLINK to generate bim bam fam files
-	command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked'''.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+	command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
 	subprocess.check_call(command, shell=True)
 
 	# Use PLINK to generate LD score
-	command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}'''.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+	command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
 	subprocess.check_call(command, shell=True)
 
 	# Fix LD-score by replacing nan values with 0.
 	# TODO: Verify that this is valid and doesn't screw up results.
-	subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 
 	# Print z-scores to input files for eCAVIAR
 	combined['ZSCORE_eqtl'] = combined['t-stat']
@@ -503,11 +430,11 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 		combined['ZSCORE_gwas'] = (combined['or']-1) / combined['se']
 	else:
 		combined['ZSCORE_gwas'] = (combined['beta_x']) / combined['se']
-	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
+	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
 		snps = combined[['snp_pos', 'ZSCORE_eqtl']]
 		snps.to_csv(w, index=False, header=False, sep="\t")
 
- 	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
+ 	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
 		snps = combined[['snp_pos', 'ZSCORE_gwas']]	
 		snps.to_csv(w, index=False, header=False, sep="\t")
 
@@ -522,25 +449,40 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 		 -z /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z \
 		  -z /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z \
 		-c 1 \
-		-r 0.95 > /dev/null'''.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+		-r 0.95 > /dev/null'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
 	subprocess.check_call(command, shell=True)
 
 	# Parse eCAVIAR results to compute CLPP score
-	command = '''awk '{{sum += $2}} END {{print sum}}' ../tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col'''.format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+	command = '''awk '{{sum += $2}} END {{print sum}}' ../tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
 	clpp = float(subprocess.check_output(command, shell=True))
 
+	# Add results to the desired file
 	with open("{0}/{1}_clpp_status.txt".format(base_output_dir, gwas_suffix.replace(".", "_")), "a") as a:
 		a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level, snps.shape[0], clpp))
 
+	# Remove temporary intermediate files to save space
+	purge_tmp_files(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+
+### Function purge_tmp_files
+# Remove temporary files created during this run of eCAVIAR,
+# to free up space.
+def purge_tmp_files(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level):
+	
+	# Why not just purge everything from the entire directory of the GWAS that we're working on?
+	# Answer: it's possible that other jobs are still using those files.
+	# Only purge the specific files created in this run.
 
 	# Remove intermediate files from the tmp directory to avoid wasting space
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked*".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf".format(gwas_suffix.replace(".", "_"), gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	# NOTE: Review this periodically to make sure nothing's slipping through.
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked*".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.log".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ The GWAS top hits, full GWAS and full eQTL files are tab delimited and contain t
 ```
 chr     rsid    a1      a2      snp_pos beta    se      pvalue
 ```
-where 'chr'=chromosome number, 'rsid'=RSID identifier, 'a1'=Allele 1, 'a2'=Allele 2, 'snp_pos'=SNP position (build 37), 'beta'=Effect size (can be an odds ratio as well, and the corresponding column name should be 'or'), 'se'=Standard error, 'pvalue'=p-value.
+where **chr**=chromosome number, **rsid**=RSID identifier, **a1**=Allele 1, **a2**=Allele 2, **snp_pos**=SNP position (build 37), **beta**=Effect size (can be an odds ratio as well, and the corresponding column name should be **or**), **se**=Standard error, **pvalue**=p-value.
 
 #### Running tabix on full GWAS eQTL files
 Tabix is a tool that greatly increases the speed with which large tab-delimited files can be searched. The pipeline runs on tabix'd files to save execution time. 

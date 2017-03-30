@@ -18,19 +18,19 @@ The main pipeline directory contains 5 subdirectories
 5. tmp - contains temporary files
 
 ###### Subdirectory structure
-
- ├── bin   
- ├── data 
- ├	  ├── eqtl
- ├	  ├── gwas_summary
- ├	  └── gwas                    
- ├── output     
- ├	  ├── coloc_status
- ├	  ├── gwas_by_eqtl_scatterplots
- ├	  └── snp_overlaps                
- ├── scripts                    
- └── tmp    
-
+```
+1. bin   
+2. data 
+  - eqtl
+  - gwas_summary
+  - gwas
+3. output 
+  - coloc_status
+  - gwas_by_eqtl_scatterplots
+  - snp_pverlaps
+4. scripts                    
+5. tmp   
+```
 #### Usage
 To run the pipeline, ensure all data is placed in the data/ folder. Run
 

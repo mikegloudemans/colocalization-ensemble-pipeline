@@ -31,6 +31,9 @@ The main pipeline directory contains 5 subdirectories
 4. scripts                    
 5. tmp   
 ```
+#### Adjustable parameters
+One of the main settings that affects colocalization results is the p-value threshold set for eQTL and GWAS data. The pipeline detects colocalization events if for a given SNP, both eQTL and GWAS data p-values exceed their respective thresholds. There might be various reasons to adjust these thresholds (for example, sample size variation between eQTL studies for colocalization analyses and comparison across studies). To adjust GWAS and eQTL p-value thresholds,
+
 #### Usage
 To run the pipeline, ensure all data is placed in the data/ folder. Run
 
@@ -54,6 +57,6 @@ where the last column <clpp> is the posterior colocalization probability of GWAS
  output_coloc_plots.py plots log(eQTL p-values) against log(GWAS p-values) for given gene. Run
 
  ```
-./output_coloc_plots.py <chromosome> <gwas_position> <gwas_file> <eqtl_gene>
+python output_coloc_plots.py <chromosome> <gwas_position> <gwas_file> <eqtl_gene>
  ```
 where <chromosome> is the chromosome number, <gwas_position> is the position of the top GWAS hit of interest for colocalization, <gwas_file> is the path to the full GWAS data file, and <eqtl_gene> is the ENSEMBL ID (ENSG00000...) of the gene of interest with respect to the current GWAS hit.

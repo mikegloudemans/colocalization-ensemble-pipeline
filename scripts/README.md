@@ -27,7 +27,7 @@ chr     rsid    a1      a2      snp_pos beta    se      pvalue
 ```
 where **chr**=chromosome number, **rsid**=RSID identifier, **a1**=Allele 1, **a2**=Allele 2, **snp_pos**=SNP position (build 37), **beta**=Effect size (can be an odds ratio as well, and the corresponding column name should be **or**), **se**=Standard error, **pvalue**=p-value. It is important to keep the order consistent within and across files.
 
-#### Running tabix on full GWAS eQTL files
+#### Running tabix on full GWAS and eQTL files
 Tabix is a tool that greatly increases the speed with which large tab-delimited files can be searched. The pipeline runs on tabix'd files to save execution time. 
 
 Briefly, tabix uses a pair of files to get information - the original compressed file that contains the desired information (compressed using bgzip, not gzip!), and a .tbi index file that tabix uses to rapidly search the first compressed file.
@@ -47,6 +47,7 @@ The main pipeline directory contains 5 subdirectories
 3. output - contains colocalization results
 4. scripts - contains scripts required to run the pipeline
 5. tmp - contains temporary files
+6. previous_results - general folder for all previous results; old results are moved here automatically 
 
 ###### Subdirectory structure
 ```
@@ -60,7 +61,8 @@ The main pipeline directory contains 5 subdirectories
   - gwas_by_eqtl_scatterplots
   - snp_overlaps
 4. scripts                    
-5. tmp   
+5. tmp 
+6. previous_results
 ```
 #### Adjustable parameters
 One of the main settings that affects colocalization results is the p-value threshold set for eQTL and GWAS data. The pipeline detects colocalization events if for a given SNP, both eQTL and GWAS data p-values exceed their respective thresholds. There might be various reasons to adjust these thresholds (for example, sample size variation between eQTL studies for colocalization analyses and comparison across studies). To adjust GWAS and eQTL p-value thresholds,

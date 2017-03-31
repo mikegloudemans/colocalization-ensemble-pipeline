@@ -49,7 +49,6 @@ The main pipeline directory contains 5 subdirectories
 5. tmp - contains temporary files
 6. previous_results - general folder for all previous results; old results are moved here automatically 
 
-###### Subdirectory structure
 ```
 1. bin   
 2. data 

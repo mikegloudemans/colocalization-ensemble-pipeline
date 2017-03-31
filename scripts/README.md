@@ -57,39 +57,26 @@ The main pipeline directory contains 5 subdirectories
   - gwas_full
   - gwas_tophits
 3. output 
-  - coloc_status
-  - gwas_by_eqtl_scatterplots
-  - snp_overlaps
+  - plots
 4. scripts                    
 5. tmp 
 6. previous_results
 ```
-#### Adjustable parameters
-One of the main settings that affects colocalization results is the p-value threshold set for eQTL and GWAS data. The pipeline detects colocalization events if for a given SNP, both eQTL and GWAS data p-values exceed their respective thresholds. There might be various reasons to adjust these thresholds (for example, sample size variation between eQTL studies for colocalization analyses and comparison across studies). To adjust GWAS and eQTL p-value thresholds,
 
 #### Usage
 To run the pipeline, ensure all data is placed in the data/ folder. Run
 
 ```
-python find_colocalizations.py <chromosome> <gwas_position> <path-to-gwas-file> <path-to-eqtl-file>
+source run_colocalization_pipeline.sh <path-to-gwas-tophits-file> <path-to-gwas-file> <path-to-eqtl-file>
 ```
 #### Output subdirectory structure and file descriptions
-1. coloc_status
-2. gwas_by_eqtl_scatterplots
-3. snp_overlaps
-
-The file containing posterior colocalization probabilities in all tissues is located in the output/ directory and has the name *_clpp_status.txt. The format of this tab delimited file is
+The file containing posterior colocalization probabilities in all tissues is located in the `output/` directory and has the name *_clpp_status.txt. The format of this tab delimited file is
 
 ```
-<gwas_chrom>_<gwas_pos> <tissue_prefix> <gene> <snps.shape> <clpp>
+<chr_pos> <tissue_prefix> <gene> <snps.shape> <clpp>
 ```
 
-where the last column <clpp> is the posterior colocalization probability of GWAS and eQTL signals at the GWAS SNP <gwas_chrom>_<gwas_pos> for <gene> indicated in the third column in tissue <tissue_prefix>. 
+where the last column <clpp> is the posterior colocalization probability of GWAS and eQTL signals at the GWAS SNP <chr_pos> for <gene> indicated in the third column in tissue <tissue_prefix>. <snps.shape> is the number of SNPs that were tested for colocalization this site in this tissue.
 
- #### Plotting eQTL vs GWAS plots
- output_coloc_plots.py plots log(eQTL p-values) against log(GWAS p-values) for given gene. Run
+`output/plots` contains 2 different types of plots at each GWAS top hit. One is a plot of (log eQTL p-value) by (log GWAS p-value), and a colocalization can be observed if certain SNPs have both high eQTL and GWAS p-values. The other is a Manhattan plot of the region around the GWAS top hit, which is indicated by a vertical dashed line. The SNPs are colored by location, and each SNP has the same color on both plots.
 
- ```
-python output_coloc_plots.py <chromosome> <gwas_position> <gwas_file> <eqtl_gene>
- ```
-where <chromosome> is the chromosome number, <gwas_position> is the position of the top GWAS hit of interest for colocalization, <gwas_file> is the path to the full GWAS data file, and <eqtl_gene> is the ENSEMBL ID (ENSG00000...) of the gene of interest with respect to the current GWAS hit.

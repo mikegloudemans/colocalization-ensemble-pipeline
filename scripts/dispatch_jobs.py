@@ -33,8 +33,8 @@ def main():
 
 		# For now, ignore a SNP if it's in the MHC region, because there's way too
 		# much signal there to make sense of it right now.
-		if snp[0] == 6 and snp[1] > 25000000 and snp[1] < 35000000:
-			break
+		if (str(snp[0]) == "6" or snp[0] == "chr6") and snp[1] > 25000000 and snp[1] < 35000000:
+			continue
 
 		skip = False
 		for kept_snp in snps_to_test:

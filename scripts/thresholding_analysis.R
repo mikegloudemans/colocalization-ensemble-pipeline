@@ -3,7 +3,7 @@
 # by tissue sample sizes.
 
 # Load colocalization events table, and tissue sample sizes.
-d = read.table("/users/mgloud/projects/brain_gwas/output/scz2_snp_results_txt/1.0e-06_by_1.0e-07/coloc_status.txt", header = TRUE)
+d = read.table("/users/mgloud/projects/brain_gwas/output/scz2_snp_results_txt/1.0e-07/scz2_snp_results_txt_finemap_coloc_status.txt", header = TRUE)
 dTissues = read.csv("/users/joed3/GTExCisEqtls/data/gtex.v6p.egenes.summary.txt", sep="\t")
 
 # Plot distribution of number of colocalization events per tissue.

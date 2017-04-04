@@ -14,7 +14,7 @@ def main():
 	base_output_dir = get_output_dir(args)
 
 	# Remove previous colocalization file
-	subprocess.call("rm {0}/clpp_status.txt".format(base_output_dir), shell=True)
+	subprocess.call("rm {0}/*clpp_status.txt".format(base_output_dir), shell=True)
 
 	# Load in the data, get p-values for each SNP
 	gwas_table = pd.read_csv(args.gwas_file, sep="\t")
@@ -30,6 +30,12 @@ def main():
 	for snp in all_snps:
 		if snp[2] >= args.gwas_threshold:
 			break
+
+		# For now, ignore a SNP if it's in the MHC region, because there's way too
+		# much signal there to make sense of it right now.
+		if snp[0] == 6 and snp[1] > 25000000 and snp[1] < 35000000:
+			break
+
 		skip = False
 		for kept_snp in snps_to_test:
 			if kept_snp[0] == snp[0] and abs(kept_snp[1] - snp[1]) < args.window:
@@ -42,7 +48,7 @@ def main():
 		print "python find_colocalization.py {0} {1} {2} {3} &".format(snp[0], snp[1], args.gwas_file, args.gwas_threshold)
 		subprocess.check_call("python find_colocalization.py {0} {1} {2} {3} &".format(snp[0], snp[1], args.gwas_file, args.gwas_threshold), shell=True)
 		# Limit to N jobs running on this GWAS file; user can specify desired number
-		while int(subprocess.check_output('ps -ef | grep mgloud | grep "python find_coloc" | grep -v grep | grep {0} | wc -l'.format(args.gwas_file), shell=True)) > args.max_jobs:
+		while int(subprocess.check_output('ps -ef | grep mgloud | grep "python find_coloc" | grep -v grep | grep {0} | wc -l'.format(args.gwas_file), shell=True)) >= args.max_jobs:
 			time.sleep(1)
 
 ### Function parse_args

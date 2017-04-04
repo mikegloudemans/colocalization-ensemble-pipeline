@@ -21,7 +21,7 @@ else:
     from io import StringIO
 
 # TODO: Add ArgumentParser to parse all of this input directly, in a separate function
-window = 1000000
+window = 500000
 
 # Read command line arguments
 gwas_chrom = int(sys.argv[1].replace('chr', ''))
@@ -70,8 +70,8 @@ def main():
 		genes = set(eqtls['gene'])
 
 		# Make directory for storing plots to visualize associations
-		subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots".format(base_output_dir), shell=True)
-		subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
+		subprocess.call("mkdir {0}/plots".format(base_output_dir), shell=True)
+		subprocess.call("mkdir {0}/plots/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
 		subprocess.call("mkdir {0}/snp_overlaps".format(base_output_dir), shell=True)
 		subprocess.call("mkdir {0}/snp_overlaps/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
 
@@ -154,49 +154,7 @@ def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas
 	if combined.shape[0] == 0: 
 		return False
 
-	# TODO: Modify plotting code so that eCAVIAR only plots results with colocalization, instead of results
-	# passing a certain threshold. For now though, don't plot anything. (Could also delegate this 
-	# to an entirely different Python script.
-
-	#subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}".format(base_output_dir, gwas_chrom, gwas_pos), shell=True)
-	#subprocess.call("mkdir {0}/gwas_by_eqtl_scatterplots/{1}_{2}/{3}".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
-
-	#plt.figure(figsize=(10,10))
-	#plt.scatter([-1 * math.log10(p) for p in not_passing['pvalue_x']], [-1 * math.log10(p) for p in not_passing['pvalue_y']])
-	#plt.scatter([-1 * math.log10(p) for p in passing['pvalue_x']], [-1 * math.log10(p) for p in passing['pvalue_y']], color="red")
-	#color_code = [int(sp)-gwas_pos for sp in combined['snp_pos']]
-	#color_code = [min(abs(cc), 100000) * ((cc > 0)*2 - 1) for cc in color_code]
-	#plt.scatter([-1 * math.log10(p) for p in combined['pvalue_x']], [-1 * math.log10(p) for p in combined['pvalue_y']], c=color_code, cmap=plt.cm.magma, edgecolor='', s=50)
-	#plt.scatter([-1 * math.log10(p) for p in combined['pvalue_x']], [-1 * math.log10(p) for p in combined['pvalue_y']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
-
-	#if max([-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']]) < 20:
-	#	plt.axis([0, 20, 0, 20])
-	#else:
-	#	plt.axis([0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']]), 0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']])])
-	#plt.plot((-1*math.log10(gwas_threshold), -1*math.log10(gwas_threshold)), (0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']])), 'r--')
-	#plt.plot((0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']])) ,(-1*math.log10(pval_threshold), -1*math.log10(pval_threshold)), 'r--')
-	#plt.xlabel('GWAS -log p-value', fontsize=16)
-	#plt.ylabel('eQTL -log p-value', fontsize=16)
-	#plt.savefig("{0}/gwas_by_eqtl_scatterplots/{1}_{2}/{3}/{4}_level{5}.png".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level))
-	#plt.gcf().clear()
-
-
-	# Also create a LocusZoom-style plot showing the GWAS and eQTL signals next to one another.
-	#plt.figure(figsize=(20,10))
-	#plt.subplot(211)
-	#plt.scatter(combined['snp_pos'], [-1 * math.log10(p) for p in combined['pvalue_x']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
-	#plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined['pvalue_x']])), 'k--')
-	#plt.ylabel('GWAS -log p-value', fontsize=16)
-	#plt.subplot(212)
-	#plt.scatter(combined['snp_pos'], [-1 * math.log10(p) for p in combined['pvalue_y']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
-	#plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined['pvalue_y']])), 'k--')
-	#plt.ylabel('eQTL -log p-value', fontsize=16)
-	#plt.xlabel('Position', fontsize=16)
-	#plt.savefig("{0}/gwas_by_eqtl_scatterplots/{1}_{2}/{3}/{4}_level{5}_lz.png".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level))
-	#plt.gcf().clear()
-
 	# Run eCAVIAR on SNPs.
-	
 	
 	# This should make eCAVIAR run substantially faster. 
 	# This is the newest version of subsetting.
@@ -206,15 +164,48 @@ def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas
 	# TODO: Modify the analysis below to use FINEMAP instead of subsetting.
 	# TODO: Run this test at a bunch of sample sites with FINEMAP and with eCAVIAR and
 	# compare results to see if they're similar. If not, investigate why.
-	combined = combined.sort_values(by='pvalue_x')
-	ecaviar_x = combined.head(100)
+	'''combined = combined.sort_values(by='pvalue_x')
+	ecaviar_x = combined.head(600)
 	combined = combined.sort_values(by='pvalue_y')
-	ecaviar_y = combined.head(100)
+	ecaviar_y = combined.head(600)
 
 	ecaviar_set = pd.concat([ecaviar_x, ecaviar_y])
-	ecaviar_set = ecaviar_set.drop_duplicates()
-	run_ecaviar(ecaviar_set, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level)
+	ecaviar_set = ecaviar_set.drop_duplicates()'''
+	#clpp = run_ecaviar(ecaviar_set, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level)
+	clpp = run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level)
 
+
+	# TODO: Move this to an entirely separate function.
+	subprocess.call("mkdir {0}/plots/{1}_{2}/{3}".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
+
+	plt.figure(figsize=(10,10))
+	plt.scatter([-1 * math.log10(p) for p in combined['pvalue_x']], [-1 * math.log10(p) for p in combined['pvalue_y']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
+
+	if max([-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']]) < 20:
+		plt.axis([0, 20, 0, 20])
+	else:
+		plt.axis([0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']]), 0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']])])
+	plt.xlabel('GWAS -log p-value', fontsize=16)
+	plt.ylabel('eQTL -log p-value', fontsize=16)
+	plt.title('{0} CLPP = {1}'.format(gene, clpp), fontsize=24)
+	plt.savefig("{0}/plots/{1}_{2}/{3}/{4}.png".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene))
+	plt.gcf().clear()
+	plt.close()
+
+	# Also create a LocusZoom-style plot showing the GWAS and eQTL signals next to one another.
+	plt.figure(figsize=(20,10))
+	plt.subplot(211)
+	plt.scatter(combined['snp_pos'], [-1 * math.log10(p) for p in combined['pvalue_x']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
+	plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined['pvalue_x']])), 'k--')
+	plt.ylabel('GWAS -log p-value', fontsize=16)
+	plt.subplot(212)
+	plt.scatter(combined['snp_pos'], [-1 * math.log10(p) for p in combined['pvalue_y']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
+	plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined['pvalue_y']])), 'k--')
+	plt.ylabel('eQTL -log p-value', fontsize=16)
+	plt.xlabel('Position', fontsize=16)
+	plt.savefig("{0}/plots/{1}_{2}/{3}/{4}_manhattan.png".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene))
+	plt.gcf().clear()
+	plt.close()
 	
 	return True
 
@@ -421,7 +412,8 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 
 	# Fix LD-score by replacing nan values with 0.
 	# TODO: Verify that this is valid and doesn't screw up results.
-	subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	# Also replace tabs with spaces because FINEMAP requires this.
+	subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 
 	# Print z-scores to input files for eCAVIAR
 	combined['ZSCORE_eqtl'] = combined['t-stat']
@@ -432,36 +424,80 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 		combined['ZSCORE_gwas'] = (combined['beta_x']) / combined['se']
 	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
 		snps = combined[['snp_pos', 'ZSCORE_eqtl']]
-		snps.to_csv(w, index=False, header=False, sep="\t")
+		snps.to_csv(w, index=False, header=False, sep=" ")
 
  	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), "w") as w:
 		snps = combined[['snp_pos', 'ZSCORE_gwas']]	
-		snps.to_csv(w, index=False, header=False, sep="\t")
+		snps.to_csv(w, index=False, header=False, sep=" ")
 
+	'''
 	# Run eCAVIAR
 	# NOTE: Redirecting output to /dev/null because eCAVIAR prints the entire
 	# LD matrix, which is just bad when you have thousands of loci. Fix this if
 	# you need to see eCAVIAR output.
-	command = '''/srv/persistent/bliu2/tools/caviar/CAVIAR-C++/eCAVIAR \
+	command = '/srv/persistent/bliu2/tools/caviar/CAVIAR-C++/eCAVIAR \
 		-o /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results \
 		-l /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld \
 		 -l /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld \
 		 -z /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z \
 		  -z /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z \
 		-c 1 \
-		-r 0.95 > /dev/null'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+		-r 0.95 > /dev/null'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
 	subprocess.check_call(command, shell=True)
 
 	# Parse eCAVIAR results to compute CLPP score
-	command = '''awk '{{sum += $2}} END {{print sum}}' ../tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col'''.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+	command = "awk '{{sum += $2}} END {{print sum}}' ../tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
 	clpp = float(subprocess.check_output(command, shell=True))
 
 	# Add results to the desired file
 	with open("{0}/{1}_clpp_status.txt".format(base_output_dir, gwas_suffix.replace(".", "_")), "a") as a:
 		a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level, snps.shape[0], clpp))
+	'''	
+
+	# NEW: FINEMAP pipeline
+
+	# Write config file for finemap
+	# TODO TODO TODO TODO TODO: Right now we're just arbitrarily saying 5000 individuals just to get this running.
+	# Need to do a bit more investigation into how the number of individuals used here affects
+	# the results, and into how important it is to use the proper LD computations (e.g. GTEx-specific)
+	# when exploring results. This is very important if we want to trust results.
+	subprocess.check_call('echo "z;ld;snp;config;n-ind" > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.config;5000" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.config;5000" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	
+	# Run FINEMAP
+	subprocess.check_call('finemap --sss --in-files /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max 1 --n-iterations 1000000 --n-convergence 50000'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+
+	# Parse FINEMAP results to compute CLPP score
+	gwas_probs = []
+	eqtl_probs = []
+	with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)) as f:
+		f.readline()
+		for line in f:
+			data = line.strip().split()
+			gwas_probs.append((int(data[1]), float(data[2])))
+        with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)) as f:
+		f.readline()
+		for line in f:
+			data = line.strip().split()
+			eqtl_probs.append((int(data[1]), float(data[2])))
+	gwas_probs = sorted(gwas_probs)
+	eqtl_probs = sorted(eqtl_probs)
+
+	assert len(gwas_probs) == len(eqtl_probs)
+	for i in range(len(gwas_probs)):
+		assert gwas_probs[i][0] == eqtl_probs[i][0]
+
+	finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
+
+	# Write FINEMAP results to the desired file
+        with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix.replace(".", "_")), "a") as a:
+                a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level, snps.shape[0], finemap_clpp))
 
 	# Remove temporary intermediate files to save space
 	purge_tmp_files(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
+
+	return finemap_clpp
 
 ### Function purge_tmp_files
 # Remove temporary files created during this run of eCAVIAR,
@@ -483,7 +519,10 @@ def purge_tmp_files(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, cond
 	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.log".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
-
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.log".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.gwas.config".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.eqtl.config".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 
 if __name__ == "__main__":
 	main()

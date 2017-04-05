@@ -39,6 +39,7 @@ base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}/{1}".format(gwas
 
 
 def main():
+
 	# Subset GWAS list to SNPs near the GWAS position
 	gwas_table = pd.read_csv(gwas_file, sep="\t")
 	gwas_table = gwas_table[(gwas_table['snp_pos'] > gwas_pos - window) & (gwas_table['snp_pos'] < gwas_pos + window)]
@@ -78,7 +79,6 @@ def main():
 		# TODO: This section is designed to run fastQTL to find conditional eQTLs, but currently
 		# we've set the maximum conditional level to 0 so that it doesn't find conditional eQTLs.
 		# Decide whether to fix this or just eliminate it if not necessary.
-		
 		for gene in genes:
 			conditional_eqtls = eqtls[eqtls['gene'] == gene]
 			covariates = []
@@ -134,8 +134,6 @@ def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas
 	# Get the set of genes we're interested in
 	eqtl_subset = eqtls[eqtls['gene'] == gene]
 	
-	# TODO: View output logs to figure out why this is happening.
-	# It shouldn't be happening, but apparently it is.
 	if eqtl_subset.shape[0] == 0:
 		print "EQTL_SUBSET_EMPTY_ERROR"
 		print gwas_chrom, gwas_pos, gene, current_level, tissue_prefix
@@ -154,16 +152,13 @@ def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas
 	if combined.shape[0] == 0: 
 		return False
 
-	# Run eCAVIAR on SNPs.
+	# Run eCAVIAR or FINEMAP on SNPs.
 	
 	# This should make eCAVIAR run substantially faster. 
 	# This is the newest version of subsetting.
 	# Keep the union between the best 100 GWAS SNPs and best 100 eQTL SNPs,
 	# since none of the others will have that much effect on the eCAVIAR score anyway.
 
-	# TODO: Modify the analysis below to use FINEMAP instead of subsetting.
-	# TODO: Run this test at a bunch of sample sites with FINEMAP and with eCAVIAR and
-	# compare results to see if they're similar. If not, investigate why.
 	'''combined = combined.sort_values(by='pvalue_x')
 	ecaviar_x = combined.head(600)
 	combined = combined.sort_values(by='pvalue_y')
@@ -174,17 +169,30 @@ def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas
 	#clpp = run_ecaviar(ecaviar_set, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level)
 	clpp = run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, current_level)
 
+	# Plot results
+	plot_colocalization_test(gwas_chrom, gwas_pos, gene, combined, gwas_suffix, \
+        	tissue_prefix, current_level, clpp)
 
-	# TODO: Move this to an entirely separate function.
+	return True
+
+
+# Function plot_colocalization_test
+#
+# Produces a paired Manhattan plot and a colocalization
+# scatterplot for the given locus. 
+#
+def plot_colocalization_test(gwas_chrom, gwas_pos, gene, combined_table, gwas_suffix, \
+        tissue_prefix, current_level, clpp):
+
 	subprocess.call("mkdir {0}/plots/{1}_{2}/{3}".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix), shell=True)
 
 	plt.figure(figsize=(10,10))
-	plt.scatter([-1 * math.log10(p) for p in combined['pvalue_x']], [-1 * math.log10(p) for p in combined['pvalue_y']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
+	plt.scatter([-1 * math.log10(p) for p in combined_table['pvalue_x']], [-1 * math.log10(p) for p in combined_table['pvalue_y']], c=combined_table['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
 
-	if max([-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']]) < 20:
+	if max([-1 * math.log10(p) for p in combined_table['pvalue_x']] + [-1 * math.log10(p) for p in combined_table['pvalue_y']]) < 20:
 		plt.axis([0, 20, 0, 20])
 	else:
-		plt.axis([0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']]), 0, max([20] + [-1 * math.log10(p) for p in combined['pvalue_x']] + [-1 * math.log10(p) for p in combined['pvalue_y']])])
+		plt.axis([0, max([20] + [-1 * math.log10(p) for p in combined_table['pvalue_x']] + [-1 * math.log10(p) for p in combined_table['pvalue_y']]), 0, max([20] + [-1 * math.log10(p) for p in combined_table['pvalue_x']] + [-1 * math.log10(p) for p in combined_table['pvalue_y']])])
 	plt.xlabel('GWAS -log p-value', fontsize=16)
 	plt.ylabel('eQTL -log p-value', fontsize=16)
 	plt.title('{0} CLPP = {1}'.format(gene, clpp), fontsize=24)
@@ -195,19 +203,18 @@ def gwas_eqtl_colocalization(gwas_chrom, gwas_pos, gene, eqtls, gwas_table, gwas
 	# Also create a LocusZoom-style plot showing the GWAS and eQTL signals next to one another.
 	plt.figure(figsize=(20,10))
 	plt.subplot(211)
-	plt.scatter(combined['snp_pos'], [-1 * math.log10(p) for p in combined['pvalue_x']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
-	plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined['pvalue_x']])), 'k--')
+	plt.scatter(combined_table['snp_pos'], [-1 * math.log10(p) for p in combined_table['pvalue_x']], c=combined_table['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
+	plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined_table['pvalue_x']])), 'k--')
 	plt.ylabel('GWAS -log p-value', fontsize=16)
 	plt.subplot(212)
-	plt.scatter(combined['snp_pos'], [-1 * math.log10(p) for p in combined['pvalue_y']], c=combined['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
-	plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined['pvalue_y']])), 'k--')
+	plt.scatter(combined_table['snp_pos'], [-1 * math.log10(p) for p in combined_table['pvalue_y']], c=combined_table['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
+	plt.plot((gwas_pos, gwas_pos), (-2, max([-1 * math.log10(p) for p in combined_table['pvalue_y']])), 'k--')
 	plt.ylabel('eQTL -log p-value', fontsize=16)
 	plt.xlabel('Position', fontsize=16)
 	plt.savefig("{0}/plots/{1}_{2}/{3}/{4}_manhattan.png".format(base_output_dir, gwas_chrom, gwas_pos, tissue_prefix, gene))
 	plt.gcf().clear()
 	plt.close()
 	
-	return True
 
 
 # Function: run_fastqtl	
@@ -353,18 +360,19 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 		snps.to_csv(w, index=False, header=False, sep="\t")
 
 	# Get the region of interest from 1K genomes VCFs using tabix
+	# TODO: Since this operation is the same for every analysis, just run it once outside of this loop and
+	# create a file used by every run_ecaviar call
 	subprocess.check_call("tabix -h /mnt/lab_data/montgomery/shared/1KG/ALL.chr{1}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {1}:{6}-{7} > /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level, gwas_pos-window, gwas_pos+window), shell=True)
 
 	# Use VCFtools to filter down to appropriate sites
-	# TODO: For the sake of a speedy analysis, maybe require MAF above 0.05, since hard to find eQTLs otherwise.
-	# Only if necessary though.
+	# (For the sake of a speedy analysis, we thought about requiring MAF above 0.01 in 1K Genomes, since hard to find eQTLs otherwise.
+	# However, a visual check on this revealed that very few variants were removed at this filtering level,
+	# possibly because these variants have also been filtered in GTEx.)
 	command = 'vcftools --vcf /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf --positions /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt --recode --recode-INFO-all --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes'.format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level)
         subprocess.check_call(command, shell=True)
 
 	# TODO: Consider whether we should be using GTEx VCFs to compute LD instead of
-	# using 1000 Genomes VCFs. Problem there is it's tough to do the
-	# computations, since many individuals are duplicated in these VCFs. Would have to
-	# get consensus genotypes for each person based on samples across all tissues, or something like that.
+	# using 1000 Genomes VCFs. Would have to compute LD separately for each tissue in this case
 
 	# Loop through the output file, saving only the sites that appear in both the VCF
 	# and in the combined SNPs list a single time (no more, no less!)
@@ -412,6 +420,7 @@ def run_ecaviar(combined, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional
 
 	# Fix LD-score by replacing nan values with 0.
 	# TODO: Verify that this is valid and doesn't screw up results.
+	# NOTE: This might be fixed if we get rid of low-MAF sites, I have no idea though
 	# Also replace tabs with spaces because FINEMAP requires this.
 	subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 
@@ -523,6 +532,56 @@ def purge_tmp_files(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, cond
 	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.gwas.config".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
 	subprocess.call("rm /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.eqtl.config".format(gwas_suffix, gwas_chrom, gwas_pos, tissue_prefix, gene, conditional_level), shell=True)
+
+# TODO: So far this function is not actually used. Integrate it with the rest of the code base.
+def parse_args():
+        
+	# Parse input
+        parser = argparse.ArgumentParser(description='Run colocalization pipeline at the specified chromsomal locus')
+        parser.add_argument("--gwas-position", dest="gwas_pos", action="store", help="p-value cutoff for GWAS signficance")
+        parser.add_argument("--gwas-chrom", dest="gwas_chrom", action="store", help="p-value cutoff for GWAS signficance")
+        parser.add_argument("--gwas-threshold", dest="gwas_threshold", action="store", help="p-value cutoff for GWAS signficance")
+        parser.add_argument("--gwas-file", dest="gwas_file", action = "store", help="file with GWAS summary statistics")
+        parser.add_argument("--eqtl-window", dest="eqtl_window", action = "store", help="test for colocalization at SNPs within this distance from a GWAS hit", default=500000)
+        args = parser.parse_args()
+
+        # Validate input
+	# TODO: Probably make the GWAS threshold input optional
+        try:
+                args.gwas_threshold = float(args.gwas_threshold)
+        except:
+                print "Invalid GWAS threshold input. Must be a floating-point number."
+                sys.exit()
+        try:
+                args.eqtl_window = int(args.eqtl_window)
+		if args.eqtl_window <= 0:
+			print "Invalid window input. Must be a positive integer"
+			sys.exit()
+        except:
+                print "Invalid window input. Must be a positive integer."
+                sys.exit()
+        try:
+                args.gwas_position = int(args.gwas_position)
+        except:
+                print "GWAS position must be a positive integer."
+                sys.exit()
+
+        try:
+                args.gwas_chrom = int(args.gwas_chrom.replace('chr', ''))
+        except:
+                print "GWAS chromosome must be a positive integer."
+		sys.exit()
+        
+	try:
+                if not os.path.exists(args.gwas_file):
+                        print "Input GWAS file does not exist."
+                        sys.exit()
+        except:
+                print "No input GWAS file was specified."
+                sys.exit()
+
+        return args
+
 
 if __name__ == "__main__":
 	main()

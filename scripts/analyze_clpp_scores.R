@@ -1,13 +1,11 @@
-data = read.table("/users/mgloud/projects/brain_gwas/output/scz2_snp_results_txt/fixed_threshold/1.0e-06_by_1.0e-05/scz2_snp_results_txt_clpp_status.txt")
-#data = read.table("/users/mgloud/projects/brain_gwas/output/pgc_mdd_full_2012-04_hg19_txt/fixed_threshold/1.0e-06_by_5.0e-04/pgc_mdd_full_2012-04_hg19_txt_clpp_status.txt")
-#data = read.table("/users/mgloud/projects/brain_gwas/output/anxiety_meta_full_fs_tbl/fixed_threshold/1.0e-06_by_5.0e-05/anxiety_meta_full_fs_tbl_clpp_status.txt")
+data = read.table("/users/mgloud/projects/brain_gwas/output/scz2_snp_results_txt/1.0e-07/scz2_snp_results_txt_finemap_clpp_status.txt")
 
 # Find the percentage of sites in each tissue whose coloc
 # score exceeds a certain threshold.
 clpp_threshold = 0.01
 colocs = rep(0, length(levels(data[,2])))
-png("/users/mgloud/projects/brain_gwas/output/scz2_ecdf.png", units="in", width=5, height=5, res=360)
-	plot(1, type="n", xlim=c(-2.25, -0.5), ylim=c(0, 1), xlab="eCDF of top 1% of tested sites in a tissue", ylab="CLPP score")
+#png("/users/mgloud/projects/brain_gwas/output/scz2_snp_results_txt/1.0e-07/scz2_ecdf.png", units="in", width=5, height=5, res=360)
+	plot(1, type="n", xlim=c(-2.75, -0.5), ylim=c(0, 1), ylab="eCDF of top 1% of tested sites in a tissue", xlab="CLPP score")
 	for (i in 1:length(levels(data[,2])))
 	{
 		tissue = levels(data[,2])[i]
@@ -20,8 +18,8 @@ png("/users/mgloud/projects/brain_gwas/output/scz2_ecdf.png", units="in", width=
 		top_one_percent = log10(clpp[order(clpp)][(round(length(clpp)*99/100)):length(clpp)])
 		lines(top_one_percent,(1:length(top_one_percent))/length(top_one_percent),type="s")
 		print(top_one_percent)
-		print(exp(top_one_percent))
-		#readline(prompt=tissue)
+		print(10^top_one_percent)
+		readline(prompt=tissue)
 	}
 	coloc_table = cbind(levels(data[,2]),colocs)
 	coloc_table = coloc_table[rev(order(coloc_table[,2])),]
@@ -47,7 +45,7 @@ png("/users/mgloud/projects/brain_gwas/output/scz2_ecdf.png", units="in", width=
 		lines(top_one_percent,(1:length(top_one_percent))/length(top_one_percent),type="s", col=colors[brain_index], lwd=3)
 		#readline(prompt=tissue)
 	}
-dev.off()
+#dev.off()
 
 # Observations: Not much evidence that brain tissues show greater % colocalization than
 # non-brain tissues, with ~130 GWAS SNPs analyzed. Some of top tissues are indeed brain tissues,

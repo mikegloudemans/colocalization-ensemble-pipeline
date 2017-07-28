@@ -11,6 +11,7 @@ def main():
 	# Get command line input arguments
 	args = parse_args()
 
+        # TODO: Just make it in a standard, time-stamped folder.
 	base_output_dir = get_output_dir(args)
 
 	# Remove previous colocalization file

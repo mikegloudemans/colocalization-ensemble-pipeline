@@ -1,4 +1,9 @@
 #!/usr/bin/python
+
+# This was originally similar to dispatch_jobs.py, and was used to see if prefiltering sites before
+# feeding them into eCAVIAR (to save runtime) was still producing appropriate results. Might not 
+# actually be necessary at all anymore, but we'll save it for now.
+
 import subprocess
 import pandas as pd
 import sys

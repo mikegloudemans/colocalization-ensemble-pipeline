@@ -7,75 +7,75 @@
 # methods.
 #
 
-import subprocess
-import pandas as pd
+# Built-in libraries
 import sys
-import operator
-import time
-import argparse
-import os
-
-# Definitely need the libraries below here.
-# Above -- not so sure.
-
-# Built-ins
 from shutil import copyfile
+import datetime
+import subprocess
 
-# Custom
+# Custom libraries
 import config
 import preprocess
 import tabix_snps
-import TestLocus
+from TestLocus import TestLocus
 
 def main():
 
-        # TODO: Make results directory, under which all output for this run
-        # will be stored.
-        # It must be timestamped in an intuitive way, unique to this particular run.
-        # We will pass this to other classes via the Experiment object.
-        # Probably should be a separate function.
-	base_output_dir = "" # TODO
-        # TODO: Make it using a shell command
+    # Hard-coded for now; will add an argparse function to do this later.
+    config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
 
-        # Hard-coded for now; will add an argparse function to do this later.
-        config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
+    # Make timestamped results directory, under which all output for this run will be stored.
+    now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
+    subprocess.check_call("mkdir -p {0}".format(base_output_dir), shell=True)
 
-        # Read config file
-        settings = config.load_config(config_file)
-        # Copy config file contents to the output directory so we know what
-        # parameters were used for this run.
-        copyfile(config_file, "{0}/{1}/settings_used.config".format(base_output_dir, "/".join(config_file.split("/")[:-1])))
-       
-        # Index all SNP files as needed.
-        # For now we're not going to index GWAS SNPs because they're not
-        # big enough to need this.
-        tabix_snps(settings)
+    # Read config file
+    settings = config.load_config(config_file)
+    # Copy config file to output for later reference
+    copyfile(config_file, "{0}/settings_used.config".format(base_output_dir))
+   
+    # Index all SNP files as needed.
+    # For now we're not going to index GWAS SNPs because they're not
+    # big enough to need this.
+    tabix_snps.tabix_all(settings)
 
-        # For each GWAS experiment:
-        for gwas_file in settings.gwas_files:
 
-            # Call select_test_snps() (in another module) to
-            # get a list of which SNPs we should test in this GWAS.
-            snp_list = preprocess.select_test_snps(gwas_file)
+    # For each GWAS experiment:
+    for gwas_file in settings["gwas_files"]:
 
-            # For each eQTL experiment:
-            for eqtl_file in settings.eqtl_files:
+        # Get a list of which SNPs we should test in this GWAS.
+        snp_list = preprocess.select_test_snps(gwas_file, settings["gwas_threshold"])
+        snp_list = snp_list[1:10]   # NOTE: Temporary, for debugging.
 
-                # For each GWAS SNP selected above...
-                for snp in snp_list:
+        # For each eQTL experiment:
+        for eqtl_file in settings["eqtl_files"]:
 
-                    # Load relevant GWAS and eQTL data using tabix.
-                    # Merge the two tables using a helper class with pandas,
-                    # similar to what we were doing before.
-                    # (Separate module -- get the resulting pandas table.)
-                    data = preprocess.load_summary_statistics(snp, gwas_file, eqtl_file)
+            # For each GWAS SNP selected above...
+            for snp in snp_list:
+
+                # Load relevant GWAS and eQTL data.
+                gwas_data = preprocess.get_gwas_data(gwas_file, snp) # Get GWAS data
+                eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp) # Get eQTL data
+
+                # Get full all genes whose eQTLs we're testing at this locus
+                genes = set(eqtl_data['gene'])
+               
+                # Loop through all genes now
+                for gene in genes:
+
+                    combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp)
+                    # Skip it if this site is untestable.
+                    if combined is None:
+                        continue
 
                     # Create a TestLocus object using merged GWAS and eQTL,
                     # any important metadata about the experiment such as the directory,
                     # and the Config object.
-                    task = TestLocus(data, settings, base_output_dir)
+                    task = TestLocus(combined, settings, base_output_dir, gene, snp, gwas_file, eqtl_file)
                     task.run()
 
+
+    # TODO: Post-analysis of results.
 
 if __name__ == "__main__":
 	main()

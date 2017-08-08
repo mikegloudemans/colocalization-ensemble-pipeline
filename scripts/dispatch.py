@@ -45,7 +45,7 @@ def main():
 
         # Get a list of which SNPs we should test in this GWAS.
         snp_list = preprocess.select_test_snps(gwas_file, settings["gwas_threshold"])
-        snp_list = snp_list[1:10]   # NOTE: Temporary, for debugging.
+#        snp_list = snp_list[0:10]   # NOTE: Temporary, for debugging.
 
         # For each eQTL experiment:
         for eqtl_file in settings["eqtl_files"]:

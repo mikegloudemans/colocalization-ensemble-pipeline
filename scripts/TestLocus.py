@@ -14,7 +14,8 @@ class TestLocus:
         self.data = data
         self.settings = settings
         self.gene = gene
-        self.snp = snp
+        self.chrom = snp.chrom
+        self.pos = snp.pos
         self.gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         self.eqtl_suffix = eqtl_file.split("/")[-1].replace(".", "_")
         
@@ -23,21 +24,24 @@ class TestLocus:
     # on the settings file.
     def run(self):
 
-        print "Analyzing {0} {1} {2} {3} {4}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.snp[0], self.snp[1])
+        print "Analyzing {0} {1} {2} {3} {4}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos)
+
+        # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
+        # as necessary, depending on overlaps.
 
         if "finemap" in self.settings["methods"]:
             clpp = finemap.run_finemap(self)
 
         # Plot the result if it's significant.
         # TODO: Increase threshold for significance here.
-        if clpp > 0.00001: 
-            plot.locus_zoom_plot(self, clpp)
-            plot.pvalue_plot(self, clpp)
+       # if clpp > 0.00001: 
+        plot.locus_zoom_plot(self, clpp)
+        plot.pvalue_plot(self, clpp)
 
-
+        finemap.purge_tmp_files(self)
         '''
-        if "ecaviar" in self.settings.keys():
-            pass    
+        if "ecaviar" in self.settings["methods"]:
+            ecaviar.run_ecaviar(self)
 
         if "coloc" in self.settings.keys():
             run_coloc(basedir, data, settings)

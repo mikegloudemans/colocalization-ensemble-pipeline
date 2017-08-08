@@ -8,6 +8,9 @@
 import subprocess
 import pandas as pd
 import operator
+import SNP
+from scipy import stats
+
 
 import sys
 if sys.version_info[0] < 3:
@@ -27,10 +30,24 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
     gwas_table = pd.read_csv(gwas_file, sep="\t")
     subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
 
-    # For now, throw out all chrX results.
-    subset = subset[subset['chr'] != 'chrX']
     all_snps = [tuple(x) for x in subset.values]
     all_snps = sorted(all_snps, key=operator.itemgetter(2))
+
+    # For now, include only autosomal SNPs.
+    filtered = []
+    for s in all_snps:
+        if "chr" in str(s[0]):
+            try:
+                filtered.append((int(s[0][3:]), s[1], s[2]))
+            except:
+                pass
+        else:
+            try:
+                filtered.append((int(s[0]), s[1], s[2]))
+            except:
+                pass
+
+    all_snps = [SNP.SNP(x) for x in filtered]
 
     # Go through the list of SNPs in order, adding the ones
     # passing our criteria.
@@ -38,19 +55,19 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
     for snp in all_snps:
 
         # See if we're done yet        
-        if snp[2] >= gwas_threshold:
+        if snp.pval >= gwas_threshold:
                 break
 
         # For now, ignore a SNP if it's in the MHC region -- this
         # would require alternative methods.
-        if (str(snp[0]) == "6" or snp[0] == "chr6") and snp[1] > 25000000 and snp[1] < 35000000:
+        if (snp.chrom == 6) and snp.pos > 25000000 and snp.pos < 35000000:
                 continue
 
         # Before adding a SNP, make sure it's not right next
         # to another SNP that we've already selected.
         skip = False
         for kept_snp in snps_to_test:
-                if kept_snp[0] == snp[0] and abs(kept_snp[1] - snp[1]) < window:
+                if kept_snp.chrom == snp.chrom and abs(kept_snp.pos - snp.pos) < window:
                         skip = True
                         break
         if not skip:
@@ -62,27 +79,47 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
 # Load summary statistics for GWAS
 def get_gwas_data(gwas_file, snp, window=500000):
 
-    gwas_chrom = snp[0]
-    gwas_pos = snp[1]
-
     # Subset GWAS list to SNPs near the GWAS position
     gwas_table = pd.read_csv(gwas_file, sep="\t")
-    gwas_table = gwas_table[(gwas_table['snp_pos'] > gwas_pos - window) & (gwas_table['snp_pos'] < gwas_pos + window)]
-    gwas_table = gwas_table[(gwas_table['chr'] == gwas_chrom) | (gwas_table['chr'] == 'chr{0}'.format(gwas_chrom))]
+    gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
+    gwas_table = gwas_table[(gwas_table['snp_pos'] > snp.pos - window) & (gwas_table['snp_pos'] < snp.pos + window)]
+    gwas_table = gwas_table[(gwas_table['chr'] == snp.chrom) | (gwas_table['chr'] == 'chr{0}'.format(snp.chrom))]
+
+
+    # Figure out whether GWAS scores are in odds ratio or beta-se format
+    if 'or' in gwas_table:
+        gwas_table['ZSCORE'] = (gwas_table['or']-1) / gwas_table['se']
+    elif 'beta_x' in gwas_table:
+        gwas_table['ZSCORE'] = (gwas_table['beta_x']) / gwas_table['se']
+    elif 'pvalue' in gwas_table and "direction" in gwas_table:
+        # TODO: Test this
+        gwas_table['ZSCORE'] = stats.norm.isf(gwas_table["pvalue"] / 2) * (2*(gwas_table["direction"] == "+")-1)
+    else:
+        return None
+
 
     return gwas_table
 
 # Load summary statistics for eQTL
 def get_eqtl_data(eqtl_file, snp, window=500000):
 
-    gwas_chrom = snp[0][3:]
-    gwas_pos = snp[1]
-
     # Get eQTL data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(eqtl_file), shell=True)
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
-            gwas_chrom, gwas_pos - window, gwas_pos + window), shell=True)
+            snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
+    eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)
+
+    if 't-stat' in eqtls:
+        eqtls['ZSCORE'] = eqtls['t-stat']
+    elif "chisq" in eqtls:
+        # TODO: Test this because I'm not sure yet if it's correct.
+        eqtls['pvalue'] = 1-stats.chi2.cdf(eqtls["chisq"],1)
+        eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["effect_size"] > 0) - 1)
+    else:
+        return None
+
+
 
     return eqtls
 
@@ -92,8 +129,6 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
 #   the site due to insufficient data.
 def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
 
-    gwas_pos = snp[1]
-
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
 	
@@ -101,11 +136,17 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
 
-    if gwas_pos > max(eqtl_subset['snp_pos']) + 50000 or gwas_pos < min(eqtl_subset['snp_pos'] - 50000):
+    if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos'] - 50000):
             return None
-    
+ 
+    # For now, filter out sites where p-values are too extreme.
+    # TODO: Modify the way we handle these so we can still use extremely
+    # significant sites.
+    if min(eqtl_data['pvalue']) < 1e-300 or min(gwas_data['pvalue']) < 1e-300:
+            return None
+
     # Join the list of eQTL SNPs with the list of GWAS SNPs
-    combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos")
+    combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
 
     # Check to make sure there are SNPs remaining; if not, just move on
     # to next gene.

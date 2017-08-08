@@ -6,6 +6,7 @@
 #
 
 import finemap
+import ecaviar
 import plot_loci as plot
 
 class TestLocus:
@@ -29,20 +30,25 @@ class TestLocus:
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.
 
+        plotworthy = False
+
         if "finemap" in self.settings["methods"]:
             clpp = finemap.run_finemap(self)
 
-        # Plot the result if it's significant.
         # TODO: Increase threshold for significance here.
-       # if clpp > 0.00001: 
-        plot.locus_zoom_plot(self, clpp)
-        plot.pvalue_plot(self, clpp)
+        if clpp > 0.001: 
+            plotworthy = True
+
+
+        if "ecaviar" in self.settings["methods"]:
+            clpp = ecaviar.run_ecaviar(self)
+
+        if clpp > 0.001: 
+            plotworthy = True
 
         finemap.purge_tmp_files(self)
-        '''
-        if "ecaviar" in self.settings["methods"]:
-            ecaviar.run_ecaviar(self)
 
+        '''
         if "coloc" in self.settings.keys():
             run_coloc(basedir, data, settings)
 
@@ -61,3 +67,10 @@ class TestLocus:
         if "twas" in self.settings.keys():
             run_twas(basedir, data, settings)
         '''
+
+        # Plot the result if it's significant.
+        if plotworthy:
+            plot.locus_zoom_plot(self, clpp)
+            plot.pvalue_plot(self, clpp)
+
+

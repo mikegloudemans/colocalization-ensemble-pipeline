@@ -7,7 +7,7 @@
 
 import subprocess
 from scipy import stats
-
+from shutil import copyfile
 
 def run_finemap(locus, window=500000):
 
@@ -27,6 +27,7 @@ def prep_finemap(locus, window):
     subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/finemap".format(locus.basedir), shell=True)
     
     # For now, for simplicity, remove all positions that appear multiple times in the GWAS table.
     # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
@@ -142,19 +143,21 @@ def launch_finemap(locus, window):
     gwas_probs = sorted(gwas_probs)
     eqtl_probs = sorted(eqtl_probs)
 
+
+
     assert len(gwas_probs) == len(eqtl_probs)
     for i in range(len(gwas_probs)):
             assert gwas_probs[i][0] == eqtl_probs[i][0]
 
     finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
 
+    if finemap_clpp > 0.001:
+        copyfile("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, conditional_level), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, conditional_level))
+
     # Write FINEMAP results to the desired file
     # Note: appending will always work, since results always go to a different directory for each run.
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
             a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, conditional_level, len(gwas_probs), finemap_clpp))
-
-    # Remove temporary intermediate files to save space
-    #purge_tmp_files(locus)
 
     return finemap_clpp
 

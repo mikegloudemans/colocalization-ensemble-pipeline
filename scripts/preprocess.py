@@ -73,6 +73,9 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
         if not skip:
                 snps_to_test.append(snp)
 
+    
+    print("Testing {0} SNPs.".format(len(snps_to_test)))
+
     return snps_to_test
 
 

@@ -7,6 +7,7 @@
 
 import finemap
 import ecaviar
+import coloc
 import plot_loci as plot
 
 class TestLocus:
@@ -19,7 +20,9 @@ class TestLocus:
         self.pos = snp.pos
         self.gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         self.eqtl_suffix = eqtl_file.split("/")[-1].replace(".", "_")
-        
+        self.gwas_file = gwas_file
+        self.eqtl_file = eqtl_file
+        self.conditional_level = 0      # Currently serves no purpose, but may be implemented later        
 
     # Run colocalization tests. Which ones to do will depend
     # on the settings file.
@@ -35,22 +38,26 @@ class TestLocus:
         if "finemap" in self.settings["methods"]:
             clpp = finemap.run_finemap(self)
 
-        # TODO: Increase threshold for significance here.
-        if clpp > 0.001: 
-            plotworthy = True
+            # TODO: Increase threshold for significance here.
+            if clpp > 0.001: 
+                plotworthy = True
 
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)
 
-        if clpp > 0.001: 
-            plotworthy = True
+            if clpp > 0.001: 
+                plotworthy = True
 
-        finemap.purge_tmp_files(self)
+        if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"]:
+            finemap.purge_tmp_files(self)
 
-        '''
-        if "coloc" in self.settings.keys():
-            run_coloc(basedir, data, settings)
+        if "coloc" in self.settings["methods"]:
+            print coloc.run_coloc(self)
+
+        ''' 
+        if "coloc2" in self.settings["methods"]:
+            print coloc.run_coloc(self)
 
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)

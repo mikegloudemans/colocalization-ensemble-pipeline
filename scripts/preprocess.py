@@ -142,10 +142,18 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
     if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos'] - 50000):
             return None
  
+    # Skip it if there's nothing left
+    if gwas_data.shape[0] == 0:
+            return None
+
     # For now, filter out sites where p-values are too extreme.
     # TODO: Modify the way we handle these so we can still use extremely
     # significant sites.
-    if min(eqtl_data['pvalue']) < 1e-300 or min(gwas_data['pvalue']) < 1e-300:
+
+    print eqtl_subset['pvalue'].head()
+    print gwas_data['pvalue'].head()
+
+    if min(eqtl_subset['pvalue']) < 1e-300 or min(gwas_data['pvalue']) < 1e-300:
             return None
 
     # Join the list of eQTL SNPs with the list of GWAS SNPs

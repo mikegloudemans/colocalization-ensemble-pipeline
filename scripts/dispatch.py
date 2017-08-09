@@ -22,7 +22,8 @@ from TestLocus import TestLocus
 def main():
 
     # Hard-coded for now; will add an argparse function to do this later.
-    config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
+    #config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
+    config_file = "/users/mgloud/projects/brain_gwas/data/config/rpe.config"
 
     # Make timestamped results directory, under which all output for this run will be stored.
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')

@@ -39,15 +39,17 @@ def main():
     # big enough to need this.
     tabix_snps.tabix_all(settings)
 
+    gwas_files = [f for f in settings["gwas_experiments"]]
+    eqtl_files = [f for f in settings["eqtl_experiments"]]
 
     # For each GWAS experiment:
-    for gwas_file in settings["gwas_files"]:
+    for gwas_file in gwas_files:
 
         # Get a list of which SNPs we should test in this GWAS.
         snp_list = preprocess.select_test_snps(gwas_file, settings["gwas_threshold"])
 
         # For each eQTL experiment:
-        for eqtl_file in settings["eqtl_files"]:
+        for eqtl_file in eqtl_files:
 
             # For each GWAS SNP selected above...
             for snp in snp_list:

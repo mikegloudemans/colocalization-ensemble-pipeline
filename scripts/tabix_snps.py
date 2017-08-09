@@ -16,7 +16,7 @@ import os
 def tabix_all(config):
 
     # Call tabix_file for each file in config.
-    for file in config["eqtl_files"]:
+    for file in [f for f in config["eqtl_experiments"]]:
         tabix_file(file)
 
 

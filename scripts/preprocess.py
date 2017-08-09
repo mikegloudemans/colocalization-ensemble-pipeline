@@ -148,6 +148,12 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
     if min(eqtl_data['pvalue']) < 1e-300 or min(gwas_data['pvalue']) < 1e-300:
             return None
 
+    # TODO TODO: At this step filter out multi-allelic sites, any variants
+    # whose same position appears twice or more. (can steal the code 
+    # that is currently used in the FINEMAP pipeline). This is important 
+    # because otherwise at this level some sites with 2 SNPs might be merged into
+    # 2x2 SNPs or something like that
+
     # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
 
@@ -158,6 +164,25 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
 
     return combined
 
+# Use vcftools to get MAFs for variants in a dataset
+# NOTE: This function would throw an error if there's a variant
+# in our lists that's not also in 1K genomes. For now though, let's
+# just cross that bridge when we get to it. It will probably come
+# down to a simple fix of just throwing away the variants that 
+# don't appear in 1000 genomes, since they're low-powered anyway.
+def add_maf(data):
 
+    # TODO: Under construction.
+
+    # Write variants to a file, formatted for VCFtools
+    pd.to_csv("some_temp_file")
+
+    # Run VCFtools to 
+
+    # Parse results from VCFtools, and add them to our data
+
+    # Remove both temp files
+
+    return data
 
 

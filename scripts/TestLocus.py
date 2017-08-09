@@ -7,6 +7,7 @@
 
 import finemap
 import ecaviar
+import coloc
 import plot_loci as plot
 
 class TestLocus:
@@ -35,22 +36,24 @@ class TestLocus:
         if "finemap" in self.settings["methods"]:
             clpp = finemap.run_finemap(self)
 
-        # TODO: Increase threshold for significance here.
-        if clpp > 0.001: 
-            plotworthy = True
+            # TODO: Increase threshold for significance here.
+            if clpp > 0.001: 
+                plotworthy = True
 
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)
 
-        if clpp > 0.001: 
-            plotworthy = True
+            if clpp > 0.001: 
+                plotworthy = True
 
-        finemap.purge_tmp_files(self)
+        if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"]:
+            finemap.purge_tmp_files(self)
 
-        '''
-        if "coloc" in self.settings.keys():
-            run_coloc(basedir, data, settings)
+        if "coloc" in self.settings["methods"]:
+            coloc.run_coloc(self)
+
+        ''' 
 
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)

@@ -118,7 +118,7 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
     elif "chisq" in eqtls:
         # TODO: Test this because I'm not sure yet if it's correct.
         eqtls['pvalue'] = 1-stats.chi2.cdf(eqtls["chisq"],1)
-        eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["effect_size"] > 0) - 1)
+        eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["effect_size"] > 0) - 1) # Might not be correct: all have effect size > 0 right now...
     else:
         return None
 
@@ -149,9 +149,6 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
     # For now, filter out sites where p-values are too extreme.
     # TODO: Modify the way we handle these so we can still use extremely
     # significant sites.
-
-    print eqtl_subset['pvalue'].head()
-    print gwas_data['pvalue'].head()
 
     if min(eqtl_subset['pvalue']) < 1e-300 or min(gwas_data['pvalue']) < 1e-300:
             return None

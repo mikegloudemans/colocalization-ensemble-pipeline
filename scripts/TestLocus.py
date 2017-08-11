@@ -74,6 +74,9 @@ class TestLocus:
         if "twas" in self.settings.keys():
             run_twas(basedir, data, settings)
         '''
+    
+        # For debugging:
+        # plotworthy = True
 
         # Plot the result if it's significant.
         if plotworthy:

@@ -22,8 +22,8 @@ from TestLocus import TestLocus
 def main():
 
     # Hard-coded for now; will add an argparse function to do this later.
-    #config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
-    config_file = "/users/mgloud/projects/brain_gwas/data/config/rpe.config"
+    config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
+    #config_file = "/users/mgloud/projects/brain_gwas/data/config/rpe.config"
 
     # Make timestamped results directory, under which all output for this run will be stored.
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -55,6 +55,9 @@ def main():
             # For each GWAS SNP selected above...
             for snp in snp_list:
 
+                #if snp.pos != 73438605:
+                #    continue
+
                 # Load relevant GWAS and eQTL data.
                 gwas_data = preprocess.get_gwas_data(gwas_file, snp) # Get GWAS data
                 eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp) # Get eQTL data
@@ -65,7 +68,10 @@ def main():
                 # Loop through all genes now
                 for gene in genes:
 
+                    # NOTE: It might be easier to just do this step once outside of this loop,
+                    # and then filter down to the gene of interest. Consider modifying.
                     combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp)
+
                     # Skip it if this site is untestable.
                     if combined is None:
                         continue

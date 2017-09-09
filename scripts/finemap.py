@@ -64,6 +64,10 @@ def prep_finemap(locus, window):
                     if line.startswith("#"):
                             continue
                     else:
+                            # Remove sites with no polymorphisms
+                            # I bet we could get rid of more nans if we filtered more stringently here
+                            if ";AF=1;" in line or ";AF=0;" in line or "MULTIALLELIC" in line:
+                                continue
                             data = line.strip().split()
                             pos = (int(data[0]), int(data[1]))
                             saved_list.add(pos)
@@ -76,12 +80,12 @@ def prep_finemap(locus, window):
             with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:
                     for line in f:
                             if line.startswith("#"):
-                                    w.write(line)
+                                w.write(line)
                             else:
-                                    data = line.strip().split()
-                                    pos = (int(data[0]), int(data[1]))
-                                    if pos in saved_list:
-                                            w.write(line)
+                                data = line.strip().split()
+                                pos = (int(data[0]), int(data[1]))
+                                if pos in saved_list:
+                                    w.write(line)
 
     # Remove rows from the SNP table if they don't appear in the VCF
     combined['pos_tuple'] = zip(combined['chr_eqtl'], combined['snp_pos'])
@@ -97,6 +101,7 @@ def prep_finemap(locus, window):
 
     # Fix LD-score by replacing nan values with 0.
     # TODO: Verify that this is valid and doesn't screw up results.
+    # Figure out why these are nanning in the first place
     # Also replace tabs with spaces because FINEMAP requires this.
     subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 

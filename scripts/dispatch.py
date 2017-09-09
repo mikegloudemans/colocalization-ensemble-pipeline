@@ -22,7 +22,7 @@ from TestLocus import TestLocus
 def main():
 
     # Hard-coded for now; will add an argparse function to do this later.
-    config_file = "/users/mgloud/projects/brain_gwas/data/config/sample.config"
+    config_file = "/users/mgloud/projects/brain_gwas/data/config/quals.config"
     #config_file = "/users/mgloud/projects/brain_gwas/data/config/rpe.config"
 
     # Make timestamped results directory, under which all output for this run will be stored.
@@ -55,9 +55,6 @@ def main():
             # For each GWAS SNP selected above...
             for snp in snp_list:
 
-                #if snp.pos != 73438605:
-                #    continue
-
                 # Load relevant GWAS and eQTL data.
                 gwas_data = preprocess.get_gwas_data(gwas_file, snp) # Get GWAS data
                 eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp) # Get eQTL data
@@ -70,10 +67,13 @@ def main():
 
                     # NOTE: It might be easier to just do this step once outside of this loop,
                     # and then filter down to the gene of interest. Consider modifying.
-                    combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp)
+                    combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=True)
 
                     # Skip it if this site is untestable.
-                    if combined is None:
+                    if isinstance(combined, basestring):
+                        # Write skipped variants to a file, for later reference.
+                        with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
+                            a.write("{0}\t{1}\t{2}\t{3}\t{4}\n".format(gwas_file, eqtl_file, str(snp), gene, combined))
                         continue
 
                     # Create a TestLocus object using merged GWAS and eQTL,

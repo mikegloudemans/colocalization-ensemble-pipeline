@@ -88,6 +88,8 @@ def get_gwas_data(gwas_file, snp, window=500000):
     gwas_table = gwas_table[(gwas_table['snp_pos'] > snp.pos - window) & (gwas_table['snp_pos'] < snp.pos + window)]
     gwas_table = gwas_table[(gwas_table['chr'] == snp.chrom) | (gwas_table['chr'] == 'chr{0}'.format(snp.chrom))]
 
+           
+
 
     # Figure out whether GWAS scores are in odds ratio or beta-se format
     if 'or' in gwas_table:
@@ -130,7 +132,7 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
 #   GWAS SNP as a tuple.
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
-def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
+def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False):
 
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
@@ -140,18 +142,24 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
 
     if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos'] - 50000):
-            return None
+            return "SNP outside range."
  
     # Skip it if there's nothing left
     if gwas_data.shape[0] == 0:
-            return None
+            return "No remaining GWAS SNPs."
 
-    # For now, filter out sites where p-values are too extreme.
-    # TODO: Modify the way we handle these so we can still use extremely
-    # significant sites.
-
-    if min(eqtl_subset['pvalue']) < 1e-300 or min(gwas_data['pvalue']) < 1e-300:
-            return None
+    # If not explicitly allowing them, remove pvalues with danger
+    # of underflow.
+    if min(eqtl_subset['pvalue']) < 1e-150:
+        if unsafe:
+            eqtl_subset['pvalue'] = eqtl_subset['pvalue'].apply(lambda x: max(x, 1e-150))
+        else:
+            return "eQTL pvalue underflow."
+    if min(gwas_data['pvalue']) < 1e-150:
+        if unsafe:
+            gwas_data['pvalue'] = gwas_data['pvalue'].apply(lambda x: max(x, 1e-150))
+        else:
+            return "GWAS pvalue underflow."
 
     # TODO TODO: At this step filter out multi-allelic sites, any variants
     # whose same position appears twice or more. (can steal the code 
@@ -165,7 +173,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp):
     # Check to make sure there are SNPs remaining; if not, just move on
     # to next gene.
     if combined.shape[0] == 0: 
-            return None
+            return "No overlapping SNPs in eQTL and GWAS"
 
     return combined
 

@@ -56,11 +56,6 @@ def main():
             # For each GWAS SNP selected above...
             for snp in snp_list:
 
-                if snp.pos != 10033425:
-                    continue
-
-                print "here we go"
-
                 # Load relevant GWAS and eQTL data.
                 gwas_data = preprocess.get_gwas_data(gwas_file, snp) # Get GWAS data
                 eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp) # Get eQTL data
@@ -70,10 +65,7 @@ def main():
                
                 # Loop through all genes now
                 for gene in genes:
-
-                    if gene != "ENSG00000261451.1":
-                        continue
-
+                    
                     # NOTE: It might be easier to just do this step once outside of this loop,
                     # and then filter down to the gene of interest. Consider modifying.
                     combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=True)

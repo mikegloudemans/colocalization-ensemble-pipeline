@@ -81,9 +81,6 @@ def prep_finemap(locus, window):
                                     saved_list.remove(pos)
                             used.add(pos)
 
-    print 9619721 in saved_list
-    print 9619721 in used
-
     # Remove SNPs from the VCF if they appear more than once
     with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
             with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:

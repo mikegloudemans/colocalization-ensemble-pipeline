@@ -24,12 +24,11 @@ def prep_coloc(locus, window):
     # for coloc to run
 
     # TODO: Standardize the input format so this can be used on all input files.
-    # TODO: Test this on brain data instead, so we can have a more appropriate input.
-        # The RPE stuff isn't really right for this coloc program.
 
     subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
 
-    locus.data.to_csv("/users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", columns=["pvalue_gwas", "pvalue_eqtl", "allele_freq"], index=False)
+    #locus.data.to_csv("/users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", columns=["pvalue_gwas", "pvalue_eqtl", "allele_freq"], index=False)
+    locus.data.to_csv("/users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", columns=["pvalue_gwas", "pvalue_eqtl", "Kgenomes_maf"], index=False)
 
 def launch_coloc(locus, window):
     # Launch an R script to run the coloc package.

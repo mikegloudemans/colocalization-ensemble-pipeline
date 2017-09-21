@@ -38,22 +38,24 @@ class TestLocus:
         if "finemap" in self.settings["methods"]:
             clpp = finemap.run_finemap(self)
 
-            # TODO: Increase threshold for significance here.
-            if clpp > 0.001: 
+            # TODO: Modify thresholds for significance here.
+            if clpp > 0.005: 
                 plotworthy = True
 
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)
 
-            if clpp > 0.001: 
+            if clpp > 0.15: 
                 plotworthy = True
 
         if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"]:
             finemap.purge_tmp_files(self)
 
         if "coloc" in self.settings["methods"]:
-            print coloc.run_coloc(self)
+            h4pp = coloc.run_coloc(self)
+            if h4pp > 0.5:
+                plotworthy = True
 
         ''' 
         if "coloc2" in self.settings["methods"]:

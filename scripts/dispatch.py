@@ -19,11 +19,12 @@ import preprocess
 import tabix_snps
 from TestLocus import TestLocus
 
+# TODO: Parallelize this again. As it is right now, it's fairly slow because so many sites/tissues to test.
+
 def main():
 
     # Hard-coded for now; will add an argparse function to do this later.
     config_file = "/users/mgloud/projects/brain_gwas/data/config/quals.config"
-    #config_file = "/users/mgloud/projects/brain_gwas/data/config/rpe.config"
 
     # Make timestamped results directory, under which all output for this run will be stored.
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -55,15 +56,23 @@ def main():
             # For each GWAS SNP selected above...
             for snp in snp_list:
 
+                if snp.pos != 10033425:
+                    continue
+
+                print "here we go"
+
                 # Load relevant GWAS and eQTL data.
                 gwas_data = preprocess.get_gwas_data(gwas_file, snp) # Get GWAS data
                 eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp) # Get eQTL data
 
-                # Get full all genes whose eQTLs we're testing at this locus
+                # Get all genes whose eQTLs we're testing at this locus
                 genes = set(eqtl_data['gene'])
                
                 # Loop through all genes now
                 for gene in genes:
+
+                    if gene != "ENSG00000261451.1":
+                        continue
 
                     # NOTE: It might be easier to just do this step once outside of this loop,
                     # and then filter down to the gene of interest. Consider modifying.
@@ -81,9 +90,6 @@ def main():
                     # and the Config object.
                     task = TestLocus(combined, settings, base_output_dir, gene, snp, gwas_file, eqtl_file)
                     task.run()
-
-
-    # TODO: Post-analysis of results.
 
 if __name__ == "__main__":
 	main()

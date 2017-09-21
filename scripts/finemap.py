@@ -29,7 +29,7 @@ def prep_finemap(locus, window):
     subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     subprocess.call("mkdir -p {0}/finemap".format(locus.basedir), shell=True)
     
-    # For now, for simplicity, remove all positions that appear multiple times in the GWAS table.
+    # For now, remove all positions that appear multiple times in the GWAS table.
     # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
     dup_counts = {}
     for pos in combined['snp_pos']:
@@ -59,21 +59,30 @@ def prep_finemap(locus, window):
     used = set([])
     saved_list = set([])
     # Find SNPs that appear exactly once in the VCF
+
     with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:
             for line in f:
                     if line.startswith("#"):
                             continue
                     else:
-                            # Remove sites with no polymorphisms
-                            # I bet we could get rid of more nans if we filtered more stringently here
-                            if ";AF=1;" in line or ";AF=0;" in line or "MULTIALLELIC" in line:
-                                continue
                             data = line.strip().split()
                             pos = (int(data[0]), int(data[1]))
+                            # Remove non-biallelic sites.
+                            # I bet we could get rid of more nans for PLINK if we filtered more stringently here
+                            if ";AF=1;" in line or ";AF=0;" in line or "MULTIALLELIC" in line:
+                                used.add(pos)
+                                if pos in saved_list:
+                                        saved_list.remove(pos)
+                                continue
                             saved_list.add(pos)
-                            if pos in used:
+                            if pos in used or pos[1] not in combined['snp_pos'].tolist():
+                                    # The second criterion above filters for SNPs that appear twice
+                                    # in the VCF but one occurrence was filtered because not biallelic.
                                     saved_list.remove(pos)
                             used.add(pos)
+
+    print 9619721 in saved_list
+    print 9619721 in used
 
     # Remove SNPs from the VCF if they appear more than once
     with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
@@ -99,10 +108,10 @@ def prep_finemap(locus, window):
     command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)
     subprocess.check_call(command, shell=True)
 
+    # Replace tabs with spaces because FINEMAP requires this.
     # Fix LD-score by replacing nan values with 0.
     # TODO: Verify that this is valid and doesn't screw up results.
     # Figure out why these are nanning in the first place
-    # Also replace tabs with spaces because FINEMAP requires this.
     subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
     with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:

@@ -29,6 +29,8 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
     # Load in the data, get p-values for each SNP
     gwas_table = pd.read_csv(gwas_file, sep="\t")
     subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
+    subset['pvalue'] = subset['pvalue'].astype(float)
+    subset = subset[subset['pvalue'] < gwas_threshold]
 
     all_snps = [tuple(x) for x in subset.values]
     all_snps = sorted(all_snps, key=operator.itemgetter(2))
@@ -132,7 +134,7 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
 #   GWAS SNP as a tuple.
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
-def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False):
+def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, window=500000):
 
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
@@ -161,14 +163,28 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False):
         else:
             return "GWAS pvalue underflow."
 
-    # TODO TODO: At this step filter out multi-allelic sites, any variants
+    # Get MAFs from 1000 Genomes.
+    # Filter out multi-allelic or non-polymorphic sites.
+    # TODO: Make sure direction of MAFs is consistent between eQTL and GWAS
+    # Currently, some MAFs may be > 0.5
+    # (Could eventually be in separate function)
+    # Get the region of interest from 1K genomes VCFs using tabix
+    
+    output = subprocess.check_output("tabix /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {0}:{1}-{2}".format(snp.chrom, snp.pos - window, snp.pos + window), shell=True).strip().split("\n")
+    mafs = [[int(line.split('\t')[0]), int(line.split('\t')[1]), line.split('\t')[7]] for line in output if "MULTI_ALLELIC" not in line and ";AF=1;" not in line and ";AF=0;" not in line and "," not in line.split('\t')[4]]
+    for m in mafs:
+        m[2] = float(m[2].split(";")[1][3::])
+    mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
+
+    # TODO TODO: At this step filter out variants
     # whose same position appears twice or more. (can steal the code 
-    # that is currently used in the FINEMAP pipeline). This is important 
+    # that is currently used in the FINEMAP pipeline only). This is important 
     # because otherwise at this level some sites with 2 SNPs might be merged into
     # 2x2 SNPs or something like that
 
     # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
+    combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
 
     # Check to make sure there are SNPs remaining; if not, just move on
     # to next gene.

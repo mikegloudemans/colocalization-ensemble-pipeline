@@ -58,9 +58,6 @@ class TestLocus:
                 plotworthy = True
 
         ''' 
-        if "coloc2" in self.settings["methods"]:
-            print coloc.run_coloc(self)
-
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)
 

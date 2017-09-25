@@ -10,7 +10,8 @@ for i in {1..22}; do
 	gunzip chr$i.sample.gz
 
 	/srv/persistent/bliu2/tools/shapeit.v2.r790.RHELS_5.4.dynamic/shapeit -convert --input-haps chr$i \
-		--output-vcf chr$i.haps.phased.vcf
+		--output-vcf vcfs/chr$i.haps.phased.vcf
+	gzip vcfs/chr$i.haps.phased.vcf
 
 	rm -f chr$i.haps
 	rm -f chr$i.sample

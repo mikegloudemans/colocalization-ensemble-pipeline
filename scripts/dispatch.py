@@ -35,7 +35,10 @@ def main():
     settings = config.load_config(config_file)
     # Copy config file to output for later reference
     copyfile(config_file, "{0}/settings_used.config".format(base_output_dir))
-   
+
+    # For reproducibility, store the current state of the project in Git
+    subprocess.check_call('cat <(git log) <(echo "\n\n") <(git diff) <(echo "\n\n") <(git branch) <(echo "\n\n") <(git status) > {0}/git_status.txt'.format(base_output_dir), shell=True)
+
     # Index all SNP files as needed.
     # For now we're not going to index GWAS SNPs because they're not
     # big enough to need this.

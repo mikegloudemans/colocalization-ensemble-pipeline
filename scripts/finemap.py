@@ -8,6 +8,10 @@
 import subprocess
 from scipy import stats
 from shutil import copyfile
+if sys.version_info[0] < 3: 
+   from StringIO import StringIO
+else:
+   from io import StringIO
 
 def run_finemap(locus, window=500000):
 
@@ -29,101 +33,43 @@ def prep_finemap(locus, window):
     subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     subprocess.call("mkdir -p {0}/finemap".format(locus.basedir), shell=True)
     
-    # For now, remove all positions that appear multiple times in the GWAS table.
-    # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
-    dup_counts = {}
-    for pos in combined['snp_pos']:
-            dup_counts[pos] = dup_counts.get(pos, 0) + 1
+    # Get VCF file paths
+    eqtl_ref = locus.settings["ref_genomes"][locus.settings["eqtl_experiments"][locus.eqtl_file]["ref"]]
+    gwas_ref = locus.settings["ref_genomes"][locus.settings["gwas_experiments"][locus.gwas_file]["ref"]]
+    eqtl_vcf = eqtl_ref["file"]
+    gwas_vcf = gwas_ref["file"]
+    assert eqtl_ref["by_chrom"].upper() == "TRUE" or eqtl_ref["by_chrom"].upper() == "FALSE"
+    assert gwas_ref["by_chrom"].upper() == "TRUE" or gwas_ref["by_chrom"].upper() == "FALSE"
+    if eqtl_ref["by_chrom"].upper() == "TRUE":
+        eqtl_vcf = eqtl_vcf.format(locus.chrom)
+    if gwas_ref["by_chrom"].upper() == "TRUE":
+        gwas_vcf = gwas_vcf.format(locus.chrom)
 
-    combined['dup_counts'] = [dup_counts[pos] for pos in combined['snp_pos']]
-    combined = combined[combined['dup_counts'] == 1]
+    # Two different cases depending on whether GWAS and eQTL
+    # are using same reference genome.
+    if eqtl_vcf == gwas_vcf:
+        # Get and filter the single VCF.
+        vcf = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"])
 
-    snps = combined[['chr_eqtl', 'snp_pos']]	
-    # Write list of SNPs to a file for vcftools
-    with open("/users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level) , "w") as w:
-            snps.to_csv(w, index=False, header=False, sep="\t")
+        # Write it to a tmp file
+        vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.single_ref.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", index=False, header=False)
 
-    # Get the region of interest from 1K genomes VCFs using tabix
-    subprocess.check_call("tabix -h /mnt/lab_data/montgomery/shared/1KG/ALL.chr{1}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {1}:{6}-{7} > /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window), shell=True)
+        # Run PLINK on just one VCF.
+        compute_ld(vcf, locus, "eqtl")
+        subprocess.check_call("cp /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
-    # Use VCFtools to filter down to appropriate sites
-    # (For the sake of a speedy analysis, we thought about requiring MAF above 0.01 in 1K Genomes, since hard to find eQTLs otherwise.
-    # However, a visual check on this revealed that very few variants were removed at this filtering level,
-    # possibly because these variants have also been filtered in GTEx.)
-    command = 'vcftools --vcf /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf --positions /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.txt --recode --recode-INFO-all --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)
-    subprocess.check_call(command, shell=True)
+    else:
+        # Get and filter both VCFs.
+        evcf = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"]) 
+        gvcf = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref["af_attribute"])
 
-    # TODO: Move this to a separate function.
-    # Loop through the output file, saving only the sites that appear in both the VCF
-    # and in the combined SNPs list a single time (no more, no less!)
-    used = set([])
-    saved_list = set([])
-    # Find SNPs that appear exactly once in the VCF
+        # Subset to overlapping SNPs
+        intersect_reference_vcfs(evcf, gvcf, locus)
 
-    with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:
-            for line in f:
-                    if line.startswith("#"):
-                            continue
-                    else:
-                            data = line.strip().split()
-                            pos = (int(data[0]), int(data[1]))
-                            # Remove non-biallelic sites.
-                            # I bet we could get rid of more nans for PLINK if we filtered more stringently here
-                            if ";AF=1;" in line or ";AF=0;" in line or "MULTIALLELIC" in line:
-                                used.add(pos)
-                                if pos in saved_list:
-                                        saved_list.remove(pos)
-                                continue
-                            saved_list.add(pos)
-                            if pos in used or pos[1] not in combined['snp_pos'].tolist():
-                                    # The second criterion above filters for SNPs that appear twice
-                                    # in the VCF but one occurrence was filtered because not biallelic.
-                                    saved_list.remove(pos)
-                            used.add(pos)
-
-    # Remove SNPs from the VCF if they appear more than once
-    with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
-            with open('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.recode.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:
-                    for line in f:
-                            if line.startswith("#"):
-                                w.write(line)
-                            else:
-                                data = line.strip().split()
-                                pos = (int(data[0]), int(data[1]))
-                                if pos in saved_list:
-                                    w.write(line)
-
-    # Remove rows from the SNP table if they don't appear in the VCF
-    combined['pos_tuple'] = zip(combined['chr_eqtl'], combined['snp_pos'])
-    combined = combined[combined['pos_tuple'].isin(saved_list)]
-
-    # Use PLINK to generate bim bam fam files
-    command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes.matched.recode.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)
-    subprocess.check_call(command, shell=True)
-
-    # Use PLINK to generate LD score
-    command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_1Kgenomes_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)
-    subprocess.check_call(command, shell=True)
-
-    try:
-        subprocess.check_call("grep nan /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
-        # Log scenarios with nans to a file.
-        with open("../debug/nans.txt", "w") as w:
-            w.write("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
-    except:
-        pass
-
-    # Replace tabs with spaces because FINEMAP requires this.
-    # Fix LD-score by replacing nan values with 0.
-    # TODO: Verify that this is valid and doesn't screw up results.
-    # Figure out why these are nanning in the first place
-    subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
-
-    # TODO:
-    # If nans still exist, figure out WHY they do (look at the underlying data).
-    # If they seem legitimate, then consider some kind of simple imputation to fill them in.
-    # Also somewhere log a warning of which nans were replaced.
-
+        # Run PLINK on both VCFs.
+        compute_ld(evcf, locus, "eqtl")
+        compute_ld(gvcf, locus, "gwas")
+    
     with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
         snps.to_csv(w, index=False, header=False, sep=" ")
@@ -131,19 +77,21 @@ def prep_finemap(locus, window):
     with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_gwas']]	
         snps.to_csv(w, index=False, header=False, sep=" ")
+    
+
 
 # This function contains the code that's specific to FINEMAP,
 # not shared with eCAVIAR.
 def launch_finemap(locus, window):
 
+    # Load sample sizes
+    eqtl_n = locus.settings["ref_genomes"][locus.settings["eqtl_experiments"][locus.eqtl_file]["ref"]]["N"]
+    gwas_n = locus.settings["ref_genomes"][locus.settings["gwas_experiments"][locus.gwas_file]["ref"]]["N"]
+
     # Write config file for finemap
-    # TODO TODO TODO TODO TODO: Right now we're just arbitrarily saying 5000 individuals in config just to get this running.
-    # Need to do a bit more investigation into how the number of individuals used here affects
-    # the results, and into how important it is to use the proper LD computations (e.g. GTEx-specific)
-    # when exploring results. This is very important if we want to trust results.
     subprocess.check_call('echo "z;ld;snp;config;n-ind" > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
-    subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.config;50000" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
-    subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.config;500" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
+    subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.config;{6}" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, gwas_n), shell=True)
+    subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.config;{6}" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, eqtl_n), shell=True)
     
     # Run FINEMAP
     subprocess.check_call('finemap --sss --in-files /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max 1 --n-iterations 1000000 --n-convergence 50000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
@@ -198,3 +146,97 @@ def purge_tmp_files(locus):
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
+
+def load_and_filter_variants(filename, locus, combined, af_id):
+    # TODO: Spot check all of these tests to ensure they're actually working.
+    
+    # First, extract nearby variants using tabix
+    stream = StringIO(subprocess.check_output("tabix -h {8} {1}:{6}-{7} > /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+
+    # For readability, load the header too
+    header = subprocess.check_output("grep CHROM {0}".strip().split("\t").format(filename), shell=True)
+
+    # Load with pandas
+    vcf = pd.read_csv(stream, sep="\t", names = header)
+
+    vcf["POS"] = (vcf["POS"]).astype(int)
+    # Remove variants not in the GWAS table
+    vcf = vcf[np.logical_not(vcf["POS"].isin(list(combined["snp_pos"])))]
+
+    # Remove variants with position appearing multiple times
+    dup_counts = {}
+    for pos in vcf["POS"]:
+            dup_counts[pos] = dup_counts.get(pos, 0) + 1
+    vcf["dup_counts"] = [dup_counts[pos] for pos in vcf['POS']]
+    vcf = vcf[vcf["dup_counts"] == 1]
+
+    # Remove multiallelic variants with only one entry in VCF
+    l = lambda x: "," not in x
+    vcf = vcf[vcf["REF"].apply(l) & vcf["ALT"].apply(l)]
+
+    # Remove monoallelic variants
+    def fn(x):
+        info = [s for s in x.split(";") if s.startswith(af_id + "=")][0]
+        af = float(info.split("=")[1])
+        return af > 0.01 and 1-af > 0.01 
+    vcf = vcf[vcf["INFO"].apply(fn)]
+
+    # Remove variants where alt/ref don't match between GWAS and VCF
+    # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
+    merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
+
+    keep_indices = (merged['a1'] == merged['REF']) & (merged['a2'] == merged['ALT']) | \
+            (merged['a2'] == merged['REF']) & (merged['a1'] == merged['ALT'])
+    keep = merged['POS'][keep_indices]
+    vcf = vcf[vcf['POS'].isin(list(keep))]
+    
+    # Subset SNPs down to SNPs present in the reference VCF.
+    combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))]
+
+    # Return list as DataFrame.
+    return vcf
+
+def intersect_reference_vcfs(ref1, ref2, combined):
+
+    # Subset each reference VCF down to only variants present in the other VCF.
+    ref1 = ref1[ref1["POS"].isin(list(ref2["POS"]))]
+    ref2 = ref2[ref2["POS"].isin(list(ref1["POS"]))]
+
+    # Subset SNP list to SNPs that still remain in both VCFs.
+    combined = combined[combined['snp_pos'].isin(list(matched_ref2["POS"]))]
+
+    # Dimensions should now be equal for SNP table and references.
+    assert ref1.shape[0] == ref2.shape[0]
+    assert ref2.shape[0] == combined.shape[0]
+
+
+# Run PLINK on the locus of interest
+def compute_ld(vcf, locus, data_type):
+
+    # Write VCF to tmp file
+    vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=False)
+
+    # Use PLINK to generate bim bam fam files
+    command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
+    subprocess.check_call(command, shell=True)
+
+    # Use PLINK to generate LD score
+    command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
+    subprocess.check_call(command, shell=True)
+
+    # Monitor nan status. Goal is eventually to just get rid of this, either
+    # because I have no nans or because I completely understand them
+    try:
+        subprocess.check_call("grep nan /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True)
+        # Log scenarios with nans to a file.
+        with open("{0}/nans.txt".format(locus.basedir), "a") as w:
+            w.write("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld\n".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
+    except:
+        pass
+
+    # Replace tabs with spaces because FINEMAP requires this.
+    # Fix LD-score by replacing nan values with 0.
+    # TODO: If nans are inevitable, maybe replace them with imputed values instead of 0s.
+    # As it is currently, it could affect results in certain rare cases.
+    # Figure out why these are nanning in the first place
+    subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True)

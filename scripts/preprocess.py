@@ -186,6 +186,15 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
     combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
 
+    # For now, remove all positions that appear multiple times in the GWAS table.
+    # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
+    dup_counts = {}
+    for pos in combined['snp_pos']:
+            dup_counts[pos] = dup_counts.get(pos, 0) + 1
+
+    combined['dup_counts'] = [dup_counts[pos] for pos in combined['snp_pos']]
+    combined = combined[combined['dup_counts'] == 1]
+
     # Check to make sure there are SNPs remaining; if not, just move on
     # to next gene.
     if combined.shape[0] == 0: 

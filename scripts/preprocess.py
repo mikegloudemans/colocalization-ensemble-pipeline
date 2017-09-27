@@ -29,6 +29,7 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
     # Load in the data, get p-values for each SNP
     gwas_table = pd.read_csv(gwas_file, sep="\t")
     subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
+    # TODO: Fix this line! Something is wrong with it I guess
     subset['pvalue'] = subset['pvalue'].astype(float)
     subset = subset[subset['pvalue'] < gwas_threshold]
 
@@ -84,6 +85,10 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
 # Load summary statistics for GWAS
 def get_gwas_data(gwas_file, snp, window=500000):
 
+    # TODO: Tabix this to make it faster, or at least
+    # load the table just once for the locus. Right now
+    # it's really slow.
+
     # Subset GWAS list to SNPs near the GWAS position
     gwas_table = pd.read_csv(gwas_file, sep="\t")
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
@@ -135,6 +140,9 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
 def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, window=500000):
+
+    # TODO TODO TODO: Fix the SettingWithCopyWarning. It seems likely to be error-prone, according
+    # to the manual!
 
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]

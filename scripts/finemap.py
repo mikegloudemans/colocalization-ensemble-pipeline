@@ -5,6 +5,7 @@
 # Return the CLPP score.
 #
 
+import sys
 import subprocess
 from scipy import stats
 from shutil import copyfile
@@ -12,6 +13,8 @@ if sys.version_info[0] < 3:
    from StringIO import StringIO
 else:
    from io import StringIO
+import pandas as pd
+import numpy as np
 
 def run_finemap(locus, window=500000):
 
@@ -36,35 +39,30 @@ def prep_finemap(locus, window):
     # Get VCF file paths
     eqtl_ref = locus.settings["ref_genomes"][locus.settings["eqtl_experiments"][locus.eqtl_file]["ref"]]
     gwas_ref = locus.settings["ref_genomes"][locus.settings["gwas_experiments"][locus.gwas_file]["ref"]]
-    eqtl_vcf = eqtl_ref["file"]
-    gwas_vcf = gwas_ref["file"]
-    assert eqtl_ref["by_chrom"].upper() == "TRUE" or eqtl_ref["by_chrom"].upper() == "FALSE"
-    assert gwas_ref["by_chrom"].upper() == "TRUE" or gwas_ref["by_chrom"].upper() == "FALSE"
-    if eqtl_ref["by_chrom"].upper() == "TRUE":
-        eqtl_vcf = eqtl_vcf.format(locus.chrom)
-    if gwas_ref["by_chrom"].upper() == "TRUE":
-        gwas_vcf = gwas_vcf.format(locus.chrom)
+    eqtl_vcf = eqtl_ref["file"].format(locus.chrom)
+    gwas_vcf = gwas_ref["file"].format(locus.chrom)
 
     # Two different cases depending on whether GWAS and eQTL
     # are using same reference genome.
     if eqtl_vcf == gwas_vcf:
         # Get and filter the single VCF.
-        vcf = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"])
-
-        # Write it to a tmp file
-        vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.single_ref.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", index=False, header=False)
+        vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"], window)
+        assert vcf.shape[0] == combined.shape[0]
 
         # Run PLINK on just one VCF.
         compute_ld(vcf, locus, "eqtl")
         subprocess.check_call("cp /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
+
     else:
         # Get and filter both VCFs.
-        evcf = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"]) 
-        gvcf = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref["af_attribute"])
+        evcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"], window)
+        gvcf, combined = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref["af_attribute"], window)
 
         # Subset to overlapping SNPs
-        intersect_reference_vcfs(evcf, gvcf, locus)
+        evcf, gvcf, combined = intersect_reference_vcfs(evcf, gvcf, combined)
+        assert evcf.shape[0] == combined.shape[0]
+        assert gvcf.shape[0] == combined.shape[0]
 
         # Run PLINK on both VCFs.
         compute_ld(evcf, locus, "eqtl")
@@ -147,21 +145,20 @@ def purge_tmp_files(locus):
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
 
-def load_and_filter_variants(filename, locus, combined, af_id):
-    # TODO: Spot check all of these tests to ensure they're actually working.
-    
+def load_and_filter_variants(filename, locus, combined, af_id, window):
+    # TODO: Spot check all of these tests to ensure they're working as desired.
+
     # First, extract nearby variants using tabix
-    stream = StringIO(subprocess.check_output("tabix -h {8} {1}:{6}-{7} > /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}/{4}_prefiltered.recode_level{5}.vcf".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+    stream = StringIO(subprocess.check_output("tabix -h {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
 
     # For readability, load the header too
-    header = subprocess.check_output("grep CHROM {0}".strip().split("\t").format(filename), shell=True)
-
+    header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 500 | grep CHROM".format(filename), shell=True).strip().split("\t")
     # Load with pandas
-    vcf = pd.read_csv(stream, sep="\t", names = header)
+    vcf = pd.read_csv(stream, sep="\t", names = header, comment="#")
 
-    vcf["POS"] = (vcf["POS"]).astype(int)
     # Remove variants not in the GWAS table
-    vcf = vcf[np.logical_not(vcf["POS"].isin(list(combined["snp_pos"])))]
+    vcf["POS"] = (vcf["POS"]).astype(int)
+    vcf = vcf[vcf["POS"].isin(list(combined["snp_pos"]))]
 
     # Remove variants with position appearing multiple times
     dup_counts = {}
@@ -183,10 +180,10 @@ def load_and_filter_variants(filename, locus, combined, af_id):
 
     # Remove variants where alt/ref don't match between GWAS and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
+    # TODO: Verify on an example case that this filtering is working correctly.
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
-
-    keep_indices = (merged['a1'] == merged['REF']) & (merged['a2'] == merged['ALT']) | \
-            (merged['a2'] == merged['REF']) & (merged['a1'] == merged['ALT'])
+    keep_indices = ((merged['a1'] == merged['REF']) & (merged['a2'] == merged['ALT'])) | \
+            ((merged['a2'] == merged['REF']) & (merged['a1'] == merged['ALT']))
     keep = merged['POS'][keep_indices]
     vcf = vcf[vcf['POS'].isin(list(keep))]
     
@@ -194,7 +191,7 @@ def load_and_filter_variants(filename, locus, combined, af_id):
     combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))]
 
     # Return list as DataFrame.
-    return vcf
+    return (vcf, combined)
 
 def intersect_reference_vcfs(ref1, ref2, combined):
 
@@ -203,18 +200,16 @@ def intersect_reference_vcfs(ref1, ref2, combined):
     ref2 = ref2[ref2["POS"].isin(list(ref1["POS"]))]
 
     # Subset SNP list to SNPs that still remain in both VCFs.
-    combined = combined[combined['snp_pos'].isin(list(matched_ref2["POS"]))]
+    combined = combined[combined['snp_pos'].isin(list(ref2["POS"]))]
 
-    # Dimensions should now be equal for SNP table and references.
-    assert ref1.shape[0] == ref2.shape[0]
-    assert ref2.shape[0] == combined.shape[0]
-
+    return (ref1, ref2, combined)
 
 # Run PLINK on the locus of interest
 def compute_ld(vcf, locus, data_type):
 
+
     # Write VCF to tmp file
-    vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=False)
+    vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=True)
 
     # Use PLINK to generate bim bam fam files
     command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)

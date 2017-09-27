@@ -89,6 +89,9 @@ def main():
                     task = TestLocus(combined, settings, base_output_dir, gene, snp, gwas_file, eqtl_file)
                     task.run()
 
+    # Clean up after ourselves
+    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*")
+
 if __name__ == "__main__":
 	main()
         

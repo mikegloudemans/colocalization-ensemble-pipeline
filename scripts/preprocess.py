@@ -26,7 +26,7 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
-    stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True)
+    stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True))
     gwas_table = pd.read_csv(stream, sep="\t")
     subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
     # TODO: Fix this line! Something is wrong with it I guess
@@ -90,10 +90,10 @@ def get_gwas_data(gwas_file, snp, window=500000):
     # it's really slow.
 
     # Subset GWAS list to SNPs near the GWAS position
-    gwas_table = pd.read_csv(gwas_file, sep="\t")
+    '''gwas_table = pd.read_csv(gwas_file, sep="\t")
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
     gwas_table = gwas_table[(gwas_table['snp_pos'] > snp.pos - window) & (gwas_table['snp_pos'] < snp.pos + window)]
-    gwas_table = gwas_table[(gwas_table['chr'] == snp.chrom) | (gwas_table['chr'] == 'chr{0}'.format(snp.chrom))]
+    gwas_table = gwas_table[(gwas_table['chr'] == snp.chrom) | (gwas_table['chr'] == 'chr{0}'.format(snp.chrom))]'''
 
     # Get GWAS data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(gwas_file), shell=True)
@@ -103,13 +103,14 @@ def get_gwas_data(gwas_file, snp, window=500000):
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
 
     # Figure out whether GWAS scores are in odds ratio or beta-se format
+    # NOTE: This section is likely to be error prone at the moment...be careful!
     if 'or' in gwas_table:
         gwas_table['ZSCORE'] = (gwas_table['or']-1) / gwas_table['se']
-    elif 'beta_x' in gwas_table:
-        gwas_table['ZSCORE'] = (gwas_table['beta_x']) / gwas_table['se']
-    elif 'pvalue' in gwas_table and "direction" in gwas_table:
-        # TODO: Test this
-        gwas_table['ZSCORE'] = stats.norm.isf(gwas_table["pvalue"] / 2) * (2*(gwas_table["direction"] == "+")-1)
+    elif 'beta' in gwas_table:
+        gwas_table['ZSCORE'] = (gwas_table['beta']) / gwas_table['se']
+        '''elif 'pvalue' in gwas_table and "direction" in gwas_table:
+            # TODO: Test this
+            gwas_table['ZSCORE'] = stats.norm.isf(gwas_table["pvalue"] / 2) * (2*(gwas_table["direction"] == "+")-1)'''
     else:
         return None
 

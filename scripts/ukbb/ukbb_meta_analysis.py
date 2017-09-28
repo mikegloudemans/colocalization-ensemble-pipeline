@@ -6,6 +6,8 @@
 # Run colocalization analysis for all UK Biobank traits.
 #
 
+import subprocess
+
 # Let's start with just one trait though.
 
 # NOTE: Right now GWAS sample size is wrong, and this will only be valid for FINEMAP-like methods.
@@ -13,7 +15,7 @@
 config_template = '''
 {{
         "eqtl_experiments":	{{"/users/mgloud/projects/brain_gwas/data/eqtls/tabix/Whole_Blood_Analysis.cis.eqtl.gz": {{"N": 338, "ref": "gtex_full"}}}},
-	"gwas_experiments": {{"{0}": {{"N":150064, "ref", "uk10k"}}}},
+        "gwas_experiments": {{"{0}": {{"N":150064, "ref":"uk10k"}}}},
 	"gwas_threshold": 5e-8,
 	"methods": {{
 		"finemap":{{}}
@@ -34,9 +36,7 @@ config_template = '''
 }}
 '''
 
-gwas = "/users/mgloud/projects/gwas/scripts/data/T14.assoc.sorted.tsv.gz"
-
-print config_template.format(gwas)
+gwas = "/mnt/lab_data/montgomery/shared/datasets/ukbb/gwas/1001.assoc.sorted.tsv.gz"
 
 with open("/users/mgloud/projects/brain_gwas/data/config/ukbb.config", "w") as w:
     w.write(config_template.format(gwas))

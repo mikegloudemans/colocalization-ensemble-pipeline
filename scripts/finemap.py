@@ -42,11 +42,12 @@ def prep_finemap(locus, window):
     eqtl_vcf = eqtl_ref["file"].format(locus.chrom)
     gwas_vcf = gwas_ref["file"].format(locus.chrom)
 
+
     # Two different cases depending on whether GWAS and eQTL
     # are using same reference genome.
     if eqtl_vcf == gwas_vcf:
         # Get and filter the single VCF.
-        vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"], window)
+        vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window)
         assert vcf.shape[0] == combined.shape[0]
 
         # Run PLINK on just one VCF.
@@ -56,8 +57,8 @@ def prep_finemap(locus, window):
 
     else:
         # Get and filter both VCFs.
-        evcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref["af_attribute"], window)
-        gvcf, combined = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref["af_attribute"], window)
+        evcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window)
+        gvcf, combined = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref, window)
 
         # Subset to overlapping SNPs
         evcf, gvcf, combined = intersect_reference_vcfs(evcf, gvcf, combined)
@@ -145,7 +146,8 @@ def purge_tmp_files(locus):
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
 
-def load_and_filter_variants(filename, locus, combined, af_id, window):
+def load_and_filter_variants(filename, locus, combined, ref, window):
+    
     # TODO: Spot check all of these tests to ensure they're working as desired.
 
     # First, extract nearby variants using tabix
@@ -171,12 +173,25 @@ def load_and_filter_variants(filename, locus, combined, af_id, window):
     l = lambda x: "," not in x
     vcf = vcf[vcf["REF"].apply(l) & vcf["ALT"].apply(l)]
 
-    # Remove monoallelic variants
-    def fn(x):
-        info = [s for s in x.split(";") if s.startswith(af_id + "=")][0]
-        af = float(info.split("=")[1])
-        return af > 0.01 and 1-af > 0.01 
-    vcf = vcf[vcf["INFO"].apply(fn)]
+    # Remove monoallelic variants.
+    # Allele frequency might be input as counts or as percentages,
+    # so handle this.
+    if "af_attribute" in ref:
+        af_id = ref["af_attribute"]
+        def fn(x):
+            info = [s for s in x.split(";") if s.startswith(af_id + "=")][0]
+            af = float(info.split("=")[1])
+            return af > 0.01 and 1-af > 0.01 
+        vcf = vcf[vcf["INFO"].apply(fn)]
+    else:
+        ac_id = ref["ac_attribute"]
+        an = 2*ref["N"] # Assume 2 alleles per person
+        def fn(x):
+            info = [s for s in x.split(";") if s.startswith(ac_id + "=")][0]
+            ac = float(info.split("=")[1])
+            af = ac*1.0/an
+            return af > 0.01 and 1-af > 0.01 
+        vcf = vcf[vcf["INFO"].apply(fn)]
 
     # Remove variants where alt/ref don't match between GWAS and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.

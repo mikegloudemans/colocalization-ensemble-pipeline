@@ -26,8 +26,8 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
-    # Load in the data, get p-values for each SNP
-    gwas_table = pd.read_csv(gwas_file, sep="\t")
+    stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True)
+    gwas_table = pd.read_csv(stream, sep="\t")
     subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
     # TODO: Fix this line! Something is wrong with it I guess
     subset['pvalue'] = subset['pvalue'].astype(float)
@@ -95,8 +95,12 @@ def get_gwas_data(gwas_file, snp, window=500000):
     gwas_table = gwas_table[(gwas_table['snp_pos'] > snp.pos - window) & (gwas_table['snp_pos'] < snp.pos + window)]
     gwas_table = gwas_table[(gwas_table['chr'] == snp.chrom) | (gwas_table['chr'] == 'chr{0}'.format(snp.chrom))]
 
-           
-
+    # Get GWAS data using tabix
+    header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(gwas_file), shell=True)
+    raw_gwas = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(gwas_file, \
+            snp.chrom, snp.pos - window, snp.pos + window), shell=True)
+    gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
+    gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
 
     # Figure out whether GWAS scores are in odds ratio or beta-se format
     if 'or' in gwas_table:

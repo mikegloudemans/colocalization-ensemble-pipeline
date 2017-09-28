@@ -80,7 +80,7 @@ def main():
                     if isinstance(combined, basestring):
                         # Write skipped variants to a file, for later reference.
                         with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
-                            a.write("{0}\t{1}\t{2}\t{3}\t{4}\n".format(gwas_file, eqtl_file, str(snp), gene, combined))
+                            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, gene, combined))
                         continue
 
                     # Create a TestLocus object using merged GWAS and eQTL,
@@ -90,7 +90,7 @@ def main():
                     task.run()
 
     # Clean up after ourselves
-    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*")
+    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*", shell=True)
 
 if __name__ == "__main__":
 	main()

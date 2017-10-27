@@ -24,7 +24,6 @@ import math
 
 def main():
 
-    # Hard-coded for now; will add an argparse function to do this later.
     config_file = sys.argv[1]
 
     # Make timestamped results directory, under which all output for this run will be stored.
@@ -43,9 +42,8 @@ def main():
     subprocess.check_call('git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
     subprocess.check_call('git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
 
-    # Index all SNP files as needed.
-    # For now we're not going to index GWAS SNPs because they're not
-    # big enough to need this.
+    # TODO: Index all SNP files as needed, for both GWAS and eQTLs.
+    # Up to this point we've just been doing it manually.
     tabix_snps.tabix_all(settings)
 
     gwas_files = [f for f in settings["gwas_experiments"]]
@@ -91,6 +89,7 @@ def main():
                     task.run()
 
     # Clean up after ourselves
+
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*", shell=True)
 
 if __name__ == "__main__":

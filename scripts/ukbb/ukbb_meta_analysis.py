@@ -18,7 +18,7 @@ config_template = '''
 {
         "eqtl_experiments":	{"/users/mgloud/projects/brain_gwas/data/eqtls/tabix/Whole_Blood_Analysis.cis.eqtl.gz": {"N": 338, "ref": "gtex_full"}},
         "gwas_experiments": {},
-	"gwas_threshold": 5e-8,
+	"gwas_threshold": 1e-10,
 	"methods": {
 		"finemap":{}
 	},

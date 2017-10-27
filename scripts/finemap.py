@@ -51,9 +51,12 @@ def prep_finemap(locus, window):
         assert vcf.shape[0] == combined.shape[0]
 
         # Run PLINK on just one VCF.
-        compute_ld(vcf, locus, "eqtl")
+        removal_list = compute_ld(vcf, locus, "eqtl")
         subprocess.check_call("cp /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
+        # Remove indices that produced NaNs in the LD computations
+        removal_list = list(set(removal_list))
+        combined = combined.drop(combined.index[removal_list])
 
     else:
         # Get and filter both VCFs.
@@ -66,9 +69,20 @@ def prep_finemap(locus, window):
         assert gvcf.shape[0] == combined.shape[0]
 
         # Run PLINK on both VCFs.
-        compute_ld(evcf, locus, "eqtl")
-        compute_ld(gvcf, locus, "gwas")
-    
+        while True:
+            removal_list = compute_ld(evcf, locus, "eqtl")
+            removal_list.extend(compute_ld(gvcf, locus, "gwas"))
+
+            # Continue until no more NaNs
+            if len(removal_list) == 0:
+                break
+
+            removal_list = list(set(removal_list))
+
+            combined = combined.drop(combined.index[removal_list])
+            evcf = evcf.drop(evcf.index[removal_list])
+            gvcf = gvcf.drop(gvcf.index[removal_list])
+        
     with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
         snps.to_csv(w, index=False, header=False, sep=" ")
@@ -111,8 +125,6 @@ def launch_finemap(locus, window):
     gwas_probs = sorted(gwas_probs)
     eqtl_probs = sorted(eqtl_probs)
 
-
-
     assert len(gwas_probs) == len(eqtl_probs)
     for i in range(len(gwas_probs)):
             assert gwas_probs[i][0] == eqtl_probs[i][0]
@@ -145,6 +157,8 @@ def purge_tmp_files(locus):
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
     subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
+
+    pass
 
 def load_and_filter_variants(filename, locus, combined, ref, window):
     
@@ -203,7 +217,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window):
     vcf = vcf[vcf['POS'].isin(list(keep))]
     
     # Subset SNPs down to SNPs present in the reference VCF.
-    combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))]
+    combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))] 
 
     # Return list as DataFrame.
     return (vcf, combined)
@@ -220,34 +234,41 @@ def intersect_reference_vcfs(ref1, ref2, combined):
     return (ref1, ref2, combined)
 
 # Run PLINK on the locus of interest
-def compute_ld(vcf, locus, data_type):
+def compute_ld(input_vcf, locus, data_type):
 
+    # We don't want to modify the input VCF within this function
+    vcf = input_vcf.copy()
 
-    # Write VCF to tmp file
-    vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=True)
+    # Repeatedly compute LD until we've eliminated all NaNs.
+    removal_list = []
+    while True:
+        # Write VCF to tmp file
+        vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=True)
 
-    # Use PLINK to generate bim bam fam files
-    command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
-    subprocess.check_call(command, shell=True)
+        # Use PLINK to generate bim bam fam files
+        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
+        subprocess.check_call(command, shell=True)
 
-    # Use PLINK to generate LD score
-    command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
-    subprocess.check_call(command, shell=True)
+        # Use PLINK to generate LD score
+        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
+        subprocess.check_call(command, shell=True)
 
-    # Monitor nan status. Goal is eventually to just get rid of this, either
-    # because I have no nans or because I completely understand them
-    try:
-        subprocess.check_call("grep nan /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True)
-        # Log scenarios with nans to a file.
-        with open("{0}/nans.txt".format(locus.basedir), "a") as w:
-            w.write("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld\n".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type))
-    except:
-        pass
+        # See if nans remain. If so, remove the offending lines.
+        try:
+            lines = [int(n.split(":")[0])-1 for n in subprocess.check_output("grep -n nan /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True).strip().split("\n")]
+        except:
+            break
+
+        # Save IDs of items being removed
+        removal_list.extend(list(vcf.iloc[lines]['ID']))
+        
+        # Remove desired rows (variants)
+        vcf = vcf.drop(vcf.index[lines])
+
+    # Get indices of items to remove in original list
+    removal_list = [list(input_vcf['ID']).index(id) for id in removal_list]
 
     # Replace tabs with spaces because FINEMAP requires this.
-    # Fix LD-score by replacing nan values with 0.
-    # TODO: If nans are inevitable, maybe replace them with imputed values instead of 0s.
-    # As it is currently, it could affect results in certain rare cases.
-    # Figure out why these are nanning in the first place
-    # TODO: Fix problem of having diagonal elements be 0 if originally nans
-    subprocess.check_call("sed s/nan/0/g /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True)
+    subprocess.check_call("cat /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True)
+
+    return removal_list

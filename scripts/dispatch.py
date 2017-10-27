@@ -18,6 +18,7 @@ import config
 import preprocess
 import tabix_snps
 from TestLocus import TestLocus
+import math
 
 # TODO: Parallelize this again. As it is right now, it's fairly slow because so many sites/tissues to test.
 

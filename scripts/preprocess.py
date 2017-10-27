@@ -10,7 +10,7 @@ import pandas as pd
 import operator
 import SNP
 from scipy import stats
-
+import math
 
 import sys
 if sys.version_info[0] < 3:
@@ -151,7 +151,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
 
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
-	
+
     # Sometimes the GWAS SNP is outside of the range of eQTLs tested for a certain
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
@@ -176,6 +176,11 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
         else:
             return "GWAS pvalue underflow."
 
+    # NOTE: Temporary threshold added to eQTL data to expedite runtime
+    if max([-math.log10(p) for p in eqtl_subset['pvalue']]) < 7:
+        return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
+
+
     # Get MAFs from 1000 Genomes.
     # Filter out multi-allelic or non-polymorphic sites.
     # TODO: Make sure direction of MAFs is consistent between eQTL and GWAS
@@ -195,6 +200,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
     # because otherwise at this level some sites with 2 SNPs might be merged into
     # 2x2 SNPs or something like that
 
+    # TODO: Convert this to a join operation instead
     # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
     combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])

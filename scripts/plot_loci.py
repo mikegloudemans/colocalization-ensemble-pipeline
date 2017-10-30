@@ -20,8 +20,6 @@ def locus_zoom_plot(locus, clpp):
 
     subprocess.call("mkdir -p {0}/plots/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
 
-    print locus.data.head()
-
     # Also create a LocusZoom-style plot showing the GWAS and eQTL signals next to one another.
     plt.figure(figsize=(20,10))
     plt.subplot(211)

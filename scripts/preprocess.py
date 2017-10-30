@@ -181,15 +181,13 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     # Currently, some MAFs may be > 0.5
     # (Could eventually be in separate function)
     # Get the region of interest from 1K genomes VCFs using tabix
-    # TODO: Skip this step if not running a tool that needs MAFs
-    
     output = subprocess.check_output("tabix /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {0}:{1}-{2}".format(snp.chrom, snp.pos - window, snp.pos + window), shell=True).strip().split("\n")
     mafs = [[int(line.split('\t')[0]), int(line.split('\t')[1]), line.split('\t')[7]] for line in output if "MULTI_ALLELIC" not in line and ";AF=1;" not in line and ";AF=0;" not in line and "," not in line.split('\t')[4]]
     for m in mafs:
         m[2] = float(m[2].split(";")[1][3::])
     mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
 
-    # TODO TODO: At this step filter out variants
+   # TODO TODO: At this step filter out variants
     # whose same position appears twice or more. (can steal the code 
     # that is currently used in the FINEMAP pipeline only). This is important 
     # because otherwise at this level some sites with 2 SNPs might be merged into
@@ -200,6 +198,12 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
     combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
 
+    # Filter out variants where 1K genomes MAF < 0.01. We can think more about
+    # whether this is the best strategy, but for now it's best to do this, because
+    # the overwhelming majority of variants with lower MAF end up getting filtered out
+    # at later stages in the pipeline anyway.
+    combined = combined[(combined['Kgenomes_maf'] > 0.01) & (combined['Kgenomes_maf'] < 0.99)]
+ 
     # For now, remove all positions that appear multiple times in the GWAS table.
     # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
     dup_counts = {}

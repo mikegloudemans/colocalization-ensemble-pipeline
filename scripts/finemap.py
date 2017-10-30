@@ -18,7 +18,9 @@ import numpy as np
 
 def run_finemap(locus, window=500000):
 
-    prep_finemap(locus, window)
+    pf = prep_finemap(locus, window)
+    if pf == "Fail":
+        return "Fail"
     return launch_finemap(locus, window)
 
 
@@ -52,6 +54,8 @@ def prep_finemap(locus, window):
 
         # Run PLINK on just one VCF.
         removal_list = compute_ld(vcf, locus, "eqtl")
+        if removal_list == "Fail":
+            return "Fail"
         subprocess.check_call("cp /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
         # Remove indices that produced NaNs in the LD computations
@@ -71,7 +75,14 @@ def prep_finemap(locus, window):
         # Run PLINK on both VCFs.
         while True:
             removal_list = compute_ld(evcf, locus, "eqtl")
-            removal_list.extend(compute_ld(gvcf, locus, "gwas"))
+            if removal_list == "Fail":
+                return "Fail"
+            
+            extension_list = compute_ld(gvcf, locus, "gwas")
+            if extension_list is "Fail":
+                return "Fail"
+ 
+            removal_list.extend(extension_list)
 
             # Continue until no more NaNs
             if len(removal_list) == 0:
@@ -82,7 +93,13 @@ def prep_finemap(locus, window):
             combined = combined.drop(combined.index[removal_list])
             evcf = evcf.drop(evcf.index[removal_list])
             gvcf = gvcf.drop(gvcf.index[removal_list])
-        
+
+    # Check to see whether we still even have a signficant GWAS variant and a significant eQTL variant.
+    # If not, there's really no point continuing with this test.
+    if min(combined["pvalue_gwas"]) > locus.settings["gwas_threshold"] or min(combined["pvalue_eqtl"]) > locus.settings["eqtl_threshold"]:
+        return "Fail"
+
+
     with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
         snps.to_csv(w, index=False, header=False, sep=" ")
@@ -138,7 +155,7 @@ def launch_finemap(locus, window):
     # Write FINEMAP results to the desired file
     # Note: appending will always work, since results always go to a different directory for each run.
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, len(gwas_probs), finemap_clpp))
+            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, locus.conditional_level, len(gwas_probs), finemap_clpp))
 
     return finemap_clpp
 
@@ -242,6 +259,10 @@ def compute_ld(input_vcf, locus, data_type):
     # Repeatedly compute LD until we've eliminated all NaNs.
     removal_list = []
     while True:
+
+        if vcf.shape[0] == 0:
+            return "Fail"
+
         # Write VCF to tmp file
         vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=True)
 

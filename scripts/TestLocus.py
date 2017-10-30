@@ -9,6 +9,7 @@ import finemap
 import ecaviar
 import coloc
 import plot_loci as plot
+import math
 
 class TestLocus:
     def __init__(self, data, settings, basedir, gene, snp, gwas_file, eqtl_file):
@@ -18,6 +19,7 @@ class TestLocus:
         self.gene = gene
         self.chrom = snp.chrom
         self.pos = snp.pos
+        self.pval = snp.pval
         self.gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         self.eqtl_suffix = eqtl_file.split("/")[-1].replace(".", "_")
         self.gwas_file = gwas_file
@@ -28,7 +30,7 @@ class TestLocus:
     # on the settings file.
     def run(self):
 
-        print "Analyzing {0} {1} {2} {3} {4}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos)
+        print "Analyzing {0} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, -1*math.log10(self.pval))
 
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.
@@ -39,7 +41,7 @@ class TestLocus:
             clpp = finemap.run_finemap(self)
 
             # TODO: Modify thresholds for significance here.
-            if clpp > 0.005: 
+            if not clpp == "Fail" and clpp > 0.005: 
                 plotworthy = True
 
 
@@ -75,7 +77,7 @@ class TestLocus:
         '''
     
         # For debugging:
-        # plotworthy = True
+        plotworthy = True
 
         # Plot the result if it's significant.
         if plotworthy:

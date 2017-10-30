@@ -14,9 +14,7 @@ def load_config(filename):
     with open(filename) as data_file:    
             config = json.load(data_file)
 
-    return config
+    if "eqtl_threshold" not in config:
+        config["eqtl_threshold"] = 1e-7
 
-# For testing purposes only:
-if __name__ == "__main__":
-    c = load_config("/users/mgloud/projects/brain_gwas/data/config/sample.config")
-    print c
+    return config

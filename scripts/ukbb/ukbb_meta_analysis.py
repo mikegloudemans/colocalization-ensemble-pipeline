@@ -33,7 +33,8 @@ config_template = '''
 			"ac_attribute": "AC",
 			"N": 1927
 		}
-	}
+	},
+        "output_suffix": "ukbb_full"
 
 }
 '''

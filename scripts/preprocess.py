@@ -5,23 +5,22 @@
 # Tools for loading summary statistics.
 #
 
-import subprocess
-import pandas as pd
-import operator
-import SNP
-from scipy import stats
+import subprocess 
+import pandas as pd 
+import operator 
+import SNP 
+from scipy import stats 
 import math
 
-import sys
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
+import sys 
+if sys.version_info[0] < 3: 
+    from StringIO import StringIO 
+else: 
     from io import StringIO
 
 
-# Input: gwas file location, threshold of significance,
-#   minimum distance between two selected SNPs.
-# Output: A list of significant SNPs to test.
+# Input: gwas file location, threshold of significance, minimum distance
+# between two selected SNPs.  Output: A list of significant SNPs to test.
 def select_test_snps(gwas_file, gwas_threshold, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
@@ -75,7 +74,6 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
                         break
         if not skip:
                 snps_to_test.append(snp)
-
     
     print("Testing {0} SNPs.".format(len(snps_to_test)))
 
@@ -105,6 +103,7 @@ def get_gwas_data(gwas_file, snp, window=500000):
     # Figure out whether GWAS scores are in odds ratio or beta-se format
     # NOTE: This section is likely to be error prone at the moment...be careful!
     if 'or' in gwas_table:
+        # TODO: Also verify the correctness of this math. Is it right?
         gwas_table['ZSCORE'] = (gwas_table['or']-1) / gwas_table['se']
     elif 'beta' in gwas_table:
         gwas_table['ZSCORE'] = (gwas_table['beta']) / gwas_table['se']
@@ -144,7 +143,7 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
 #   GWAS SNP as a tuple.
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
-def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, window=500000):
+def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window=500000, unsafe=False):
 
     # TODO TODO TODO: Fix the SettingWithCopyWarning. It seems likely to be error-prone, according
     # to the manual!
@@ -159,10 +158,6 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
     if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos'] - 50000):
             return "SNP outside range."
  
-    # Skip it if there's nothing left
-    if gwas_data.shape[0] == 0:
-            return "No remaining GWAS SNPs."
-
     # If not explicitly allowing them, remove pvalues with danger
     # of underflow.
     if min(eqtl_subset['pvalue']) < 1e-150:
@@ -176,10 +171,9 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
         else:
             return "GWAS pvalue underflow."
 
-    # NOTE: Temporary threshold added to eQTL data to expedite runtime
-    if max([-math.log10(p) for p in eqtl_subset['pvalue']]) < 7:
+    # Make sure all eQTLs are significant enough that this site is worth testing
+    if min(eqtl_subset['pvalue']) > settings["eqtl_threshold"]:
         return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
-
 
     # Get MAFs from 1000 Genomes.
     # Filter out multi-allelic or non-polymorphic sites.
@@ -187,6 +181,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
     # Currently, some MAFs may be > 0.5
     # (Could eventually be in separate function)
     # Get the region of interest from 1K genomes VCFs using tabix
+    # TODO: Skip this step if not running a tool that needs MAFs
     
     output = subprocess.check_output("tabix /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {0}:{1}-{2}".format(snp.chrom, snp.pos - window, snp.pos + window), shell=True).strip().split("\n")
     mafs = [[int(line.split('\t')[0]), int(line.split('\t')[1]), line.split('\t')[7]] for line in output if "MULTI_ALLELIC" not in line and ";AF=1;" not in line and ";AF=0;" not in line and "," not in line.split('\t')[4]]
@@ -217,29 +212,10 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=False, wi
     # Check to make sure there are SNPs remaining; if not, just move on
     # to next gene.
     if combined.shape[0] == 0: 
-            return "No overlapping SNPs in eQTL and GWAS"
+        return "No overlapping SNPs in eQTL and GWAS"
+
+    if min(combined['pvalue_gwas']) > settings["gwas_threshold"]:
+        return "No significant GWAS SNPs are in eQTL dataset (too rare)"
 
     return combined
-
-# Use vcftools to get MAFs for variants in a dataset
-# NOTE: This function would throw an error if there's a variant
-# in our lists that's not also in 1K genomes. For now though, let's
-# just cross that bridge when we get to it. It will probably come
-# down to a simple fix of just throwing away the variants that 
-# don't appear in 1000 genomes, since they're low-powered anyway.
-def add_maf(data):
-
-    # TODO: Under construction.
-
-    # Write variants to a file, formatted for VCFtools
-    pd.to_csv("some_temp_file")
-
-    # Run VCFtools to 
-
-    # Parse results from VCFtools, and add them to our data
-
-    # Remove both temp files
-
-    return data
-
 

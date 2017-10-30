@@ -29,11 +29,16 @@ def main():
     # Make timestamped results directory, under which all output for this run will be stored.
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
-    subprocess.check_call("mkdir -p {0}".format(base_output_dir), shell=True)
+
 
     # Read config file
     settings = config.load_config(config_file)
+    if "output_suffix" in settings:
+        base_output_dir = base_output_dir + "_" + settings["output_suffix"]
+
+
     # Copy config file to output for later reference
+    subprocess.check_call("mkdir -p {0}".format(base_output_dir), shell=True)
     copyfile(config_file, "{0}/settings_used.config".format(base_output_dir))
 
     # For reproducibility, store the current state of the project in Git
@@ -73,7 +78,7 @@ def main():
                     
                     # NOTE: It might be easier to just do this step once outside of this loop,
                     # and then filter down to the gene of interest. Consider modifying.
-                    combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, unsafe=True)
+                    combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True)
 
                     # Skip it if this site is untestable.
                     if isinstance(combined, basestring):
@@ -90,7 +95,9 @@ def main():
 
     # Clean up after ourselves
 
-    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*", shell=True)
+    # Don't do this. This is dangerous because if multiple instances of the pipeline are running
+    # at the same time, one can erase the other's data.
+    #subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*", shell=True)
 
 if __name__ == "__main__":
 	main()

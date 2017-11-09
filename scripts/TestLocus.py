@@ -30,7 +30,7 @@ class TestLocus:
     # on the settings file.
     def run(self):
 
-        print "Analyzing {0} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, -1*math.log10(self.pval))
+        print "Analyzing {0} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval)
 
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.

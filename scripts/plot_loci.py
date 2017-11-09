@@ -18,7 +18,7 @@ def locus_zoom_plot(locus, clpp):
     # For now
     current_level = 0
 
-    subprocess.call("mkdir -p {0}/plots/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
 
     # Also create a LocusZoom-style plot showing the GWAS and eQTL signals next to one another.
     plt.figure(figsize=(20,10))
@@ -33,7 +33,7 @@ def locus_zoom_plot(locus, clpp):
     plt.plot((locus.pos, locus.pos), (-0.1*max([-1 * math.log10(p) for p in locus.data['pvalue_eqtl']]), max([-1 * math.log10(p) for p in locus.data['pvalue_eqtl']])), 'k--')
     plt.ylabel('eQTL -log p-value', fontsize=16)
     plt.xlabel('Position', fontsize=16)
-    plt.savefig("{0}/plots/{1}_{2}/{3}/{4}_manhattan.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene))
+    plt.savefig("{0}/plots/{5}/{1}_{2}/{3}/{4}_manhattan.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.gwas_suffix))
     plt.gcf().clear()
     plt.close()
 
@@ -41,7 +41,7 @@ def pvalue_plot(locus, clpp):
     # For now
     current_level = 0
 
-    subprocess.call("mkdir -p {0}/plots/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
 
     plt.figure(figsize=(10,10))
     plt.scatter([-1 * math.log10(p) for p in locus.data['pvalue_gwas']], [-1 * math.log10(p) for p in locus.data['pvalue_eqtl']], c=locus.data['snp_pos'], cmap=plt.cm.jet, edgecolor='', s=50)
@@ -53,7 +53,7 @@ def pvalue_plot(locus, clpp):
     plt.xlabel('GWAS -log p-value', fontsize=16)
     plt.ylabel('eQTL -log p-value', fontsize=16)
     plt.title('{0} CLPP = {1}'.format(locus.gene, clpp), fontsize=24)
-    plt.savefig("{0}/plots/{1}_{2}/{3}/{4}.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
+    plt.savefig("{0}/plots/{4}/{1}_{2}/{3}/{4}.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.gwas_suffix), shell=True)
     plt.gcf().clear()
     plt.close()
 

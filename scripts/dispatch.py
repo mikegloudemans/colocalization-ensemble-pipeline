@@ -22,6 +22,8 @@ import math
 
 # TODO: Parallelize this again. As it is right now, it's fairly slow because so many sites/tissues to test.
 
+# TODO: Make TMP files be time-stamped so we never have to worry about conflicts again
+
 def main():
 
     config_file = sys.argv[1]
@@ -35,7 +37,8 @@ def main():
     settings = config.load_config(config_file)
     if "output_suffix" in settings:
         base_output_dir = base_output_dir + "_" + settings["output_suffix"]
-
+    else:
+        base_output_dir = base_output_dir + "_" + config_file.split("/")[-1].split(".")[0]
 
     # Copy config file to output for later reference
     subprocess.check_call("mkdir -p {0}".format(base_output_dir), shell=True)

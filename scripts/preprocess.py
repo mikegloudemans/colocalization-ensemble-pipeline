@@ -102,17 +102,20 @@ def get_gwas_data(gwas_file, snp, window=500000):
 
     # Figure out whether GWAS scores are in odds ratio or beta-se format
     # NOTE: This section is likely to be error prone at the moment...be careful!
+    # TODO: Eliminate options here and require a standard preprocessing format
+    # to make things work more smoothly
     if 'or' in gwas_table:
         # TODO: Also verify the correctness of this math. Is it right?
         gwas_table['ZSCORE'] = (gwas_table['or']-1) / gwas_table['se']
     elif 'beta' in gwas_table:
         gwas_table['ZSCORE'] = (gwas_table['beta']) / gwas_table['se']
-        '''elif 'pvalue' in gwas_table and "direction" in gwas_table:
-            # TODO: Test this
-            gwas_table['ZSCORE'] = stats.norm.isf(gwas_table["pvalue"] / 2) * (2*(gwas_table["direction"] == "+")-1)'''
+    elif 'pvalue' in gwas_table and "direction" in gwas_table:
+        # This is the format for RPE.
+        # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)        
+        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) * (2*(gwas_table["direction"] == "+")-1)
+
     else:
         return None
-
 
     return gwas_table
 
@@ -124,14 +127,22 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
+
+    print eqtls.head()
+
     eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)
 
     if 't-stat' in eqtls:
         eqtls['ZSCORE'] = eqtls['t-stat']
     elif "chisq" in eqtls:
-        # TODO: Test this because I'm not sure yet if it's correct.
-        eqtls['pvalue'] = 1-stats.chi2.cdf(eqtls["chisq"],1)
-        eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["effect_size"] > 0) - 1) # Might not be correct: all have effect size > 0 right now...
+        # TODO: Fix this to make it more explicitly clear that we're dealing with RASQUAL data
+        # where effect size is given by allelic imbalance percentage pi
+        # Use max function to protect against underflow in chi2 computation
+        # TODO: Fixing z-score issues here is VERY important! This could cause serious issues downstream...
+        # Do this even before starting on ASE stuff!
+        # TODO TODO TODO
+        eqtls['pvalue'] = [max(x, 1e-16) for x in 1-stats.chi2.cdf(eqtls["chisq"],1)]
+        eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
     else:
         return None
 
@@ -165,6 +176,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
             eqtl_subset['pvalue'] = eqtl_subset['pvalue'].apply(lambda x: max(x, 1e-150))
         else:
             return "eQTL pvalue underflow."
+
     if min(gwas_data['pvalue']) < 1e-150:
         if unsafe:
             gwas_data['pvalue'] = gwas_data['pvalue'].apply(lambda x: max(x, 1e-150))

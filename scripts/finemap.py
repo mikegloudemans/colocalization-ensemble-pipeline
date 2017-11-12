@@ -49,7 +49,7 @@ def prep_finemap(locus, window):
     # are using same reference genome.
     if eqtl_vcf == gwas_vcf:
         # Get and filter the single VCF.
-        vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window)
+        vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window, ["eqtl", "gwas"])
         assert vcf.shape[0] == combined.shape[0]
 
         # Run PLINK on just one VCF.
@@ -64,8 +64,8 @@ def prep_finemap(locus, window):
 
     else:
         # Get and filter both VCFs.
-        evcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window)
-        gvcf, combined = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref, window)
+        evcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window, ["eqtl"])
+        gvcf, combined = load_and_filter_variants(gwas_vcf, locus, combined, gwas_ref, window, ["gwas"])
 
         # Subset to overlapping SNPs
         evcf, gvcf, combined = intersect_reference_vcfs(evcf, gvcf, combined)
@@ -177,7 +177,7 @@ def purge_tmp_files(locus):
 
     pass
 
-def load_and_filter_variants(filename, locus, combined, ref, window):
+def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     
     # TODO: Spot check all of these tests to ensure they're working as desired.
 
@@ -224,12 +224,27 @@ def load_and_filter_variants(filename, locus, combined, ref, window):
             return af > 0.01 and 1-af > 0.01 
         vcf = vcf[vcf["INFO"].apply(fn)]
 
-    # Remove variants where alt/ref don't match between GWAS and VCF
+    # Remove variants where alt/ref don't match between GWAS/eQTL and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
     # TODO: Verify on an example case that this filtering is working correctly.
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
-    keep_indices = ((merged['a1'] == merged['REF']) & (merged['a2'] == merged['ALT'])) | \
-            ((merged['a2'] == merged['REF']) & (merged['a1'] == merged['ALT']))
+    # TODO: Enforce new standard: effect measurements are always with respect to ALT status.
+    keep_indices = \
+            (((merged['ref_gwas'] == merged['REF']) & (merged['alt_gwas'] == merged['ALT'])) | \
+            ((merged['alt_gwas'] == merged['REF']) & (merged['ref_gwas'] == merged['ALT']))) & \
+            (((merged['ref_eqtl'] == merged['REF']) & (merged['alt_eqtl'] == merged['ALT'])) | \
+            ((merged['alt_eqtl'] == merged['REF']) & (merged['ref_eqtl'] == merged['ALT'])))
+
+    # Now, reverse the z-score for any SNPs whose ref/alt direction doesn't match the direction
+    # in the reference genome.
+    assert "gwas" in ref_types or "eqtl" in ref_types
+    if "gwas" in ref_types:
+        merged['reverse_gwas'] = (merged['alt_gwas'] == merged['REF']) & (merged['ref_gwas'] == merged['ALT'])
+        merged['ZSCORE_gwas'] = merged['ZSCORE_gwas'] * (1 - (merged['reverse_gwas'] * 2))
+    if "eqtl" in ref_types:
+        merged['reverse_eqtl'] = (merged['alt_eqtl'] == merged['REF']) & (merged['ref_eqtl'] == merged['ALT'])
+        merged['ZSCORE_eqtl'] = merged['ZSCORE_eqtl'] * (1 - (merged['reverse_eqtl'] * 2))
+
     keep = merged['POS'][keep_indices]
     vcf = vcf[vcf['POS'].isin(list(keep))]
     

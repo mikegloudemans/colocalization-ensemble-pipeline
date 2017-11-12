@@ -12,13 +12,13 @@ import sys
 from shutil import copyfile
 import datetime
 import subprocess
+import math
 
 # Custom libraries
 import config
 import preprocess
 import tabix_snps
 from TestLocus import TestLocus
-import math
 
 # TODO: Parallelize this again. As it is right now, it's fairly slow because so many sites/tissues to test.
 
@@ -70,8 +70,8 @@ def main():
             for snp in snp_list:
 
                 # Load relevant GWAS and eQTL data.
-                gwas_data = preprocess.get_gwas_data(gwas_file, snp) # Get GWAS data
-                eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp) # Get eQTL data
+                gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
+                eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
 
                 # Get all genes whose eQTLs we're testing at this locus
                 genes = set(eqtl_data['gene'])

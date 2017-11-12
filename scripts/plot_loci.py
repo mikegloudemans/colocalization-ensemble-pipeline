@@ -53,7 +53,7 @@ def pvalue_plot(locus, clpp):
     plt.xlabel('GWAS -log p-value', fontsize=16)
     plt.ylabel('eQTL -log p-value', fontsize=16)
     plt.title('{0} CLPP = {1}'.format(locus.gene, clpp), fontsize=24)
-    plt.savefig("{0}/plots/{4}/{1}_{2}/{3}/{4}.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.gwas_suffix), shell=True)
+    plt.savefig("{0}/plots/{5}/{1}_{2}/{3}/{4}.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.gwas_suffix), shell=True)
     plt.gcf().clear()
     plt.close()
 

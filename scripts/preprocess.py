@@ -81,17 +81,7 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
 
 
 # Load summary statistics for GWAS
-def get_gwas_data(gwas_file, snp, window=500000):
-
-    # TODO: Tabix this to make it faster, or at least
-    # load the table just once for the locus. Right now
-    # it's really slow.
-
-    # Subset GWAS list to SNPs near the GWAS position
-    '''gwas_table = pd.read_csv(gwas_file, sep="\t")
-    gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
-    gwas_table = gwas_table[(gwas_table['snp_pos'] > snp.pos - window) & (gwas_table['snp_pos'] < snp.pos + window)]
-    gwas_table = gwas_table[(gwas_table['chr'] == snp.chrom) | (gwas_table['chr'] == 'chr{0}'.format(snp.chrom))]'''
+def get_gwas_data(gwas_file, snp, settings, window=500000):
 
     # Get GWAS data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(gwas_file), shell=True)
@@ -100,27 +90,30 @@ def get_gwas_data(gwas_file, snp, window=500000):
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
 
+    if "ref_allele_header" in settings['gwas_experiments'][gwas_file]:
+        gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']]
+    if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
+        gwas_table['alt'] = gwas_table[settings['gwas_experiments'][gwas_file]['alt_allele_header']]
+
     # Figure out whether GWAS scores are in odds ratio or beta-se format
-    # NOTE: This section is likely to be error prone at the moment...be careful!
-    # TODO: Eliminate options here and require a standard preprocessing format
-    # to make things work more smoothly
-    if 'or' in gwas_table:
-        # TODO: Also verify the correctness of this math. Is it right?
-        gwas_table['ZSCORE'] = (gwas_table['or']-1) / gwas_table['se']
+    # TODO: Specify standard for format to make this part run more smoothly.
+    # TODO: Have an input config parameter be something like "gwas_format": "case-control" or something like that, to make sure the user knows
+    #       what they're doing.
+    if 'log_or' in gwas_table and 'se' in gwas_table:
+        gwas_table['ZSCORE'] = gwas_table['log_or'] / gwas_table['se']
     elif 'beta' in gwas_table:
-        gwas_table['ZSCORE'] = (gwas_table['beta']) / gwas_table['se']
+        gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
     elif 'pvalue' in gwas_table and "direction" in gwas_table:
         # This is the format for RPE.
-        # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)        
+        # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
         gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) * (2*(gwas_table["direction"] == "+")-1)
-
     else:
         return None
 
     return gwas_table
 
 # Load summary statistics for eQTL
-def get_eqtl_data(eqtl_file, snp, window=500000):
+def get_eqtl_data(eqtl_file, snp, settings, window=500000):
 
     # Get eQTL data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(eqtl_file), shell=True)
@@ -128,25 +121,25 @@ def get_eqtl_data(eqtl_file, snp, window=500000):
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
 
-    print eqtls.head()
+    if "ref_allele_header" in settings['eqtl_experiments'][eqtl_file]:
+        eqtl_table['ref'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
+    if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:
+        eqtl_table['alt'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
 
     eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)
 
+    # TODO: Specify standard formats to reduce confusion here. 
+    # TODO: Have inputs be either in rasqual format or in some other format, and specify this in the config, instead of arbitarily chekcing for chisq column
     if 't-stat' in eqtls:
         eqtls['ZSCORE'] = eqtls['t-stat']
     elif "chisq" in eqtls:
-        # TODO: Fix this to make it more explicitly clear that we're dealing with RASQUAL data
-        # where effect size is given by allelic imbalance percentage pi
+        # Here we're dealing with RASQUAL data
+        # where effect size is given by allelic imbalance percentage pi.
         # Use max function to protect against underflow in chi2 computation
-        # TODO: Fixing z-score issues here is VERY important! This could cause serious issues downstream...
-        # Do this even before starting on ASE stuff!
-        # TODO TODO TODO
         eqtls['pvalue'] = [max(x, 1e-16) for x in 1-stats.chi2.cdf(eqtls["chisq"],1)]
         eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
     else:
         return None
-
-
 
     return eqtls
 
@@ -189,15 +182,16 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
 
     # Get MAFs from 1000 Genomes.
     # Filter out multi-allelic or non-polymorphic sites.
-    # TODO: Make sure direction of MAFs is consistent between eQTL and GWAS
+    # TODO TODO TODO: Make sure direction of MAFs is consistent between eQTL and GWAS
+    # It only works right now because we're only using MAF for filtering
     # Currently, some MAFs may be > 0.5
     # (Could eventually be in separate function)
     # Get the region of interest from 1K genomes VCFs using tabix
-    output = subprocess.check_output("tabix /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {0}:{1}-{2}".format(snp.chrom, snp.pos - window, snp.pos + window), shell=True).strip().split("\n")
-    mafs = [[int(line.split('\t')[0]), int(line.split('\t')[1]), line.split('\t')[7]] for line in output if "MULTI_ALLELIC" not in line and ";AF=1;" not in line and ";AF=0;" not in line and "," not in line.split('\t')[4]]
-    for m in mafs:
-        m[2] = float(m[2].split(";")[1][3::])
-    mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
+    #output = subprocess.check_output("tabix /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {0}:{1}-{2}".format(snp.chrom, snp.pos - window, snp.pos + window), shell=True).strip().split("\n")
+    #mafs = [[int(line.split('\t')[0]), int(line.split('\t')[1]), line.split('\t')[7]] for line in output if "MULTI_ALLELIC" not in line and ";AF=1;" not in line and ";AF=0;" not in line and "," not in line.split('\t')[4]]
+    #for m in mafs:
+    #    m[2] = float(m[2].split(";")[1][3::])
+    #mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
 
    # TODO TODO: At this step filter out variants
     # whose same position appears twice or more. (can steal the code 
@@ -208,14 +202,17 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     # TODO: Convert this to a join operation instead
     # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
-    combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
+    #combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
 
     # Filter out variants where 1K genomes MAF < 0.01. We can think more about
     # whether this is the best strategy, but for now it's best to do this, because
     # the overwhelming majority of variants with lower MAF end up getting filtered out
     # at later stages in the pipeline anyway.
-    combined = combined[(combined['Kgenomes_maf'] > 0.01) & (combined['Kgenomes_maf'] < 0.99)]
+    #combined = combined[(combined['Kgenomes_maf'] > 0.01) & (combined['Kgenomes_maf'] < 0.99)]
  
+    # NOTE: I don't think we really need to do this anymore; however, we DO want to make sure
+    # the same exact variant/rsid doesn't appear twice in the input. That would be a malformed
+    # input, but it's happened before nevertheless.
     # For now, remove all positions that appear multiple times in the GWAS table.
     # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
     dup_counts = {}

@@ -77,7 +77,7 @@ class TestLocus:
         '''
     
         # For debugging:
-        plotworthy = True
+        #plotworthy = True
 
         # Plot the result if it's significant.
         if plotworthy:

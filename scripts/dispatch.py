@@ -73,6 +73,10 @@ def main():
                 gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
                 eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
 
+                # Temporary mod for splice eQTLs. May be best to specify a "feature" ID in the future
+                if 'feature' in eqtl_data:
+                    eqtl_data['gene'] = eqtl_data['feature']
+
                 # Get all genes whose eQTLs we're testing at this locus
                 genes = set(eqtl_data['gene'])
                

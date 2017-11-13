@@ -132,11 +132,13 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
     # TODO: Have inputs be either in rasqual format or in some other format, and specify this in the config, instead of arbitarily chekcing for chisq column
     if 't-stat' in eqtls:
         eqtls['ZSCORE'] = eqtls['t-stat']
+    elif 'beta' in eqtls:
+        eqtls['ZSCORE'] = eqtls['beta'] / eqtls['se']
     elif "chisq" in eqtls:
         # Here we're dealing with RASQUAL data
         # where effect size is given by allelic imbalance percentage pi.
         # Use max function to protect against underflow in chi2 computation
-        eqtls['pvalue'] = [max(x, 1e-16) for x in 1-stats.chi2.cdf(eqtls["chisq"],1)]
+        eqtls['pvalue'] = stats.chi2.sf(eqtls["chisq"],1)
         eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
     else:
         return None

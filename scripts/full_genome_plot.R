@@ -56,5 +56,7 @@ for (gwas_file in unique(full_results$gwas_study))
 			with(top_results, text(clpp_score~abs_pos, labels = gene, pos = 2))
 			axis(side = 1, at = midpoints, tick=FALSE, labels=1:22)
 		dev.off()
+		write_delim(results_subset, paste(output_dir, "/", gwas_file, "_", eqtl_file, ".txt", sep=""), delim="\t", col_names=TRUE)
 	}
 }
+

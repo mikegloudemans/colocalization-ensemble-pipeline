@@ -15,13 +15,14 @@ else:
    from io import StringIO
 import pandas as pd
 import numpy as np
+import math
 
 def run_finemap(locus, window=500000):
 
     pf = prep_finemap(locus, window)
     if pf == "Fail":
         return "Fail"
-    return launch_finemap(locus, window)
+    return launch_finemap(locus, window, pf)
 
 
 # Separates the preparation of data for finemap from the actual 
@@ -108,11 +109,11 @@ def prep_finemap(locus, window):
         snps = combined[['snp_pos', 'ZSCORE_gwas']]	
         snps.to_csv(w, index=False, header=False, sep=" ")
     
-
+    return (min(combined["pvalue_gwas"]), min(combined["pvalue_eqtl"]))
 
 # This function contains the code that's specific to FINEMAP,
 # not shared with eCAVIAR.
-def launch_finemap(locus, window):
+def launch_finemap(locus, window, top_hits):
 
     # Load sample sizes
     eqtl_n = locus.settings["ref_genomes"][locus.settings["eqtl_experiments"][locus.eqtl_file]["ref"]]["N"]
@@ -154,8 +155,9 @@ def launch_finemap(locus, window):
 
     # Write FINEMAP results to the desired file
     # Note: appending will always work, since results always go to a different directory for each run.
+    # TODO: Write headers for this file
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, locus.conditional_level, len(gwas_probs), finemap_clpp))
+            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, locus.conditional_level, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1])))
 
     return finemap_clpp
 
@@ -183,7 +185,10 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # First, extract nearby variants using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 500 | grep \\#CHROM".format(filename), shell=True).strip().split()
-    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+    if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
+        stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+    else:
+        stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
 
     # For readability, load the header too
     # Load with pandas

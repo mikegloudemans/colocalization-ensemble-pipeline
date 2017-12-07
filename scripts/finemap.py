@@ -274,7 +274,6 @@ def compute_ld(input_vcf, locus, data_type):
     # Repeatedly compute LD until we've eliminated all NaNs.
     removal_list = []
     while True:
-
         if vcf.shape[0] == 0:
             return "Fail"
 

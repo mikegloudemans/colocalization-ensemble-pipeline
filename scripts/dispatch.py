@@ -82,7 +82,6 @@ def main():
                
                 # Loop through all genes now
                 for gene in genes:
-                    
                     # NOTE: It might be easier to just do this step once outside of this loop,
                     # and then filter down to the gene of interest. Consider modifying.
                     combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True)

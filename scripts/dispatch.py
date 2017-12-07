@@ -99,6 +99,14 @@ def main():
                     task = TestLocus(combined, settings, base_output_dir, gene, snp, gwas_file, eqtl_file)
                     task.run()
 
+    # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
+    # TODO: Move this to a separate function
+    for gwas_file in gwas_files:
+        gwas_suffix = gwas_file.split("/")[-1].split(".")[0].replace(".", "_")
+
+        subprocess.check_call("mkdir -p {0}/manhattan", shell=True)
+        subprocess.check_call("Rscript /users/mgloud/projects/brain_gwas/scripts/full_genome_plot.R {0}/{1}_finemap_clpp_status.txt {0}/manhattan".format(base_output_dir, gwas_suffix), shell=True)
+
     # Clean up after ourselves
 
     # Don't do this. This is dangerous because if multiple instances of the pipeline are running

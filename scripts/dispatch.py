@@ -73,6 +73,13 @@ def main():
                 gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
                 eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
 
+                # Skip it if this entire locus has no genes
+                if isinstance(eqtl_data, basestring):
+                    # Write skipped variants to a file, for later reference.
+                    with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
+                        a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, "-1", eqtl_data))
+                    continue
+
                 # Temporary mod for splice eQTLs. May be best to specify a "feature" ID in the future
                 if 'feature' in eqtl_data:
                     eqtl_data['gene'] = eqtl_data['feature']

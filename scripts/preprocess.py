@@ -121,6 +121,9 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
 
+    if eqtls.shape[0] == 0:
+        return "Gene desert." 
+
     if "ref_allele_header" in settings['eqtl_experiments'][eqtl_file]:
         eqtl_table['ref'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
     if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:

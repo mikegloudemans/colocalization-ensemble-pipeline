@@ -111,7 +111,7 @@ def main():
     for gwas_file in gwas_files:
         gwas_suffix = gwas_file.split("/")[-1].split(".")[0].replace(".", "_")
 
-        subprocess.check_call("mkdir -p {0}/manhattan", shell=True)
+        subprocess.check_call("mkdir -p {0}/manhattan".format(base_output_dir), shell=True)
         subprocess.check_call("Rscript /users/mgloud/projects/brain_gwas/scripts/full_genome_plot.R {0}/{1}_finemap_clpp_status.txt {0}/manhattan".format(base_output_dir, gwas_suffix), shell=True)
 
     # Clean up after ourselves

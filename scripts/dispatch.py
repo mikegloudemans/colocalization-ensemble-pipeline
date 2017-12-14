@@ -13,6 +13,7 @@ from shutil import copyfile
 import datetime
 import subprocess
 import math
+from multiprocessing import Pool
 
 # Custom libraries
 import config
@@ -67,10 +68,17 @@ def main():
         # For each eQTL experiment:
         for eqtl_file in eqtl_files:
 
-            # For each GWAS SNP selected above...
-            for snp in snp_list:
-
-                analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir)
+            # Run key SNPs in parallel
+            pool = Pool(10) # use max of 10 cores
+            for i in xrange(0, len(snp_list)):
+                snp = snp_list[i]
+                print "Running", snp
+                pool.apply_async(analyze_snp, args=(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir))
+            pool.close()
+            pool.join()
+            
+            #for snp in snp_list:
+                #analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir)
 
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
     # TODO: Move this to a separate function
@@ -85,6 +93,7 @@ def main():
 
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir):
+    print "yo", snp.pos
 
     # Load relevant GWAS and eQTL data.
     gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data

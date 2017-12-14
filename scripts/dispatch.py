@@ -70,42 +70,7 @@ def main():
             # For each GWAS SNP selected above...
             for snp in snp_list:
 
-                # Load relevant GWAS and eQTL data.
-                gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
-                eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
-
-                # Skip it if this entire locus has no genes
-                if isinstance(eqtl_data, basestring):
-                    # Write skipped variants to a file, for later reference.
-                    with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
-                        a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, "-1", eqtl_data))
-                    continue
-
-                # Temporary mod for splice eQTLs. May be best to specify a "feature" ID in the future
-                if 'feature' in eqtl_data:
-                    eqtl_data['gene'] = eqtl_data['feature']
-
-                # Get all genes whose eQTLs we're testing at this locus
-                genes = set(eqtl_data['gene'])
-               
-                # Loop through all genes now
-                for gene in genes:
-                    # NOTE: It might be easier to just do this step once outside of this loop,
-                    # and then filter down to the gene of interest. Consider modifying.
-                    combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True)
-
-                    # Skip it if this site is untestable.
-                    if isinstance(combined, basestring):
-                        # Write skipped variants to a file, for later reference.
-                        with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
-                            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, gene, combined))
-                        continue
-
-                    # Create a TestLocus object using merged GWAS and eQTL,
-                    # any important metadata about the experiment such as the directory,
-                    # and the Config object.
-                    task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file)
-                    task.run()
+                analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir)
 
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
     # TODO: Move this to a separate function
@@ -117,6 +82,48 @@ def main():
 
     # Clean up after ourselves
     subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
+
+def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir):
+
+    # Load relevant GWAS and eQTL data.
+    gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
+    eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
+
+    # Skip it if this entire locus has no genes
+    if isinstance(eqtl_data, basestring):
+        # Write skipped variants to a file, for later reference.
+        with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, "-1", eqtl_data))
+        return
+
+    # Temporary mod for splice eQTLs. May be best to specify a "feature" ID in the future
+    if 'feature' in eqtl_data:
+        eqtl_data['gene'] = eqtl_data['feature']
+
+    # Get all genes whose eQTLs we're testing at this locus
+    genes = set(eqtl_data['gene'])
+   
+    # Loop through all genes now
+    for gene in genes:
+        # NOTE: It might be easier to just do this step once outside of this loop,
+        # and then filter down to the gene of interest. Consider modifying.
+        combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True)
+
+        # Skip it if this site is untestable.
+        if isinstance(combined, basestring):
+            # Write skipped variants to a file, for later reference.
+            with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
+                a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, gene, combined))
+            continue
+
+        # Create a TestLocus object using merged GWAS and eQTL,
+        # any important metadata about the experiment such as the directory,
+        # and the Config object.
+        task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file)
+        task.run()
+
+
 
 if __name__ == "__main__":
 	main()

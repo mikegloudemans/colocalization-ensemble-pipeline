@@ -59,27 +59,43 @@ def main():
     gwas_files = [f for f in settings["gwas_experiments"]]
     eqtl_files = [f for f in settings["eqtl_experiments"]]
 
+
     # For each GWAS experiment:
     for gwas_file in gwas_files:
 
+        gwas_snp_list = []
         # Get a list of which SNPs we should test in this GWAS.
-        snp_list = preprocess.select_test_snps(gwas_file, settings["gwas_threshold"])
+        
+        if "selection_basis" not in settings or settings["selection_basis"] == "gwas" or settings["selection_basis"] == "both":
+            gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings["gwas_threshold"]))
 
         # For each eQTL experiment:
         for eqtl_file in eqtl_files:
 
+            eqtl_snp_list = []
+            if "selection_basis" in settings and (settings["selection_basis"] == "eqtl" or settings["selection_basis"] == "both"):
+                eqtl_snp_list.extend(preprocess.select_test_snps_by_eqtl(eqtl_file, settings["eqtl_threshold"]))
+
+            snp_list = eqtl_snp_list + gwas_snp_list
+            print("Testing {2} SNPs ({0} GWAS SNPs and {1} eQTL SNPs).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
+
             # Run key SNPs in parallel
             pool = Pool(10) # use max of 10 cores
-            for i in xrange(0, len(snp_list)):
-                snp = snp_list[i]
-                print "Running", snp
-                pool.apply_async(analyze_snp, args=(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir))
+            for i in xrange(0, len(eqtl_snp_list)):
+                snp = eqtl_snp_list[i]
+                pool.apply_async(analyze_snp, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
+            pool.close()
+            pool.join()
+ 
+            # Run GWAS SNPs separately just in case there happen to be any overlaps,
+            # which could lead to a race.
+            pool = Pool(10) # use max of 10 cores
+            for i in xrange(0, len(gwas_snp_list)):
+                snp = gwas_snp_list[i]
+                pool.apply_async(analyze_snp, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
             pool.close()
             pool.join()
             
-            #for snp in snp_list:
-                #analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir)
-
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
     # TODO: Move this to a separate function
     for gwas_file in gwas_files:
@@ -92,8 +108,8 @@ def main():
     subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
 
 
-def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir):
-    print "yo", snp.pos
+def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene=-1):
+
 
     # Load relevant GWAS and eQTL data.
     gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
@@ -111,7 +127,10 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         eqtl_data['gene'] = eqtl_data['feature']
 
     # Get all genes whose eQTLs we're testing at this locus
-    genes = set(eqtl_data['gene'])
+    if restrict_gene == -1:
+        genes = set(eqtl_data['gene'])
+    else:
+        genes = [restrict_gene]
    
     # Loop through all genes now
     for gene in genes:

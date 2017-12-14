@@ -173,10 +173,9 @@ def purge_tmp_files(locus):
     # (To avoid conflicts here, make sure each gwas/eqtl/snp triplet is run in its own process;
     # doubling up would cause problems).
 
-    subprocess.call("rm -r {4}/vcftools/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.basedir), shell=True)
-    subprocess.call("rm -r {4}/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.basedir), shell=True)
-    subprocess.call("rm -r {4}/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.basedir), shell=True)
-
+    subprocess.call("rm -rf {4}/vcftools/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir), shell=True)
+    subprocess.call("rm -rf {4}/ecaviar/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir), shell=True)
+    subprocess.call("rm -rf {4}/plink/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir), shell=True)
 def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     
     # TODO: Spot check all of these tests to ensure they're working as desired.

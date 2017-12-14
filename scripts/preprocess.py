@@ -21,7 +21,7 @@ else:
 
 # Input: gwas file location, threshold of significance, minimum distance
 # between two selected SNPs.  Output: A list of significant SNPs to test.
-def select_test_snps(gwas_file, gwas_threshold, window=1000000):
+def select_test_snps_by_gwas(gwas_file, gwas_threshold, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
@@ -30,7 +30,7 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
     subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
     # TODO: Fix this line! Something is wrong with it I guess
     subset['pvalue'] = subset['pvalue'].astype(float)
-    subset = subset[subset['pvalue'] < gwas_threshold]
+    subset = subset[subset['pvalue'] <= gwas_threshold]
 
     all_snps = [tuple(x) for x in subset.values]
     all_snps = sorted(all_snps, key=operator.itemgetter(2))
@@ -75,9 +75,53 @@ def select_test_snps(gwas_file, gwas_threshold, window=1000000):
         if not skip:
                 snps_to_test.append(snp)
     
-    print("Testing {0} SNPs.".format(len(snps_to_test)))
+
+    # -1 here means unrestricted to a certain gene
+    snps_to_test = [(s, -1) for s in snps_to_test]
 
     return snps_to_test
+
+def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold):
+
+    print("Selecting eQTL hits from {0}".format(eqtl_file))
+
+    snps_to_test = []
+
+    # Load eQTL file
+    stream = StringIO(subprocess.check_output("zcat {0} | head -n 1000000".format(eqtl_file), shell=True))
+    eqtl_table = pd.read_csv(stream, sep="\t")
+   
+    # In case we're dealing with splice QTLs
+    if 'feature' in eqtl_table:
+        eqtl_table['gene'] = eqtl_table['feature']
+ 
+    # I've copied this code from the later eQTL pre-processing section;
+    # this should eventually be sent to a separate function
+    if "chisq" in eqtl_table:
+        # Here we're dealing with RASQUAL data
+        # where effect size is given by allelic imbalance percentage pi.
+        # Use max function to protect against underflow in chi2 computation
+        eqtl_table['pvalue'] = stats.chi2.sf(eqtl_table["chisq"],1)
+    
+    subset = eqtl_table[['chr', 'snp_pos', 'pvalue', 'gene']]
+    # TODO: Fix this line! Something is wrong with it I guess
+    subset['pvalue'] = subset['pvalue'].astype(float)
+    # Filter out SNPs below p-value threshold
+    subset = subset[subset['pvalue'] <= eqtl_threshold]
+
+    # Get list of remaining genes
+    genes = list(set(subset['gene']))
+    print genes
+
+    # For each gene, determine the most significant SNP and add it to our list
+    for gene in genes:
+        gene_specific = subset[subset['gene'] == gene]
+        best = gene_specific.loc[gene_specific['pvalue'].idxmin()]
+        snps_to_test.append((SNP.SNP((best['chr'], best['snp_pos'], best['pvalue'])), gene))
+
+
+    return snps_to_test
+    
 
 
 # Load summary statistics for GWAS

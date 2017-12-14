@@ -12,7 +12,7 @@ import plot_loci as plot
 import math
 
 class TestLocus:
-    def __init__(self, data, settings, basedir, gene, snp, gwas_file, eqtl_file):
+    def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file):
         self.basedir = basedir
         self.data = data
         self.settings = settings
@@ -24,6 +24,7 @@ class TestLocus:
         self.eqtl_suffix = eqtl_file.split("/")[-1].replace(".", "_")
         self.gwas_file = gwas_file
         self.eqtl_file = eqtl_file
+        self.tmpdir = tmpdir
         self.conditional_level = 0      # Currently serves no purpose, but may be implemented later        
 
     # Run colocalization tests. Which ones to do will depend
@@ -77,7 +78,7 @@ class TestLocus:
         '''
     
         # For debugging:
-        plotworthy = True
+        #plotworthy = True
 
         # Plot the result if it's significant.
         if plotworthy:

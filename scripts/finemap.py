@@ -34,9 +34,9 @@ def prep_finemap(locus, window):
     combined = locus.data.copy()
 
     # Make required directories for FINEMAP eCAVIAR analysis
-    subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
-    subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
-    subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/vcftools/{1}/{2}_{3}/{4}".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/plink/{1}/{2}_{3}/{4}".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/ecaviar/{1}/{2}_{3}/{4}".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     subprocess.call("mkdir -p {0}/finemap".format(locus.basedir), shell=True)
     
     # Get VCF file paths
@@ -57,7 +57,7 @@ def prep_finemap(locus, window):
         removal_list = compute_ld(vcf, locus, "eqtl")
         if removal_list == "Fail":
             return "Fail"
-        subprocess.check_call("cp /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
+        subprocess.check_call("cp {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
 
         # Remove indices that produced NaNs in the LD computations
         removal_list = list(set(removal_list))
@@ -101,11 +101,11 @@ def prep_finemap(locus, window):
         return "Fail"
 
 
-    with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
+    with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
         snps.to_csv(w, index=False, header=False, sep=" ")
 
-    with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "w") as w:
+    with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_gwas']]	
         snps.to_csv(w, index=False, header=False, sep=" ")
     
@@ -120,22 +120,22 @@ def launch_finemap(locus, window, top_hits):
     gwas_n = locus.settings["ref_genomes"][locus.settings["gwas_experiments"][locus.gwas_file]["ref"]]["N"]
 
     # Write config file for finemap
-    subprocess.check_call('echo "z;ld;snp;config;n-ind" > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
-    subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.config;{6}" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, gwas_n), shell=True)
-    subprocess.check_call('echo "/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp;/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.config;{6}" >> /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, eqtl_n), shell=True)
+    subprocess.check_call('echo "z;ld;snp;config;n-ind" > {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
+    subprocess.check_call('echo "{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.config;{6}" >> {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, gwas_n, locus.tmpdir), shell=True)
+    subprocess.check_call('echo "{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.config;{6}" >> {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, eqtl_n, locus.tmpdir), shell=True)
     
     # Run FINEMAP
-    subprocess.check_call('finemap --sss --in-files /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max 1 --n-iterations 1000000 --n-convergence 50000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
+    subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max 1 --n-iterations 1000000 --n-convergence 50000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
 
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []
     eqtl_probs = []
-    with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:
+    with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)) as f:
             f.readline()
             for line in f:
                     data = line.strip().split()
                     gwas_probs.append((int(data[1]), float(data[2])))
-    with open("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level)) as f:
+    with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)) as f:
             f.readline()
             for line in f:
                     data = line.strip().split()
@@ -150,8 +150,8 @@ def launch_finemap(locus, window, top_hits):
     finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
 
     if finemap_clpp > 0.001:
-        copyfile("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
-        copyfile("/users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
+        copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
+        copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
 
     # Write FINEMAP results to the desired file
     # Note: appending will always work, since results always go to a different directory for each run.
@@ -173,11 +173,9 @@ def purge_tmp_files(locus):
     # (To avoid conflicts here, make sure each gwas/eqtl/snp triplet is run in its own process;
     # doubling up would cause problems).
 
-    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/vcftools/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
-    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
-    subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene), shell=True)
-
-    pass
+    subprocess.call("rm -r {4}/vcftools/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.basedir), shell=True)
+    subprocess.call("rm -r {4}/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.basedir), shell=True)
+    subprocess.call("rm -r {4}/plink/{0}/{1}_{2}/{3} 2> /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.basedir), shell=True)
 
 def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     
@@ -283,19 +281,19 @@ def compute_ld(input_vcf, locus, data_type):
             return "Fail"
 
         # Write VCF to tmp file
-        vcf.to_csv('/users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), sep="\t", index=False, header=True)
+        vcf.to_csv('{7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), sep="\t", index=False, header=True)
 
         # Use PLINK to generate bim bam fam files
-        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
+        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
         subprocess.check_call(command, shell=True)
 
         # Use PLINK to generate LD score
-        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile /users/mgloud/projects/brain_gwas/tmp/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type)
+        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
         subprocess.check_call(command, shell=True)
 
         # See if nans remain. If so, remove the offending lines.
         try:
-            lines = [int(n.split(":")[0])-1 for n in subprocess.check_output("grep -n nan /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True).strip().split("\n")]
+            lines = [int(n.split(":")[0])-1 for n in subprocess.check_output("grep -n nan {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), shell=True).strip().split("\n")]
         except:
             break
 
@@ -309,6 +307,6 @@ def compute_ld(input_vcf, locus, data_type):
     removal_list = [list(input_vcf['ID']).index(id) for id in removal_list]
 
     # Replace tabs with spaces because FINEMAP requires this.
-    subprocess.check_call("cat /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld | sed s/\\\\t/\\ /g > /users/mgloud/projects/brain_gwas/tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type), shell=True)
+    subprocess.check_call("cat {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld | sed s/\\\\t/\\ /g > {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), shell=True)
 
     return removal_list

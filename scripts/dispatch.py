@@ -31,6 +31,7 @@ def main():
     # Make timestamped results directory, under which all output for this run will be stored.
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
+    base_tmp_dir = "/users/mgloud/projects/brain_gwas/tmp/{0}".format(now)
 
 
     # Read config file
@@ -103,7 +104,7 @@ def main():
                     # Create a TestLocus object using merged GWAS and eQTL,
                     # any important metadata about the experiment such as the directory,
                     # and the Config object.
-                    task = TestLocus(combined, settings, base_output_dir, gene, snp, gwas_file, eqtl_file)
+                    task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file)
                     task.run()
 
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
@@ -115,10 +116,7 @@ def main():
         subprocess.check_call("Rscript /users/mgloud/projects/brain_gwas/scripts/full_genome_plot.R {0}/{1}_finemap_clpp_status.txt {0}/manhattan".format(base_output_dir, gwas_suffix), shell=True)
 
     # Clean up after ourselves
-
-    # Don't do this. This is dangerous because if multiple instances of the pipeline are running
-    # at the same time, one can erase the other's data.
-    #subprocess.call("rm -r /users/mgloud/projects/brain_gwas/tmp/*", shell=True)
+    subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
 
 if __name__ == "__main__":
 	main()

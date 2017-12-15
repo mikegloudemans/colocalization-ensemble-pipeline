@@ -34,7 +34,6 @@ def main():
     base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
     base_tmp_dir = "/users/mgloud/projects/brain_gwas/tmp/{0}".format(now)
 
-
     # Read config file
     settings = config.load_config(config_file)
     if "output_suffix" in settings:
@@ -65,34 +64,39 @@ def main():
 
         gwas_snp_list = []
         # Get a list of which SNPs we should test in this GWAS.
-        
+
         if "selection_basis" not in settings or settings["selection_basis"] == "gwas" or settings["selection_basis"] == "both":
-            gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings["gwas_threshold"]))
+            gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold']),)
 
         # For each eQTL experiment:
         for eqtl_file in eqtl_files:
 
             eqtl_snp_list = []
             if "selection_basis" in settings and (settings["selection_basis"] == "eqtl" or settings["selection_basis"] == "both"):
-                eqtl_snp_list.extend(preprocess.select_test_snps_by_eqtl(eqtl_file, settings["eqtl_threshold"]))
+                eqtl_subset = -1
+                if "selection_subset" in settings['eqtl_experiments'][eqtl_file]:
+                    eqtl_subset = settings['eqtl_experiments'][eqtl_file]["selection_subset"]
+                eqtl_snp_list.extend(preprocess.select_test_snps_by_eqtl(eqtl_file, settings['eqtl_threshold'], eqtl_subset))
 
             snp_list = eqtl_snp_list + gwas_snp_list
             print("Testing {2} SNPs ({0} GWAS SNPs and {1} eQTL SNPs).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
 
+            max_cores = 20
+
             # Run key SNPs in parallel
-            pool = Pool(10) # use max of 10 cores
+            pool = Pool(max_cores)
             for i in xrange(0, len(eqtl_snp_list)):
                 snp = eqtl_snp_list[i]
-                pool.apply_async(analyze_snp, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
+                pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
             pool.close()
             pool.join()
  
             # Run GWAS SNPs separately just in case there happen to be any overlaps,
             # which could lead to a race.
-            pool = Pool(10) # use max of 10 cores
+            pool = Pool(max_cores)
             for i in xrange(0, len(gwas_snp_list)):
                 snp = gwas_snp_list[i]
-                pool.apply_async(analyze_snp, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
+                pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
             pool.close()
             pool.join()
             
@@ -106,6 +110,16 @@ def main():
 
     # Clean up after ourselves
     subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
+
+# If we're running in parallel and a thread fails, instead of crashing the entire process, just catch the exception
+# and log it to a file so we can fix it later.
+def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene=-1):
+    try:
+        analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene)
+    except Exception as e:
+        with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, str(e)))
 
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene=-1):
@@ -131,12 +145,13 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         genes = set(eqtl_data['gene'])
     else:
         genes = [restrict_gene]
-   
+
     # Loop through all genes now
     for gene in genes:
         # NOTE: It might be easier to just do this step once outside of this loop,
         # and then filter down to the gene of interest. Consider modifying.
-        combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True)
+        allow_insignificant_gwas = restrict_gene != -1
+        combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True, allow_insignificant_gwas=allow_insignificant_gwas)
 
         # Skip it if this site is untestable.
         if isinstance(combined, basestring):

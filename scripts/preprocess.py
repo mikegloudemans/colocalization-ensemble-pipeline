@@ -11,6 +11,7 @@ import operator
 import SNP 
 from scipy import stats 
 import math
+import gzip
 
 import sys 
 if sys.version_info[0] < 3: 
@@ -81,48 +82,72 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, window=1000000):
 
     return snps_to_test
 
-def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold):
+def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
 
     print("Selecting eQTL hits from {0}".format(eqtl_file))
 
     snps_to_test = []
 
     # Load eQTL file
-    stream = StringIO(subprocess.check_output("zcat {0} | head -n 1000000".format(eqtl_file), shell=True))
-    eqtl_table = pd.read_csv(stream, sep="\t")
-   
-    # In case we're dealing with splice QTLs
-    if 'feature' in eqtl_table:
-        eqtl_table['gene'] = eqtl_table['feature']
- 
-    # I've copied this code from the later eQTL pre-processing section;
-    # this should eventually be sent to a separate function
-    if "chisq" in eqtl_table:
-        # Here we're dealing with RASQUAL data
-        # where effect size is given by allelic imbalance percentage pi.
-        # Use max function to protect against underflow in chi2 computation
-        eqtl_table['pvalue'] = stats.chi2.sf(eqtl_table["chisq"],1)
-    
-    subset = eqtl_table[['chr', 'snp_pos', 'pvalue', 'gene']]
-    # TODO: Fix this line! Something is wrong with it I guess
-    subset['pvalue'] = subset['pvalue'].astype(float)
-    # Filter out SNPs below p-value threshold
-    subset = subset[subset['pvalue'] <= eqtl_threshold]
+    with gzip.open(eqtl_file) as stream:
 
-    # Get list of remaining genes
-    genes = list(set(subset['gene']))
-    print genes
+        header = stream.readline().strip().split()
+        if "pvalue" not in header and "chisq" in header:
+            mode = "chisq"
+            pval_index = header.index("chisq")
+        else:
+            mode = "pvalue"
+            pval_index = header.index("pvalue")
+
+        if "feature" in header:
+            feature_index = header.index("feature")
+        else:
+            feature_index = header.index("gene")
+        pos_index = header.index("snp_pos")
+        chrom_index = header.index("chr")
+
+        gene_bests = {}
+
+        if subset_file != -1:
+            feature_subset = []
+            with open(subset_file) as f:
+                for line in f:
+                    feature_subset.append(line.strip())
+            feature_subset = set(feature_subset)
+
+        i = 0
+        for line in stream:
+            i += 1
+            if i % 1000000 == 0:
+                print "eQTLs parsed", len(gene_bests.keys())
+            data = line.split()
+            feature = data[feature_index]
+
+            if subset_file != -1:
+                if feature not in feature_subset:
+                    continue
+
+            if mode == "chisq":
+                # This is the rate-limiting step in this section
+                # TODO: When running for full genome, just take max chisq
+                # value as best, and then compute p-values at the end
+                # This will be much faster
+                pvalue = stats.chi2.sf(float(data[pval_index]),1)
+            else:
+                pvalue = float(data[pval_index])
+        
+            if pvalue > eqtl_threshold:
+                continue
+
+            if feature not in gene_bests or gene_bests[feature][2] > pvalue:
+                gene_bests[feature] = (data[chrom_index], data[pos_index], pvalue)
 
     # For each gene, determine the most significant SNP and add it to our list
-    for gene in genes:
-        gene_specific = subset[subset['gene'] == gene]
-        best = gene_specific.loc[gene_specific['pvalue'].idxmin()]
-        snps_to_test.append((SNP.SNP((best['chr'], best['snp_pos'], best['pvalue'])), gene))
-
+    for gene in gene_bests:
+        best = gene_bests[gene]
+        snps_to_test.append((SNP.SNP((best[0], best[1], best[2])), gene))
 
     return snps_to_test
-    
-
 
 # Load summary statistics for GWAS
 def get_gwas_data(gwas_file, snp, settings, window=500000):
@@ -196,8 +221,7 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
 #   GWAS SNP as a tuple.
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
-def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window=500000, unsafe=False):
-
+def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window=500000, unsafe=False, allow_insignificant_gwas=False):
     # TODO TODO TODO: Fix the SettingWithCopyWarning. It seems likely to be error-prone, according
     # to the manual!
 
@@ -276,7 +300,9 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     if combined.shape[0] == 0: 
         return "No overlapping SNPs in eQTL and GWAS"
 
-    if min(combined['pvalue_gwas']) > settings["gwas_threshold"]:
+    # TODO: Figure out how this works out when we're filtering based on eQTLs...
+    # as it is right now, there's potential for trouble
+    if not allow_insignificant_gwas and min(combined['pvalue_gwas']) > settings["gwas_threshold"]:
         return "No significant GWAS SNPs are in eQTL dataset (too rare)"
 
     return combined

@@ -12,9 +12,14 @@ args <- commandArgs(TRUE)
 input_file = args[1]
 output_dir = args[2]
 
+if (length(args) > 2)
+{
+	eqtl_filter = args[3]
+}
+
 # Load data
 results = read_delim(input_file, col_names=FALSE, delim ="\t")
-colnames(results) = c("snp", "eqtl_study", "gwas_study", "gene", "conditional_level", "snps_tested", "clpp_score")
+colnames(results) = c("snp", "eqtl_study", "gwas_study", "gene", "conditional_level", "snps_tested", "clpp_score", "gwas_log_pval", "eqtl_log_pval")
 chrs = read_delim("/mnt/lab_data/montgomery/shared/genomes/hg19/hg19.dict", delim="\t", skip=1, col_names=FALSE)
 
 # Munging to get cumulative position in genome for each chromosome
@@ -28,6 +33,9 @@ chrs = chrs[,-c(1:5)]
 # Munging results data
 results$chrom = as.numeric(sapply(unlist(results[,1]), function(x){strsplit(x,"_")[[1]][1]}))
 results$pos = as.numeric(sapply(unlist(results[,1]), function(x){strsplit(x,"_")[[1]][2]}))
+
+# Temporary changes to investigate alternative plot scales 
+#results$clpp_score = sapply(results$clpp_score, function(x){min(0.02, x)})
 
 # Getting chromosomal location for each data point
 full_results = inner_join(results, chrs, by=c("chrom"))
@@ -44,8 +52,10 @@ for (gwas_file in unique(full_results$gwas_study))
 	for (eqtl_file in unique(full_results$eqtl_study))
 	{
 		results_subset = full_results[(full_results$gwas_study == gwas_file) & (full_results$eqtl_study == eqtl_file),]
+		results_subset$clpp_score = sqrt(results_subset$clpp_score)
 
-		top_results = results_subset[results_subset$clpp_score > 0.005,]
+		#top_results = results_subset[results_subset$clpp_score > 0.005,]
+		top_results = results_subset[results_subset$clpp_score > sqrt(0.005),]
 		if (dim(top_results)[1] == 0)
 		{
 			next

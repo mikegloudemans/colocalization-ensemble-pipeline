@@ -20,6 +20,7 @@ import math
 def run_finemap(locus, window=500000):
 
     pf = prep_finemap(locus, window)
+    # TODO: Make it write to an error or a "skipped" file instead of failing silently.
     if pf == "Fail":
         return "Fail"
     return launch_finemap(locus, window, pf)
@@ -95,10 +96,13 @@ def prep_finemap(locus, window):
             evcf = evcf.drop(evcf.index[removal_list])
             gvcf = gvcf.drop(gvcf.index[removal_list])
 
+    # NOTE: In practice this is a good thing to do because it speeds everything up; for
+    # now though it's causing us to miss sites that we really want to test anyway. Consider
+    # doing fast mode instead
     # Check to see whether we still even have a signficant GWAS variant and a significant eQTL variant.
     # If not, there's really no point continuing with this test.
-    if min(combined["pvalue_gwas"]) > locus.settings["gwas_threshold"] or min(combined["pvalue_eqtl"]) > locus.settings["eqtl_threshold"]:
-        return "Fail"
+    #if min(combined["pvalue_gwas"]) > locus.settings["gwas_threshold"] or min(combined["pvalue_eqtl"]) > locus.settings["eqtl_threshold"]:
+    #    return "Fail"
 
 
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:

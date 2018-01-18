@@ -45,6 +45,9 @@ class TestLocus:
             if not clpp == "Fail" and clpp > 0.005: 
                 plotworthy = True
 
+            # NOTE: Temporary; for debugging
+            if clpp == "Fail":
+                print "FAILED Analyzing {0} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval)
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)

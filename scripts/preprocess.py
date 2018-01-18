@@ -95,6 +95,7 @@ def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
         if "pvalue" not in header and "chisq" in header:
             mode = "chisq"
             pval_index = header.index("chisq")
+            chisq_threshold = stats.chi2.isf(eqtl_threshold,1)
         else:
             mode = "pvalue"
             pval_index = header.index("pvalue")
@@ -128,24 +129,27 @@ def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
                     continue
 
             if mode == "chisq":
-                # This is the rate-limiting step in this section
-                # TODO: When running for full genome, just take max chisq
-                # value as best, and then compute p-values at the end
-                # This will be much faster
-                pvalue = stats.chi2.sf(float(data[pval_index]),1)
+                chisq = float(data[pval_index])
+                if chisq < chisq_threshold:
+                    continue
+
+                if feature not in gene_bests or gene_bests[feature][2] < chisq:
+                    gene_bests[feature] = (data[chrom_index], data[pos_index], chisq)
             else:
                 pvalue = float(data[pval_index])
-        
-            if pvalue > eqtl_threshold:
-                continue
+                if pvalue > eqtl_threshold:
+                    continue
 
-            if feature not in gene_bests or gene_bests[feature][2] > pvalue:
-                gene_bests[feature] = (data[chrom_index], data[pos_index], pvalue)
+                if feature not in gene_bests or gene_bests[feature][2] > pvalue:
+                    gene_bests[feature] = (data[chrom_index], data[pos_index], pvalue)
 
     # For each gene, determine the most significant SNP and add it to our list
     for gene in gene_bests:
         best = gene_bests[gene]
-        snps_to_test.append((SNP.SNP((best[0], best[1], best[2])), gene))
+        if mode == "chisq":
+            snps_to_test.append((SNP.SNP((best[0], best[1], stats.chi2.sf(best[2], 1))), gene))
+        else:
+            snps_to_test.append((SNP.SNP((best[0], best[1], best[2])), gene))
 
     return snps_to_test
 
@@ -163,6 +167,10 @@ def get_gwas_data(gwas_file, snp, settings, window=500000):
         gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']]
     if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
         gwas_table['alt'] = gwas_table[settings['gwas_experiments'][gwas_file]['alt_allele_header']]
+
+    gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
+    gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
+
 
     # Figure out whether GWAS scores are in odds ratio or beta-se format
     # TODO: Specify standard for format to make this part run more smoothly.
@@ -198,6 +206,9 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
     if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:
         eqtl_table['alt'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
 
+    eqtl_table['ref'] = eqtl_table['ref'].apply(lambda x: x.upper())
+    eqtl_table['alt'] = eqtl_table['alt'].apply(lambda x: x.upper())
+
     eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)
 
     # TODO: Specify standard formats to reduce confusion here. 
@@ -232,7 +243,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
 
-    if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos'] - 50000):
+    if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos']) - 50000:
             return "SNP outside range."
  
     # If not explicitly allowing them, remove pvalues with danger

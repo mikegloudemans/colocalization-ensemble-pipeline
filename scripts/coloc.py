@@ -32,7 +32,8 @@ def prep_coloc(locus, window):
 
 def launch_coloc(locus, window):
     # Launch an R script to run the coloc package.
-    # NOTE: UNSAFE call here. Fix these all over the code. I should make a safe subprocess module that makes it impossible to accidentally remove the hard drive or whatever
+    # NOTE: UNSAFE call here. Fix these all over the code. I should use piped input with shell=False instead
+    # Do not distribute before fixing this.
     coloc_prob_h4 = float(subprocess.check_output("Rscript /users/mgloud/projects/brain_gwas/scripts/run_coloc.R /users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv {6} {7} {8} {9}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, \
         locus.settings["gwas_experiments"][locus.gwas_file]["N"], \
         locus.settings["gwas_experiments"][locus.gwas_file]["s"], \

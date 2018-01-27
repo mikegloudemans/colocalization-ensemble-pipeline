@@ -52,10 +52,8 @@ for (gwas_file in unique(full_results$gwas_study))
 	for (eqtl_file in unique(full_results$eqtl_study))
 	{
 		results_subset = full_results[(full_results$gwas_study == gwas_file) & (full_results$eqtl_study == eqtl_file),]
-		results_subset$clpp_score = sqrt(results_subset$clpp_score)
 
-		#top_results = results_subset[results_subset$clpp_score > 0.005,]
-		top_results = results_subset[results_subset$clpp_score > sqrt(0.005),]
+		top_results = results_subset[results_subset$clpp_score > 0.005,]
 		if (dim(top_results)[1] == 0)
 		{
 			next

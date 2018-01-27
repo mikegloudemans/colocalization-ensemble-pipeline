@@ -78,11 +78,12 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, window=1000000):
     
 
     # -1 here means unrestricted to a certain gene
+    # TODO: Just make this part of the SNP object so that we can test SNP/gene pairs for equality
     snps_to_test = [(s, -1) for s in snps_to_test]
 
     return snps_to_test
 
-def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
+def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
 
     print("Selecting eQTL hits from {0}".format(eqtl_file))
 
@@ -91,11 +92,15 @@ def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
     # Load eQTL file
     with gzip.open(eqtl_file) as stream:
 
+        # TODO: I may have tried this before, but I don't see what we don't
+        # just convert chisq to p-value straight off the bat to make things simple?
+        # But I shouldn't fix this until I'm about to run it on chisq-formatted samples again
         header = stream.readline().strip().split()
-        if "pvalue" not in header and "chisq" in header:
+        if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == "chisq":
+            assert 'chisq' in header
             mode = "chisq"
             pval_index = header.index("chisq")
-            chisq_threshold = stats.chi2.isf(eqtl_threshold,1)
+            chisq_threshold = stats.chi2.isf(settings['eqtl_threshold'],1)
         else:
             mode = "pvalue"
             pval_index = header.index("pvalue")
@@ -118,11 +123,20 @@ def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
 
         i = 0
         for line in stream:
-            i += 1
-            if i % 1000000 == 0:
-                print "eQTLs parsed", len(gene_bests.keys())
+            i = i + 1
+            if i % 3000000 == 0:
+                # NOTE temporary!
+                pass
+                #break
             data = line.split()
             feature = data[feature_index]
+            chrom = data[chrom_index].replace("chr", "")
+
+            # Exclude sex chromosomes for now
+            try:
+                chrom = int(chrom)
+            except:
+                continue
 
             if subset_file != -1:
                 if feature not in feature_subset:
@@ -134,14 +148,14 @@ def select_test_snps_by_eqtl(eqtl_file, eqtl_threshold, subset_file=-1):
                     continue
 
                 if feature not in gene_bests or gene_bests[feature][2] < chisq:
-                    gene_bests[feature] = (data[chrom_index], data[pos_index], chisq)
+                    gene_bests[feature] = (chrom, data[pos_index], chisq)
             else:
                 pvalue = float(data[pval_index])
-                if pvalue > eqtl_threshold:
+                if pvalue > settings['eqtl_threshold']:
                     continue
 
                 if feature not in gene_bests or gene_bests[feature][2] > pvalue:
-                    gene_bests[feature] = (data[chrom_index], data[pos_index], pvalue)
+                    gene_bests[feature] = (chrom, data[pos_index], pvalue)
 
     # For each gene, determine the most significant SNP and add it to our list
     for gene in gene_bests:
@@ -158,11 +172,14 @@ def get_gwas_data(gwas_file, snp, settings, window=500000):
 
     # Get GWAS data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(gwas_file), shell=True)
+
     raw_gwas = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(gwas_file, \
+            snp.chrom, snp.pos - window, snp.pos + window), shell=True) + \
+            subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(gwas_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
-
+    
     if "ref_allele_header" in settings['gwas_experiments'][gwas_file]:
         gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']]
     if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
@@ -171,21 +188,27 @@ def get_gwas_data(gwas_file, snp, settings, window=500000):
     gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
     gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
 
+    #
+    # 'gwas_format' must be specified, to make sure the users know what they're doing.
+    #
+    # Possible settings for 'gwas_format':
+    #   - case_control
+    #   - effect_size
+    #   - pval_only (requires effect direction)
+    #
 
-    # Figure out whether GWAS scores are in odds ratio or beta-se format
-    # TODO: Specify standard for format to make this part run more smoothly.
-    # TODO: Have an input config parameter be something like "gwas_format": "case-control" or something like that, to make sure the user knows
-    #       what they're doing.
-    if 'log_or' in gwas_table and 'se' in gwas_table:
+    if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'case_control':
+        assert 'log_or' in gwas_table and 'se' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['log_or'] / gwas_table['se']
-    elif 'beta' in gwas_table:
+    elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'effect_size':
+        assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
-    elif 'pvalue' in gwas_table and "direction" in gwas_table:
-        # This is the format for RPE.
+    elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
+        assert 'pvalue' in gwas_table and "direction" in gwas_table
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
         gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) * (2*(gwas_table["direction"] == "+")-1)
     else:
-        return None
+        return "Improper GWAS format specification"
 
     return gwas_table
 
@@ -199,32 +222,47 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
     eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
 
     if eqtls.shape[0] == 0:
-        return "Gene desert." 
+        return "Gene desert."
 
+    # Should probably eventually remove the following four lines, just to simplify things
+    '''
     if "ref_allele_header" in settings['eqtl_experiments'][eqtl_file]:
         eqtl_table['ref'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
     if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:
         eqtl_table['alt'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
+    '''
 
-    eqtl_table['ref'] = eqtl_table['ref'].apply(lambda x: x.upper())
-    eqtl_table['alt'] = eqtl_table['alt'].apply(lambda x: x.upper())
+    eqtls['ref'] = eqtls['ref'].apply(lambda x: x.upper())
+    eqtls['alt'] = eqtls['alt'].apply(lambda x: x.upper())
 
-    eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)
+    eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)#
+    
+    #
+    # 'eqtl_format' must be specified, to make sure the users know what they're doing.
+    #
+    # Possible settings for 'eqtl_format':
+    #   - tstat
+    #   - effect_size
+    #   - chisq
+    #
 
-    # TODO: Specify standard formats to reduce confusion here. 
     # TODO: Have inputs be either in rasqual format or in some other format, and specify this in the config, instead of arbitarily chekcing for chisq column
-    if 't-stat' in eqtls:
+    
+    if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'tstat':
+        assert 't-stat' in eqtls
         eqtls['ZSCORE'] = eqtls['t-stat']
-    elif 'beta' in eqtls:
+    elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'effect_size':
+        assert 'beta' in eqtls
         eqtls['ZSCORE'] = eqtls['beta'] / eqtls['se']
-    elif "chisq" in eqtls:
+    elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'chisq':
+        assert "chisq" in eqtls
         # Here we're dealing with RASQUAL data
         # where effect size is given by allelic imbalance percentage pi.
         # Use max function to protect against underflow in chi2 computation
         eqtls['pvalue'] = stats.chi2.sf(eqtls["chisq"],1)
         eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
     else:
-        return None
+        return "Improper eQTL format specification"
 
     return eqtls
 
@@ -243,11 +281,14 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
 
-    if snp.pos > max(eqtl_subset['snp_pos']) + 50000 or snp.pos < min(eqtl_subset['snp_pos']) - 50000:
+    if snp.pos > max(eqtl_subset['snp_pos']) - 50000 or snp.pos < min(eqtl_subset['snp_pos']) + 50000:
             return "SNP outside range."
  
     # If not explicitly allowing them, remove pvalues with danger
     # of underflow.
+
+    # TODO: This should also be fixable
+
     if min(eqtl_subset['pvalue']) < 1e-150:
         if unsafe:
             eqtl_subset['pvalue'] = eqtl_subset['pvalue'].apply(lambda x: max(x, 1e-150))
@@ -261,8 +302,10 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
             return "GWAS pvalue underflow."
 
     # Make sure all eQTLs are significant enough that this site is worth testing
-    if min(eqtl_subset['pvalue']) > settings["eqtl_threshold"]:
-        return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
+    # TODO: Figure out a better way of specifying how to do this thresholding; which ones to test
+    # to make things fast
+    #if min(eqtl_subset['pvalue']) > settings["eqtl_threshold"]:
+    #    return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
 
     # Get MAFs from 1000 Genomes.
     # Filter out multi-allelic or non-polymorphic sites.
@@ -277,13 +320,13 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
     #    m[2] = float(m[2].split(";")[1][3::])
     #mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
 
-   # TODO TODO: At this step filter out variants
+    # TODO TODO: At this step filter out variants
     # whose same position appears twice or more. (can steal the code 
     # that is currently used in the FINEMAP pipeline only). This is important 
     # because otherwise at this level some sites with 2 SNPs might be merged into
     # 2x2 SNPs or something like that
 
-    # TODO: Convert this to a join operation instead
+    # TODO: Convert this to an indexed join operation instead
     # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
     #combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
@@ -313,8 +356,8 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window
 
     # TODO: Figure out how this works out when we're filtering based on eQTLs...
     # as it is right now, there's potential for trouble
-    if not allow_insignificant_gwas and min(combined['pvalue_gwas']) > settings["gwas_threshold"]:
-        return "No significant GWAS SNPs are in eQTL dataset (too rare)"
+    #if not allow_insignificant_gwas and min(combined['pvalue_gwas']) > settings["gwas_threshold"]:
+    #    return "No significant GWAS SNPs are in eQTL dataset (too rare)"
 
     return combined
 

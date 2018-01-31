@@ -44,6 +44,11 @@ def main():
     # For each GWAS experiment:
     for gwas_file in gwas_files:
 
+        # Write header of output file for FINEMAP
+        gwas_suffix = gwas_file.split("/")[-1].replace(".", "_") 
+        with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+            w.write("ref_snp\teqtl_file\tgwas_file\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\n")
+
         gwas_snp_list = []
         # Get a list of which SNPs we should test in this GWAS.
 
@@ -79,6 +84,9 @@ def main():
             pool.close()
             pool.join()
  
+            # Clean up after ourselves
+            subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
             # Run GWAS SNPs separately just in case there happen to be any overlaps,
             # which could lead to a race.
             pool = Pool(max_cores)
@@ -87,7 +95,11 @@ def main():
                 pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
             pool.close()
             pool.join()
-            
+ 
+            # Clean up after ourselves
+            subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
+           
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
     # TODO: Move this to a separate function
     for gwas_file in gwas_files:
@@ -95,9 +107,6 @@ def main():
 
         subprocess.check_call("mkdir -p {0}/manhattan".format(base_output_dir), shell=True)
         subprocess.check_call("Rscript /users/mgloud/projects/brain_gwas/scripts/full_genome_plot.R {0}/{1}_finemap_clpp_status.txt {0}/manhattan".format(base_output_dir, gwas_suffix), shell=True)
-
-    # Clean up after ourselves
-    subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
 
 
 # If we're running in parallel and a thread fails, catch the exception
@@ -109,7 +118,6 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
         traceback.print_exc(file=sys.stdout)
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
             a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, str(e)))
-
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene=-1):
 

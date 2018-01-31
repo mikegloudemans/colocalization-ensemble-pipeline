@@ -161,7 +161,7 @@ def launch_finemap(locus, window, top_hits):
     # Note: appending will always work, since results always go to a different directory for each run.
     # TODO: Write headers for this file
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, locus.conditional_level, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1])))
+            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1])))
 
     return finemap_clpp
 
@@ -174,12 +174,12 @@ def purge_tmp_files(locus):
     # Answer: it's possible that other jobs are still using those files.
     # Only purge the specific files created in this run.
 
-    # (To avoid conflicts here, make sure each gwas/eqtl/snp triplet is run in its own process;
-    # doubling up would cause problems).
+    # (To avoid conflicts here, just make sure no two processes are examining exact same SNP/gene
+    # pair at the same time.)
 
-    subprocess.call("rm -rf {4}/vcftools/{0}/{1}_{2}/{3}/{5}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir, locus.gene), shell=True)
-    subprocess.call("rm -rf {4}/ecaviar/{0}/{1}_{2}/{3}/{5}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir, locus.gene), shell=True)
-    subprocess.call("rm -rf {4}/plink/{0}/{1}_{2}/{3}/{5}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir, locus.gene), shell=True)
+    subprocess.call("rm -rf {4}/vcftools/{0}/{1}_{2}/{3}/{5}*".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir, locus.gene), shell=True)
+    subprocess.call("rm -rf {4}/ecaviar/{0}/{1}_{2}/{3}/{5}*".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir, locus.gene), shell=True)
+    subprocess.call("rm -rf {4}/plink/{0}/{1}_{2}/{3}/{5}*".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir, locus.gene), shell=True)
 
 def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     

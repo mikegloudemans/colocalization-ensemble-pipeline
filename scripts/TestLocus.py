@@ -80,11 +80,8 @@ class TestLocus:
             run_twas(basedir, data, settings)
         '''
     
-        # For debugging:
-        #plotworthy = True
-
         # Plot the result if it's significant.
-        if plotworthy:
+        if plotworthy or self.settings["plot_all"] == True:
             plot.locus_zoom_plot(self, clpp)
             plot.pvalue_plot(self, clpp)
 

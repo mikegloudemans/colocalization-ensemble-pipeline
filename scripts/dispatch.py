@@ -95,9 +95,14 @@ def main():
                 pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
             pool.close()
             pool.join()
- 
+
             # Clean up after ourselves
             subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
+            # Make SplicePlots if appropriate
+            if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
+                results_file = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix)
+                splice_plot(results_file, eqtl_file, settings)
 
            
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
@@ -178,6 +183,12 @@ def save_state(config_file, base_output_dir):
     subprocess.check_call('git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
     subprocess.check_call('git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
  
+# Use SplicePlot to generate splice plots
+def splice_plot(results_file, eqtl_file, settings):
+    map_file = settings["splice_plots"][eqtl_file]["map_file"]
+    vcf_file = settings["splice_plots"][eqtl_file]["vcf_file"]
+    sp.generate_splice_plots(results_file, eqtl_file, vcf_file, map_file, threshold = 0.01)
+
 if __name__ == "__main__":
 	main()
  

@@ -11,7 +11,7 @@
 import sys
 import subprocess
 
-def generate_splice_plots(results_file, splice_file, vcf_file, map_file, threshold = 0.01, junction_delim=":"):
+def generate_splice_plots(results_file, splice_file, vcf_file, map_file, threshold = 0.01, junction_delim="."):
 
     out_dir = "/".join(results_file.split("/")[:-1]) + "/spliceplot"
     subprocess.check_call("mkdir -p {0}".format(out_dir), shell=True)
@@ -34,20 +34,20 @@ def generate_splice_plots(results_file, splice_file, vcf_file, map_file, thresho
                 splice_clusters.append(test)
 
     # Read header information to understand column organization of splice file
-    header = subprocess.check_output("zcat {0}".format(splice_file, shell=True), shell=True).strip().split()
+    header = subprocess.check_output("zcat {0} | head -n 1".format(splice_file, shell=True), shell=True).strip().split()
     chr_index = header.index("chr")
     pos_index = header.index("snp_pos")
     feature_index = header.index("feature")
     # For each cluster passing the threshold
     for sc in splice_clusters:
+        print sc
         # Get all splice junctions in this cluster
         junctions = []
         first = {}
         second = {}
         text = subprocess.check_output("zcat {0} | grep {1} | grep {2}".format(splice_file, sc[2], sc[1]), shell=True)
         for line in text.strip().split("\n"):
-            print line
-            data = line.strip().split()
+            data = line.replace(":", ".").strip().split()
 
             # Just in case grep matched a different column than the one
             # we wanted
@@ -95,17 +95,23 @@ def generate_splice_plots(results_file, splice_file, vcf_file, map_file, thresho
 
             junction_text = ",".join(junction_text)
 
-            print "python /users/mgloud/software/SplicePlot/initialize_data.py chr{0}:{1} {2} --vcf {3} --gtf /users/mgloud/projects/brain_gwas/data/spliceplot/hg19.exons.gtf.gz --mf {3} --output /users/mgloud/software/SplicePlot/pickle_files/preplot.p".format(sc[0], sc[1], junction_text, vcf_formatted, map_file)
+            # Hive plot would fail if we have more than 2 possible splicing events
+            # This might be fixable by modifying the config file, but it's not worth it right now
+            no_hive = ""
+            if len(tj) > 2:
+                no_hive = "_nohive"
 
             # Initialize data for splice plot in pickle format
-            subprocess.check_call("python /users/mgloud/software/SplicePlot/initialize_data.py chr{0}:{1} {2} --vcf {3} --gtf /users/mgloud/projects/brain_gwas/data/spliceplot/hg19.exons.gtf.gz --mf {4} --output /users/mgloud/software/SplicePlot/pickle_files/preplot.p".format(sc[0], sc[1], junction_text, vcf_formatted, map_file), shell=True)
-
-            print "python /users/mgloud/software/SplicePlot/plot.py /users/mgloud/software/SplicePlot/pickle_files/preplot.p pickle /users/mgloud/software/SplicePlot/settings_file --output {0}/{1}-{2}-{3}__{4}".format(out_dir, sc[0], sc[1], sc[2], junction_text.replace(",", "_").replace(":", "-"))
+            print "python /users/mgloud/projects/github_forks/SplicePlot/initialize_data.py chr{0}:{1} {2} --vcf {3} --gtf /users/mgloud/projects/brain_gwas/data/spliceplot/hg19.exons.gtf.gz --mf {4} --output /users/mgloud/projects/github_forks/SplicePlot/pickle_files/preplot.p".format(sc[0], sc[1], junction_text, vcf_formatted, map_file)
+            subprocess.check_call("python /users/mgloud/projects/github_forks/SplicePlot/initialize_data.py chr{0}:{1} {2} --vcf {3} --gtf /users/mgloud/projects/brain_gwas/data/spliceplot/hg19.exons.gtf.gz --mf {4} --output /users/mgloud/projects/github_forks/SplicePlot/pickle_files/preplot.p".format(sc[0], sc[1], junction_text, vcf_formatted, map_file), shell=True)
 
             # Create plots
-            status = subprocess.check_call("python /users/mgloud/software/SplicePlot/plot.py /users/mgloud/software/SplicePlot/pickle_files/preplot.p pickle /users/mgloud/software/SplicePlot/settings_file --output {0}/{1}-{2}-{3}__{4}".format(out_dir, sc[0], sc[1], sc[2], junction_text.replace(",", "_").replace(":", "-")), shell=True)
-
-            # TODO: Warning: In current form, the SplicePlot call can crash but the program will
-            # still keep running. Fix this to make sure it worked, maybe by scanning the printed output for the words "Done!" or "Failed"
+            print "python /users/mgloud/projects/github_forks/SplicePlot/plot.py /users/mgloud/projects/github_forks/SplicePlot/pickle_files/preplot.p pickle /users/mgloud/projects/github_forks/SplicePlot/settings_file{5} --output {0}/{1}-{2}-{3}_{4}".format(out_dir, sc[0], sc[1], sc[2], junction_text.replace(",", "_").replace(":", "-"), no_hive)
+            status = subprocess.check_output("python /users/mgloud/projects/github_forks/SplicePlot/plot.py /users/mgloud/projects/github_forks/SplicePlot/pickle_files/preplot.p pickle /users/mgloud/projects/github_forks/SplicePlot/settings_file{5} --output {0}/{1}-{2}-{3}_{4}".format(out_dir, sc[0], sc[1], sc[2], junction_text.replace(",", "_").replace(":", "-"), no_hive), shell=True)
 
             print status
+
+            # TODO: Warning: In current form, the SplicePlot call can crash but the program will
+            # still keep running. Fix this to make sure it worked, maybe by scanning the printed output for the words "Done!" or "Failed".
+            # (This is hopefully fixed now)
+            assert "Done!" in status

@@ -83,6 +83,16 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, window=1000000):
 
     return snps_to_test
 
+# Input: gwas file location, threshold of significance, minimum distance
+# between two selected SNPs.  Output: A list of significant SNPs to test.
+def select_snps_from_list(list_file):
+
+    gwas_table = pd.read_csv(list_file, sep="\\s*", header=None)
+
+    snp_list = zip(list(gwas_table.iloc[:,1]), list(gwas_table.iloc[:,2]), [-1]*gwas_table.shape[0])
+    return [(SNP.SNP(s), -1) for s in snp_list]
+
+
 def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
 
     print("Selecting eQTL hits from {0}".format(eqtl_file))

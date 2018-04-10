@@ -7,7 +7,7 @@
 # methods.
 #
 
-max_cores = 10
+max_cores = 12
 
 # Built-in libraries
 import sys
@@ -60,6 +60,9 @@ def main():
 
         if settings["selection_basis"] in ["gwas", "both"]:
             gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold']))
+
+        if settings["selection_basis"] == "snps_from_list":
+            gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
 
         # For each eQTL experiment:
         for eqtl_file in eqtl_files:

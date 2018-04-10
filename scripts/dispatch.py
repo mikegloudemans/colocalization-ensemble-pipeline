@@ -7,7 +7,7 @@
 # methods.
 #
 
-max_cores = 20
+max_cores = 10
 
 # Built-in libraries
 import sys
@@ -57,8 +57,9 @@ def main():
         #   - eqtl: SNPs significant in eQTLs will be tested (at specified threshold)
         #   - both: SNPs significant in GWAS or eQTL will be tested
         # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
+
         if settings["selection_basis"] in ["gwas", "both"]:
-            gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold']),)
+            gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold']))
 
         # For each eQTL experiment:
         for eqtl_file in eqtl_files:

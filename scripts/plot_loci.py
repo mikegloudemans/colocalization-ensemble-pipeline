@@ -57,3 +57,4 @@ def pvalue_plot(locus, clpp):
     plt.gcf().clear()
     plt.close()
 
+

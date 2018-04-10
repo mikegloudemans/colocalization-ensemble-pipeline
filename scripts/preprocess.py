@@ -130,6 +130,10 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
                 #break
             data = line.split()
             feature = data[feature_index]
+            if subset_file != -1:
+                if feature not in feature_subset:
+                    continue
+            
             chrom = data[chrom_index].replace("chr", "")
 
             # Exclude sex chromosomes for now
@@ -138,9 +142,6 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
             except:
                 continue
 
-            if subset_file != -1:
-                if feature not in feature_subset:
-                    continue
 
             if mode == "chisq":
                 chisq = float(data[pval_index])
@@ -168,7 +169,9 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
     return snps_to_test
 
 # Load summary statistics for GWAS
-def get_gwas_data(gwas_file, snp, settings, window=500000):
+def get_gwas_data(gwas_file, snp, settings):
+
+    window = settings["window"]
 
     # Get GWAS data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(gwas_file), shell=True)
@@ -178,6 +181,10 @@ def get_gwas_data(gwas_file, snp, settings, window=500000):
             subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(gwas_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
+
+    if gwas_table.shape[0] == 0:
+        return "No GWAS summary statistics found as this locus."
+
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
     
     if "ref_allele_header" in settings['gwas_experiments'][gwas_file]:
@@ -204,16 +211,18 @@ def get_gwas_data(gwas_file, snp, settings, window=500000):
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
-        assert 'pvalue' in gwas_table and "direction" in gwas_table
+        assert 'pvalue' in gwas_table #and "direction" in gwas_table
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
-        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) * (2*(gwas_table["direction"] == "+")-1)
+        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) # * (2*(gwas_table["direction"] == "+")-1)
     else:
         return "Improper GWAS format specification"
 
     return gwas_table
 
 # Load summary statistics for eQTL
-def get_eqtl_data(eqtl_file, snp, settings, window=500000):
+def get_eqtl_data(eqtl_file, snp, settings):
+
+    window = settings["window"]
 
     # Get eQTL data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(eqtl_file), shell=True)
@@ -245,11 +254,11 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
     #   - effect_size
     #   - chisq
     #
-
-    # TODO: Have inputs be either in rasqual format or in some other format, and specify this in the config, instead of arbitarily chekcing for chisq column
     
     if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'tstat':
-        assert 't-stat' in eqtls
+        assert 't-stat' or "tstat" in eqtls
+        if "tstat" in eqtls:
+            eqtls['t-stat'] = eqtls["tstat"]
         eqtls['ZSCORE'] = eqtls['t-stat']
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'effect_size':
         assert 'beta' in eqtls
@@ -270,9 +279,11 @@ def get_eqtl_data(eqtl_file, snp, settings, window=500000):
 #   GWAS SNP as a tuple.
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
-def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, window=500000, unsafe=False, allow_insignificant_gwas=False):
+def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=False, allow_insignificant_gwas=False):
     # TODO TODO TODO: Fix the SettingWithCopyWarning. It seems likely to be error-prone, according
     # to the manual!
+
+    window = settings["window"]
 
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]

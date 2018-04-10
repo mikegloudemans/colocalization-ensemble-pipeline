@@ -14,6 +14,6 @@ rpe_splice_file = "/users/mgloud/projects/brain_gwas/data/eqtls/rpe/sqtls/rpe_sq
 rpe_map_file = "/users/mgloud/projects/brain_gwas/data/spliceplot/rpe_glucose_map_file.txt"
 rpe_vcf_file = "/srv/persistent/bliu2/rpe/data/genotype/asvcf/glucose_nodup/rpe.imputed.chr{0}.all_filters.vcf.new.gz"
 
-sp.generate_splice_plots(rpe_results_file, rpe_splice_file, rpe_vcf_file, rpe_map_file, threshold = 0.01)
+sp.generate_splice_plots(rpe_results_file, rpe_splice_file, rpe_vcf_file, rpe_map_file, threshold = 0.05, strict_filters=5)
 
 

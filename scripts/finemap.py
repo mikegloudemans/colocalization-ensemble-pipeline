@@ -104,6 +104,10 @@ def prep_finemap(locus, window):
     #if min(combined["pvalue_gwas"]) > locus.settings["gwas_threshold"] or min(combined["pvalue_eqtl"]) > locus.settings["eqtl_threshold"]:
     #    return "Fail"
 
+    # NOTE: To avoid dealing with reversed effects and everything, we're just going to ignore
+    # directions for now and instead only look at absolute significance.
+    combined['ZSCORE_eqtl'] = abs(combined['ZSCORE_eqtl'])
+    combined['ZSCORE_gwas'] = abs(combined['ZSCORE_gwas'])
 
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]

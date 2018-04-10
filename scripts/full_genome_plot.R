@@ -19,7 +19,14 @@ if (length(args) > 2)
 
 # Load data
 results = read_delim(input_file, col_names=FALSE, delim ="\t")
-colnames(results) = c("snp", "eqtl_study", "gwas_study", "gene", "conditional_level", "snps_tested", "clpp_score", "gwas_log_pval", "eqtl_log_pval")
+if (dim(results)[1] == 8)
+{
+	colnames(results) = c("snp", "eqtl_study", "gwas_study", "gene", "snps_tested", "clpp_score", "gwas_log_pval", "eqtl_log_pval")
+} else
+{
+	colnames(results) = c("snp", "eqtl_study", "gwas_study", "gene", "conditional_level", "snps_tested", "clpp_score", "gwas_log_pval", "eqtl_log_pval")
+}
+
 chrs = read_delim("/mnt/lab_data/montgomery/shared/genomes/hg19/hg19.dict", delim="\t", skip=1, col_names=FALSE)
 
 # Munging to get cumulative position in genome for each chromosome
@@ -40,6 +47,8 @@ results$pos = as.numeric(sapply(unlist(results[,1]), function(x){strsplit(x,"_")
 # Getting chromosomal location for each data point
 full_results = inner_join(results, chrs, by=c("chrom"))
 full_results$abs_pos = full_results$cumsum + full_results$pos
+
+full_results = full_results[full_results$gwas_log_pval > 5 & full_results$eqtl_log_pval > 5,]
 
 all_endpoints = c(chrs$cumsum, tail(chrs$cumsum,1)+tail(chrs$length,1))
 midpoints = sapply(1:(length(all_endpoints)-1), function(x){(all_endpoints[x] + all_endpoints[x+1]) / 2})

@@ -31,5 +31,8 @@ def load_config(filename):
     else:
         config["plot_all"] = False
 
+    # Default window of analysis = 500000 bp on either side of SNP
+    if "window" not in config:
+        config["window"] = 500000
 
     return config

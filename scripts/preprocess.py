@@ -22,7 +22,7 @@ else:
 
 # Input: gwas file location, threshold of significance, minimum distance
 # between two selected SNPs.  Output: A list of significant SNPs to test.
-def select_test_snps_by_gwas(gwas_file, gwas_threshold, window=1000000):
+def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
@@ -32,6 +32,9 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, window=1000000):
     # TODO: Fix this line! Something is wrong with it I guess
     subset['pvalue'] = subset['pvalue'].astype(float)
     subset = subset[subset['pvalue'] <= gwas_threshold]
+
+    if trait != gwas_file:
+        subset = subset[subset['trait'] == trait]
 
     all_snps = [tuple(x) for x in subset.values]
     all_snps = sorted(all_snps, key=operator.itemgetter(2))
@@ -179,7 +182,7 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
     return snps_to_test
 
 # Load summary statistics for GWAS
-def get_gwas_data(gwas_file, snp, settings):
+def get_gwas_data(gwas_file, snp, settings, trait):
 
     window = settings["window"]
 
@@ -192,8 +195,11 @@ def get_gwas_data(gwas_file, snp, settings):
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
 
+    if trait != gwas_file:
+        gwas_table = gwas_table[gwas_table["trait"] == trait]
+
     if gwas_table.shape[0] == 0:
-        return "No GWAS summary statistics found as this locus."
+        return "No GWAS summary statistics found at this locus."
 
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
     

@@ -17,6 +17,9 @@ import pandas as pd
 import numpy as np
 import math
 
+# TODO: Make it so that different traits are written in different temporary files
+# Otherwise there may be concurrency bugs if running in parallel across loci
+
 def run_finemap(locus, window=500000):
 
     pf = prep_finemap(locus, window)
@@ -157,15 +160,21 @@ def launch_finemap(locus, window, top_hits):
 
     finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
 
-    if finemap_clpp > 0.001:
-        copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
-        copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))
+    ld_file = "{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
+    finemap_clpp_mod = get_clpp_mod(gwas_probs, eqtl_probs, ld_file)
+
+    # Write header of output file for FINEMAP
+    trait_suffix = locus.trait.split("/")[-1].replace(".", "_")
+
+    if finemap_clpp > 0.001 or finemap_clpp > 0.1:
+        copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
+        copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
 
     # Write FINEMAP results to the desired file
     # Note: appending will always work, since results always go to a different directory for each run.
     # TODO: Write headers for this file
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1])))
+            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\t{10}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1]), locus.gwas_suffix, finemap_clpp_mod))
 
     return finemap_clpp
 
@@ -318,3 +327,24 @@ def compute_ld(input_vcf, locus, data_type):
     subprocess.check_call("cat {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld | sed s/\\\\t/\\ /g > {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), shell=True)
 
     return removal_list
+
+# In this function, gwas and eqtl probs should be pre-sorted
+def get_clpp_mod(gwas_probs, eqtl_probs, ld_file):
+    
+    ld = []
+    with open(ld_file) as f:
+        for line in f:
+            ld.append([float(f) for f in line.strip().split()]) 
+
+
+    for i in range(len(gwas_probs)):
+        assert gwas_probs[i][0] == eqtl_probs[i][0]
+
+    # Get modifeid CLPP score
+    clpp_mod = 0
+    for i in range(len(gwas_probs)):
+        for j in range(len(eqtl_probs)):
+            snp_ld = ld[i][j]**2
+            clpp_mod += gwas_probs[i][1] * eqtl_probs[j][1] * snp_ld
+    
+    return clpp_mod

@@ -17,6 +17,7 @@ import subprocess
 import math
 from multiprocessing import Pool
 import traceback
+import gzip
 
 # Custom libraries
 import config
@@ -47,66 +48,88 @@ def main():
         # Write header of output file for FINEMAP
         gwas_suffix = gwas_file.split("/")[-1].replace(".", "_") 
         with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-            w.write("ref_snp\teqtl_file\tgwas_file\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\n")
+            w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\nbase_gwas_file\tclpp_mod\n")
 
-        gwas_snp_list = []
-        # Get a list of which SNPs we should test in this GWAS.
+        # Get list of traits measured in this GWAS
+        traits = set([])
 
-        # Selection basis options:
-        #   - gwas: SNPs significant in GWAS will be tested (at specified threshold)
-        #   - eqtl: SNPs significant in eQTLs will be tested (at specified threshold)
-        #   - both: SNPs significant in GWAS or eQTL will be tested
-        # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
+        # Are there multiple traits in this GWAS?
+        with gzip.open(gwas_file) as f:
+            header = f.readline().strip().split("\t")
+            if "trait" in header:
+                trait_index = header.index("trait")
+                for line in f:
+                    traits.add(line.strip.split("\t")[trait_index])
+            else:
+                traits.add(gwas_file)
+        traits = list(traits)
 
-        if settings["selection_basis"] in ["gwas", "both"]:
-            gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold']))
+        # Subset down to traits of interest, if specified
+        if "traits" in settings["gwas_experiments"][gwas_file]:
+            traits = [t for t in traits in t in settings["gwas_experiments"][gwas_file]["traits"]]
 
-        if settings["selection_basis"] == "snps_from_list":
-            gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
+        assert len(traits) != 0
 
-        # For each eQTL experiment:
-        for eqtl_file in eqtl_files:
+        for trait in traits:
 
-            eqtl_snp_list = []
-            if settings["selection_basis"] in ["eqtl", "both"]:
-                # If a "selection subset" is specified for the eQTL experiment, then genes will
-                # only be tested if they are in this subset.
-                if "selection_subset" in settings['eqtl_experiments'][eqtl_file]:
-                    eqtl_subset = settings['eqtl_experiments'][eqtl_file]["selection_subset"]
-                else:
-                    eqtl_subset = -1
-                eqtl_snp_list.extend(preprocess.select_test_snps_by_eqtl(eqtl_file, settings, eqtl_subset))
+            gwas_snp_list = []
+            # Get a list of which SNPs we should test in this GWAS.
 
-            snp_list = eqtl_snp_list + gwas_snp_list
-            print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
+            # Selection basis options:
+            #   - gwas: SNPs significant in GWAS will be tested (at specified threshold)
+            #   - eqtl: SNPs significant in eQTLs will be tested (at specified threshold)
+            #   - both: SNPs significant in GWAS or eQTL will be tested
+            # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
 
-            # Run key SNPs in parallel
-            pool = Pool(max_cores)
-            for i in xrange(0, len(eqtl_snp_list)):
-                snp = eqtl_snp_list[i]
-                pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
-            pool.close()
-            pool.join()
- 
-            # Clean up after ourselves
-            subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+            if settings["selection_basis"] in ["gwas", "both"]:
+                gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold'], trait))
 
-            # Run GWAS SNPs separately just in case there happen to be any overlaps,
-            # which could lead to a race.
-            pool = Pool(max_cores)
-            for i in xrange(0, len(gwas_snp_list)):
-                snp = gwas_snp_list[i]
-                pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir), kwds=dict(restrict_gene=snp[1]))
-            pool.close()
-            pool.join()
+            if settings["selection_basis"] == "snps_from_list":
+                gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
 
-            # Clean up after ourselves
-            subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+            # For each eQTL experiment:
+            for eqtl_file in eqtl_files:
 
-            # Make SplicePlots if appropriate
-            if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
-                results_file = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix)
-                splice_plot(results_file, eqtl_file, settings)
+                eqtl_snp_list = []
+                if settings["selection_basis"] in ["eqtl", "both"]:
+                    # If a "selection subset" is specified for the eQTL experiment, then genes will
+                    # only be tested if they are in this subset.
+                    if "selection_subset" in settings['eqtl_experiments'][eqtl_file]:
+                        eqtl_subset = settings['eqtl_experiments'][eqtl_file]["selection_subset"]
+                    else:
+                        eqtl_subset = -1
+                    eqtl_snp_list.extend(preprocess.select_test_snps_by_eqtl(eqtl_file, settings, eqtl_subset))
+
+                snp_list = eqtl_snp_list + gwas_snp_list
+                print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
+
+                # Run key SNPs in parallel
+                pool = Pool(max_cores)
+                for i in xrange(0, len(eqtl_snp_list)):
+                    snp = eqtl_snp_list[i]
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
+                pool.close()
+                pool.join()
+     
+                # Clean up after ourselves
+                subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
+                # Run GWAS SNPs separately just in case there happen to be any overlaps,
+                # which could lead to a race.
+                pool = Pool(max_cores)
+                for i in xrange(0, len(gwas_snp_list)):
+                    snp = gwas_snp_list[i]
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
+                pool.close()
+                pool.join()
+
+                # Clean up after ourselves
+                subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+
+                # Make SplicePlots if appropriate
+                if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
+                    results_file = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix)
+                    splice_plot(results_file, eqtl_file, settings)
 
            
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
@@ -120,25 +143,25 @@ def main():
 
 # If we're running in parallel and a thread fails, catch the exception
 # and log it to a file so we can fix it later.
-def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene=-1):
+def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):
     try:
-        analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene)
+        analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene)
     except Exception as e:
         traceback.print_exc(file=sys.stdout)
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
-            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, str(e)))
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, str(e)))
 
-def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, restrict_gene=-1):
+def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):
 
     # Load relevant GWAS and eQTL data.
-    gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings) # Get GWAS data
+    gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings, trait) # Get GWAS data
     eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
 
     # Skip it if this entire locus has no genes
     if isinstance(eqtl_data, basestring):
         # Write skipped variants to a file, for later reference.
         with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
-            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, "-1", eqtl_data))
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, "-1", eqtl_data, trait))
         return
 
     # Temporary mod for splice eQTLs. May be best to specify a "feature" ID in the future
@@ -165,13 +188,13 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         if isinstance(combined, basestring):
             # Write skipped variants to a file, for later reference.
             with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
-                a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, gene, combined))
+                a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, gene, combined, trait))
             continue
 
         # Create a TestLocus object using merged GWAS and eQTL,
         # any important metadata about the experiment such as the directory,
         # and the Config object.
-        task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file)
+        task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file, trait)
         task.run()
 
 # At start of run, save settings so we'll know what they were when we ran it.
@@ -194,5 +217,5 @@ def splice_plot(results_file, eqtl_file, settings):
     sp.generate_splice_plots(results_file, eqtl_file, vcf_file, map_file, threshold = 0.01)
 
 if __name__ == "__main__":
-	main()
+    main()
  

@@ -7,14 +7,16 @@ require(ggplot2)
 #
 # Load files
 #
-files = dir("/users/mgloud/projects/brain_gwas/output/2018-04-10_11-24-04_insulin_for_eriks_grant")
+#files = dir("/users/mgloud/projects/brain_gwas/output/2018-04-10_11-24-04_insulin_for_eriks_grant")
+files = dir("/users/mgloud/projects/brain_gwas/output/2018-04-13_14-26-25_insulin_for_eriks_grant")
 files = files[grepl("finemap_clpp_status.txt", files)]
 
 # Finemap results
 finemap_results = list()
 for (i in 1:length(files))
 {
-	finemap_results[[i]] = read.table(gzfile(paste("/users/mgloud/projects/brain_gwas/output/2018-04-10_11-24-04_insulin_for_eriks_grant/", files[i], sep="")), header=TRUE)
+	#finemap_results[[i]] = read.table(gzfile(paste("/users/mgloud/projects/brain_gwas/output/2018-04-10_11-24-04_insulin_for_eriks_grant/", files[i], sep="")), header=TRUE)
+	finemap_results[[i]] = read.table(gzfile(paste("/users/mgloud/projects/brain_gwas/output/2018-04-13_14-26-25_insulin_for_eriks_grant/", files[i], sep="")), header=TRUE)
 }
 finemap = do.call(rbind, finemap_results)
 finemap$ensembl = sapply(as.character(finemap$feature), function(x) {strsplit(x, "\\.")[[1]][1]})
@@ -155,7 +157,7 @@ for (i in 1:dim(final_set)[1])
 	                labs(y = "GWAS Trait") + 
 			ggtitle(plot_title)
 	
-	ggsave(paste("plots/", final_set$ref_snp[i], "_", final_set$feature[i], ".png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
+	ggsave(paste("plots/clpp_mod", final_set$ref_snp[i], "_", final_set$feature[i], ".png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
 
 	# Plot heatmap
 	heat = melt(trunc_matrix)
@@ -184,7 +186,7 @@ for (i in 1:dim(final_set)[1])
 	                labs(y = "GWAS Trait") +
 			ggtitle(plot_title)
 
-	ggsave(paste("plots/", final_set$ref_snp[i], "_", final_set$feature[i], "_cut-off.png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
+	ggsave(paste("plots/clpp_mod", final_set$ref_snp[i], "_", final_set$feature[i], "_cut-off.png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
 
 }
 

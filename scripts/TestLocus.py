@@ -12,7 +12,7 @@ import plot_loci as plot
 import math
 
 class TestLocus:
-    def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file):
+    def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file, trait):
         self.basedir = basedir
         self.data = data
         self.settings = settings
@@ -25,13 +25,14 @@ class TestLocus:
         self.gwas_file = gwas_file
         self.eqtl_file = eqtl_file
         self.tmpdir = tmpdir
-        self.conditional_level = 0      # Currently serves no purpose, but may be implemented later        
+        self.conditional_level = 0      # Currently serves no purpose, but may be implemented later
+        self.trait = trait
 
     # Run colocalization tests. Which ones to do will depend
     # on the settings file.
     def run(self):
 
-        print "Analyzing {0} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval)
+        print "Analyzing {0} {6} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, self.trait)
 
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.
@@ -47,7 +48,7 @@ class TestLocus:
 
             # NOTE: Temporary; for debugging
             if clpp == "Fail":
-                print "FAILED Analyzing {0} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval)
+                print "FAILED Analyzing {0} {6} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, trait)
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)

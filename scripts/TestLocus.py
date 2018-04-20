@@ -43,7 +43,7 @@ class TestLocus:
             clpp = finemap.run_finemap(self)
 
             # TODO: Modify thresholds for significance here.
-            if not clpp == "Fail" and clpp > 0.005: 
+            if not clpp == "Fail" and clpp > 0.1: 
                 plotworthy = True
 
             # NOTE: Temporary; for debugging

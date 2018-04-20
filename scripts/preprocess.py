@@ -92,8 +92,13 @@ def select_snps_from_list(list_file):
 
     gwas_table = pd.read_csv(list_file, sep="\\s*", header=None)
 
-    snp_list = zip(list(gwas_table.iloc[:,1]), list(gwas_table.iloc[:,2]), [-1]*gwas_table.shape[0])
-    return [(SNP.SNP(s), -1) for s in snp_list]
+    snp_list = zip(list(gwas_table.iloc[:,0]), list(gwas_table.iloc[:,1]), [-1]*gwas_table.shape[0])
+    snp_list = [SNP.SNP(s) for s in snp_list]
+    if gwas_table.shape[1] > 2:
+        return zip(snp_list, list(gwas_table.iloc[:,2]))
+    else:
+        return zip(snp_list, [-1]*len(snp_list))
+
 
 
 def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
@@ -137,7 +142,7 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
         i = 0
         for line in stream:
             i = i + 1
-            if i % 3000000 == 0:
+            if i % 300000 == 0:
                 # NOTE temporary!
                 pass
                 #break

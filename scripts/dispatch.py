@@ -7,7 +7,8 @@
 # methods.
 #
 
-max_cores = 12
+max_cores = 4
+#max_cores = 12
 
 # Built-in libraries
 import sys
@@ -48,7 +49,7 @@ def main():
         # Write header of output file for FINEMAP
         gwas_suffix = gwas_file.split("/")[-1].replace(".", "_") 
         with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-            w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\nbase_gwas_file\tclpp_mod\n")
+            w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
 
         # Get list of traits measured in this GWAS
         traits = set([])
@@ -59,14 +60,14 @@ def main():
             if "trait" in header:
                 trait_index = header.index("trait")
                 for line in f:
-                    traits.add(line.strip.split("\t")[trait_index])
+                    traits.add(line.strip().split("\t")[trait_index])
             else:
                 traits.add(gwas_file)
         traits = list(traits)
 
         # Subset down to traits of interest, if specified
         if "traits" in settings["gwas_experiments"][gwas_file]:
-            traits = [t for t in traits in t in settings["gwas_experiments"][gwas_file]["traits"]]
+            traits = [t for t in settings["gwas_experiments"][gwas_file]["traits"]]
 
         assert len(traits) != 0
 

@@ -8,13 +8,13 @@ require(ggplot2)
 # Load files
 #
 
-files = c("/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/FastGlu_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/FastInsu_adjBMI_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/HDL_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/TG_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/WHRadjBMI_GIANT_Mixed_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-23_16-16-49_insulin_for_eriks_grant_bonus_fastinsu/GWAS_Glycemic-Traits_Dupuis_2010_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-23_15-04-54_insulin_for_eriks_grant_MI/GWAS_GENESIS_MI_txt_gz_finemap_clpp_status.txt"
+files = c("/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/FastGlu_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/FastInsu_adjBMI_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/HDL_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/TG_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/WHRadjBMI_GIANT_Mixed_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-23_16-16-49_insulin_for_eriks_grant_bonus_fastinsu/GWAS_Glycemic-Traits_Dupuis_2010_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-23_15-04-54_insulin_for_eriks_grant_MI/GWAS_GENESIS_MI_txt_gz_finemap_clpp_status.txt"
 )
 
 # Finemap results

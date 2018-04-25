@@ -3,18 +3,19 @@
 
 require(reshape)
 require(ggplot2)
+require(dplyr)
 
 #
 # Load files
 #
 
-files = c("/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/FastGlu_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/FastInsu_adjBMI_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/HDL_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/TG_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-19_07-49-06_insulin_for_eriks_grant/WHRadjBMI_GIANT_Mixed_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-23_16-16-49_insulin_for_eriks_grant_bonus_fastinsu/GWAS_Glycemic-Traits_Dupuis_2010_txt_gz_finemap_clpp_status.txt",
-		"/users/mgloud/projects/brain_gwas/output/2018-04-23_15-04-54_insulin_for_eriks_grant_MI/GWAS_GENESIS_MI_txt_gz_finemap_clpp_status.txt"
+files = c("/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/FastGlu_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/FastInsu_adjBMI_MAGIC_Europeans_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/HDL_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/TG_GCLC_Mixed_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-19_07-49-06_insulin_for_eriks_grant/WHRadjBMI_GIANT_Mixed_AllSNPs_prepared_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-23_16-16-49_insulin_for_eriks_grant_bonus_fastinsu/GWAS_Glycemic-Traits_Dupuis_2010_txt_gz_finemap_clpp_status.txt",
+		"/users/mgloud/projects/brain_gwas/output/completed/eriks_grant/2018-04-23_15-04-54_insulin_for_eriks_grant_MI/GWAS_GENESIS_MI_txt_gz_finemap_clpp_status.txt"
 )
 
 # Finemap results
@@ -168,7 +169,7 @@ for (i in 1:dim(final_set)[1])
 	                labs(y = "GWAS Trait") + 
 			ggtitle(plot_title)
 	
-	ggsave(paste("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/plots/clpp", final_set$ref_snp[i], "_mod", final_set$feature[i], ".png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
+	ggsave(paste("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/plots/clpp", final_set$ref_snp[i], "_", final_set$feature[i], "mod.png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
 
 	# Plot heatmap
 	heat = melt(trunc_matrix)
@@ -228,7 +229,8 @@ priority$rank_at_locus = sapply(1:dim(priority)[1], function(x)
 	   )
 
 priority$hgnc = as.character(priority$hgnc)
-priority[which(is.na(priority$hgnc)),]$hgnc = "missing"
+priority[which(priority$hgnc == ""),]$hgnc = "missing"
+
 
 write.table(priority, file="/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/results/prioritized_gene_rankings_clpp_mod.txt", quote=FALSE, col.names=TRUE, row.names=FALSE)
 
@@ -238,4 +240,60 @@ last_only = priority[!rev(duplicated(rev(priority$rsid))),]	# Get last appearanc
 hist(last_only$rank_at_locus, breaks=0:max(last_only$rank_at_locus))
 
 # TODO: We'd also like to know, out of all genes tested in the region, how close is the gene compared to other nearby ones?
+# We obtained this file from BioMart
+gene_locs = read.csv("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/ensembl_genes_with_coordinates.txt", header=TRUE, sep="\t")
+
+priority$ensembl = as.character(priority$ensembl)
+gene_locs$Gene.stable.ID = as.character(gene_locs$Gene.stable.ID)
+gene_locs$Chromosome.scaffold.name = as.numeric(as.character(gene_locs$Chromosome.scaffold.name))
+gene_locs = gene_locs[!is.na(gene_locs$Chromosome.scaffold.name),]
+
+# Proximity score = proximity rank of the gene to our SNP, compared
+# with all genes tested
+priority$proximity = sapply(1:dim(priority)[1], function(x)
+       {
+		coloc_sub = priority[x,]
+		coloc_chrom = as.numeric(strsplit(coloc_sub$ref_snp, "_")[[1]][1])
+		coloc_pos = as.numeric(strsplit(coloc_sub$ref_snp, "_")[[1]][2])
+
+       		# Get every nearby gene
+       		gene_sub = gene_locs[gene_locs$Chromosome.scaffold.name == coloc_chrom,]
+		# Subset down to only the set of genes that we actually tested for colocalization
+	        gene_sub = gene_sub[gene_sub$Gene.stable.ID %in% finemap$ensembl,] 
+
+		uniq = gene_sub %>% group_by(Gene.stable.ID) %>% summarize(start = min(c(Gene.start..bp., Gene.end..bp.)), end = max(c(Gene.start..bp., Gene.end..bp.)))
+
+		# For all nearby genes, determine order of proximity to our SNP of interest
+
+		dist = sapply(1:dim(uniq)[1], function(y)
+		       {
+				this_gene = uniq[y,]
+		       		if (this_gene$start > coloc_pos)
+				{
+					return(this_gene$start - coloc_pos)
+				}
+				else if (this_gene$end < coloc_pos)
+				{
+					return(coloc_pos - this_gene$end)
+				}
+				else
+				{
+					return(0)
+				}
+		       }
+		)
+
+		uniq = uniq[order(dist),]
+
+		return(which(uniq$Gene.stable.ID == coloc_sub$ensembl))
+       })
+
+# Could ask this question:
+# If we consider all the genes that are colocalized with our SNP, what is the proximity
+# rank of the BEST one? (This way, we're not penalizing genes that happen to just have a slightly
+# lower colocalization score with the nearby gene than with the distant one).
+
+min_proximity = priority %>% group_by(rsid) %>% summarize(min_proximity = min(proximity))
+
+hist(min_proximity$min_proximity, breaks=0:max(min_proximity$min_proximity))
 

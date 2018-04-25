@@ -30,7 +30,6 @@ finemap$gwas_trait = gsub("/users/mgloud/projects/gwas/data/prepared/", "", fine
 finemap$gwas_trait = gsub("/users/mgloud/projects/gwas/data/GENESIS/formatted/", "", finemap$gwas_trait)
 finemap$gwas_trait = gsub("GWAS_", "", finemap$gwas_trait)
 finemap$gwas_trait = gsub(".txt.gz", "", finemap$gwas_trait)
-
 #finemap$gwas_trait = sapply(as.character(finemap$gwas_trait), function(x) 
 #       {
 #	       s = strsplit(x, "_")[[1]]
@@ -72,7 +71,7 @@ finemap = merge(genes, finemap)
 dim(finemap)	# Total number of tests performed
 pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
 dim(pass_pval_cutoffs)	# Total number of tests (gwas SNP - eqtl gene pairs) passing eQTL and GWAS pval thresholds
-final_set = pass_pval_cutoffs[pass_pval_cutoffs$clpp > 0.1,]
+final_set = pass_pval_cutoffs[pass_pval_cutoffs$clpp_mod > 0.3,]
 dim(final_set)	# Total number of tests passing our colocalization criteria
 
 # Remove duplicates from this list
@@ -113,7 +112,7 @@ for (i in 1:dim(final_set)[1])
 			}
 			else
 			{
-				my_matrix[j,k] = result$clpp[1]
+				my_matrix[j,k] = result$clpp_mod[1]
 			}
 			if (dim(result_trunc)[1] == 0)
 			{
@@ -121,7 +120,7 @@ for (i in 1:dim(final_set)[1])
 			}
 			else
 			{
-				trunc_matrix[j,k] = result_trunc$clpp[1]
+				trunc_matrix[j,k] = result_trunc$clpp_mod[1]
 			}
 		}
 	}
@@ -169,7 +168,7 @@ for (i in 1:dim(final_set)[1])
 	                labs(y = "GWAS Trait") + 
 			ggtitle(plot_title)
 	
-	ggsave(paste("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/plots/clpp", final_set$ref_snp[i], "_", final_set$feature[i], ".png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
+	ggsave(paste("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/plots/clpp", final_set$ref_snp[i], "_mod", final_set$feature[i], ".png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
 
 	# Plot heatmap
 	heat = melt(trunc_matrix)
@@ -198,7 +197,7 @@ for (i in 1:dim(final_set)[1])
 	                labs(y = "GWAS Trait") +
 			ggtitle(plot_title)
 
-	ggsave(paste("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/plots/clpp", final_set$ref_snp[i], "_", final_set$feature[i], "_cut-off.png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
+	ggsave(paste("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/plots/clpp", final_set$ref_snp[i], "_", final_set$feature[i], "_mod_cut-off.png", sep=""), width = 8, height = 6, units = "in", dpi = 300, limitsize=FALSE)
 
 }
 
@@ -208,7 +207,7 @@ for (i in 1:dim(final_set)[1])
 # Produce a list of genes for prioritization in follow-up studies, ranked by CLPP_mod score.
 # Order by max CLPP score
 # (Note that duplicates have already been removed earlier -- so this is how many hits we've got).
-priority = final_set[rev(order(final_set$clpp)),]
+priority = final_set[rev(order(final_set$clpp_mod)),]
 
 # Number of hits
 print(dim(priority)[1])
@@ -229,7 +228,7 @@ priority$rank_at_locus = sapply(1:dim(priority)[1], function(x)
 	   )
 
 priority$hgnc = as.character(priority$hgnc)
-priority[which(priority$hgnc==""),]$hgnc = "missing"
+priority[which(is.na(priority$hgnc)),]$hgnc = "missing"
 
 write.table(priority, file="/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/results/prioritized_gene_rankings_clpp_mod.txt", quote=FALSE, col.names=TRUE, row.names=FALSE)
 

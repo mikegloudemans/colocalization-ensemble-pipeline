@@ -7,7 +7,8 @@
 # methods.
 #
 
-max_cores = 4
+max_cores = 1
+#max_cores = 10
 #max_cores = 12
 
 # Built-in libraries

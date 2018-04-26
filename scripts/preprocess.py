@@ -234,7 +234,8 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
         assert 'pvalue' in gwas_table #and "direction" in gwas_table
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
-        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) # * (2*(gwas_table["direction"] == "+")-1)
+        #gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) # * (2*(gwas_table["direction"] == "+")-1)
+        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) # * (2*(gwas_table["direction"] == "+")-1)
     else:
         return "Improper GWAS format specification"
 

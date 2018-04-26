@@ -34,6 +34,7 @@ def run_finemap(locus, window=500000):
 # since eCAVIAR and FINEMAP use very similar setups.
 def prep_finemap(locus, window):
 
+
     locus.conditional_level = 0   # Currently not used at all, but we may re-add this functionality later.
     combined = locus.data.copy()
 
@@ -117,7 +118,7 @@ def prep_finemap(locus, window):
         snps.to_csv(w, index=False, header=False, sep=" ")
 
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
-        snps = combined[['snp_pos', 'ZSCORE_gwas']]	
+        snps = combined[['snp_pos', 'ZSCORE_gwas']]
         snps.to_csv(w, index=False, header=False, sep=" ")
     
     return (min(combined["pvalue_gwas"]), min(combined["pvalue_eqtl"]))
@@ -137,7 +138,7 @@ def launch_finemap(locus, window, top_hits):
     
     # Run FINEMAP
     subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max 1 --n-iterations 1000000 --n-convergence 50000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
-
+    
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []
     eqtl_probs = []
@@ -166,7 +167,8 @@ def launch_finemap(locus, window, top_hits):
     # Write header of output file for FINEMAP
     trait_suffix = locus.trait.split("/")[-1].replace(".", "_")
 
-    if finemap_clpp > 0.001 or finemap_clpp > 0.1:
+    #if finemap_clpp_mod > 0.3:
+    if finemap_clpp_mod > 0:
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
 
@@ -174,7 +176,7 @@ def launch_finemap(locus, window, top_hits):
     # Note: appending will always work, since results always go to a different directory for each run.
     # TODO: Write headers for this file
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-            a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\t{10}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1]), locus.gwas_suffix, finemap_clpp_mod))
+                a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\t{10}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1]), locus.gwas_suffix, finemap_clpp_mod))
 
     return finemap_clpp_mod
 
@@ -248,6 +250,16 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
     # TODO: Verify on an example case that this filtering is working correctly.
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
+
+    #if "REF_y" in list(merged.columns.values):
+    #    merged["REF"] = merged["REF_y"]
+    #if "ALT_y" in list(merged.columns.values):
+    #    merged["ALT"] = merged["ALT_y"]
+    #if "POS_y" in list(merged.columns.values):
+    #    merged["POS"] = merged["POS_y"]
+
+    #print list(merged.columns.values)
+
     # TODO: Enforce new standard: effect measurements are always with respect to ALT status.
     keep_indices = \
             (((merged['ref_gwas'] == merged['REF']) & (merged['alt_gwas'] == merged['ALT'])) | \

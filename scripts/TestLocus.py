@@ -43,7 +43,7 @@ class TestLocus:
             clpp = finemap.run_finemap(self)
 
             # TODO: Modify thresholds for significance here.
-            if not clpp == "Fail" and clpp > 0.1: 
+            if not clpp == "Fail" and clpp > 0.3: 
                 plotworthy = True
 
             # NOTE: Temporary; for debugging
@@ -53,7 +53,7 @@ class TestLocus:
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)
 
-            if clpp > 0.15: 
+            if clpp > 0.5 and max(-1*math.log10(self.data["pvalue_gwas"])) > 5 and max(-1*math.log10(self.data["pvalue_eqtl"])) > 5: 
                 plotworthy = True
 
         if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"]:
@@ -80,10 +80,11 @@ class TestLocus:
         if "twas" in self.settings.keys():
             run_twas(basedir, data, settings)
         '''
-    
+        #plotworthy=True
+
         # Plot the result if it's significant.
         if plotworthy or self.settings["plot_all"] == True:
-            plot.locus_zoom_plot(self, clpp)
-            plot.pvalue_plot(self, clpp)
-
+            #plot.locus_zoom_plot(self, clpp)
+            #plot.pvalue_plot(self, clpp)
+            plot.locus_compare(self, clpp)
 

@@ -12,11 +12,9 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import pylab
 import math
+import numpy as np
 
 def locus_zoom_plot(locus, clpp):
-
-    # For now
-    current_level = 0
 
     subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
 
@@ -38,8 +36,6 @@ def locus_zoom_plot(locus, clpp):
     plt.close()
 
 def pvalue_plot(locus, clpp):
-    # For now
-    current_level = 0
 
     subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
 
@@ -57,4 +53,39 @@ def pvalue_plot(locus, clpp):
     plt.gcf().clear()
     plt.close()
 
+def locus_compare(locus, clpp):
+
+    #locus.data['rsid'] = locus.data['snptestid']
+
+    subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
+    gwas_out_file = "{0}/plots/{4}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+    eqtl_out_file = "{0}/plots/{4}/{1}_{2}/{3}/{5}_eqtl_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+
+    # Assume that SNP rsid is already present, has been fetched earlier in program while
+    # loading the GWAS
+    subprocess.call(["mkdir", "-p", "{0}/locuscompare/{4}/{1}_{2}/{3}".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix)])
+    gwas_tmp = "{0}/locuscompare/{4}/{1}_{2}/{3}/{5}_gwas_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+    eqtl_tmp = "{0}/locuscompare/{4}/{1}_{2}/{3}/{5}_eqtl_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+ 
+    # Subset down to the region of interest, save this region
+    vcf_file = "/mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz".format(locus.chrom)
+    vcf_tmp = "{0}/locuscompare/{4}/{1}_{2}/{3}/{5}_vcf_tmp.vcf".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+    subprocess.check_call("zcat {0} | tail -n +253 | head -n 1 > {1}".format(vcf_file, vcf_tmp), shell=True)
+    subprocess.check_call('tabix {3} {0}:{1}-{2} >> {4}'.format(locus.chrom, locus.pos - locus.settings["window"], locus.pos + locus.settings["window"], vcf_file, vcf_tmp), shell=True)
+     
+    gwas_data = locus.data.loc[:,["rsid", "pvalue_gwas"]]
+    gwas_data.to_csv(gwas_tmp, header=["rsid", "pval"], index=False, sep="\t")
+    eqtl_data = locus.data.loc[:,["rsid", "pvalue_eqtl"]]
+    eqtl_data.to_csv(eqtl_tmp, header=["rsid", "pval"], index=False, sep="\t")
+
+    # Get lead SNP rsids for each study
+    gwas_lead = list(gwas_data["rsid"])[np.argmin(gwas_data["pvalue_gwas"])]
+    eqtl_lead = list(eqtl_data["rsid"])[np.argmin(eqtl_data["pvalue_eqtl"])]
+
+
+    # Call it once for top SNP in study 1, once for top SNP in study 2,
+    # as reference SNP.
+    # For now we'll just assume 1000 Genomes is the reference population
+    subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, gwas_lead])
+    subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, eqtl_lead])
 

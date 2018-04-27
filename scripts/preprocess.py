@@ -118,7 +118,7 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
             assert 'chisq' in header
             mode = "chisq"
             pval_index = header.index("chisq")
-            chisq_threshold = stats.chi2.isf(settings['eqtl_threshold'],1)
+            chisq_threshold = stats.chi2.isf(settings['selection_thresholds']['eqtl'],1)
         else:
             mode = "pvalue"
             pval_index = header.index("pvalue")
@@ -142,10 +142,10 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
         i = 0
         for line in stream:
             i = i + 1
-            if i % 300000 == 0:
+            if i % 3000000 == 0:
                 # NOTE temporary!
-                pass
-                #break
+                #pass
+                break
             data = line.split()
             feature = data[feature_index]
             if subset_file != -1:
@@ -170,7 +170,7 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
                     gene_bests[feature] = (chrom, data[pos_index], chisq)
             else:
                 pvalue = float(data[pval_index])
-                if pvalue > settings['eqtl_threshold']:
+                if pvalue > settings['selection_thresholds']['eqtl']:
                     continue
 
                 if feature not in gene_bests or gene_bests[feature][2] > pvalue:
@@ -335,10 +335,9 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
             return "GWAS pvalue underflow."
 
     # Make sure all eQTLs are significant enough that this site is worth testing
-    # TODO: Figure out a better way of specifying how to do this thresholding; which ones to test
-    # to make things fast
-    #if min(eqtl_subset['pvalue']) > settings["eqtl_threshold"]:
-    #    return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
+    if "screening_thresholds" in settings and "eqtl" in settings["screening_thresholds"]:
+        if min(eqtl_subset['pvalue']) > settings["screening_thresholds"]["eqtl"]:
+            return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
 
     # Get MAFs from 1000 Genomes.
     # Filter out multi-allelic or non-polymorphic sites.
@@ -360,6 +359,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     # 2x2 SNPs or something like that
 
     # TODO: Convert this to an indexed join operation instead
+    # (only if this is actually a limiting factor though)
     # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
     #combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
@@ -387,10 +387,10 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     if combined.shape[0] == 0: 
         return "No overlapping SNPs in eQTL and GWAS"
 
-    # TODO: Figure out how this works out when we're filtering based on eQTLs...
-    # as it is right now, there's potential for trouble
-    #if not allow_insignificant_gwas and min(combined['pvalue_gwas']) > settings["gwas_threshold"]:
-    #    return "No significant GWAS SNPs are in eQTL dataset (too rare)"
+    # Check to make sure we still have significant GWAS hits and eQTLs, if desired
+    if "screening_thresholds" in settings and "gwas" in settings["screening_thresholds"]:
+        if min(combined['pvalue_gwas']) > settings["screening_thresholds"]["gwas"]:
+            return "No significant GWAS SNPs are in eQTL dataset (too rare)"
 
     return combined
 

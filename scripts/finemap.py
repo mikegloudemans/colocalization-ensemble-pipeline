@@ -55,6 +55,7 @@ def prep_finemap(locus, window):
     # are using same reference genome.
     if eqtl_vcf == gwas_vcf:
         # Get and filter the single VCF.
+        print "loading"
         vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window, ["eqtl", "gwas"])
         assert vcf.shape[0] == combined.shape[0]
 
@@ -100,13 +101,13 @@ def prep_finemap(locus, window):
             evcf = evcf.drop(evcf.index[removal_list])
             gvcf = gvcf.drop(gvcf.index[removal_list])
 
-    # NOTE: In practice this is a good thing to do because it speeds everything up; for
-    # now though it's causing us to miss sites that we really want to test anyway. Consider
-    # doing fast mode instead
     # Check to see whether we still even have a signficant GWAS variant and a significant eQTL variant.
-    # If not, there's really no point continuing with this test.
-    #if min(combined["pvalue_gwas"]) > locus.settings["gwas_threshold"] or min(combined["pvalue_eqtl"]) > locus.settings["eqtl_threshold"]:
-    #    return "Fail"
+    if "screening_thresholds" in locus.settings and "gwas" in locus.settings["screening_thresholds"]:
+        if min(combined["pvalue_gwas"]) > locus.settings["screening_thresholds"]["gwas"]:
+            return "Fail"
+    if "screening_thresholds" in locus.settings and "eqtl" in locus.settings["screening_thresholds"]:
+        if min(combined["pvalue_eqtl"]) > locus.settings["screening_thresholds"]["eqtl"]:
+            return "Fail"
 
     # NOTE: To avoid dealing with reversed effects and everything, we're just going to ignore
     # directions for now and instead only look at absolute significance.
@@ -202,6 +203,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # First, extract nearby variants using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 500 | grep \\#CHROM".format(filename), shell=True).strip().split()
+    print "tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename)
     if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
         stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
     else:
@@ -209,6 +211,8 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # For readability, load the header too
     # Load with pandas
+    # NOTE: The following line takes up about 80% of the computational time
+    # for your average FINEMAP locus. I should try to accelerate this.
     vcf = pd.read_csv(stream, sep="\t", names=header)
 
     # Remove variants not in the GWAS table
@@ -246,6 +250,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
             return af > 0.01 and 1-af > 0.01 
         vcf = vcf[vcf["INFO"].apply(fn)]
 
+
     # Remove variants where alt/ref don't match between GWAS/eQTL and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
     # TODO: Verify on an example case that this filtering is working correctly.
@@ -281,7 +286,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     vcf = vcf[vcf['POS'].isin(list(keep))]
     
     # Subset SNPs down to SNPs present in the reference VCF.
-    combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))] 
+    combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))]
 
     # Return list as DataFrame.
     return (vcf, combined)

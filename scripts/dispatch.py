@@ -7,8 +7,8 @@
 # methods.
 #
 
-max_cores = 1
-#max_cores = 10
+#max_cores = 1
+max_cores = 10
 #max_cores = 12
 
 # Built-in libraries
@@ -84,7 +84,7 @@ def main():
             # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
 
             if settings["selection_basis"] in ["gwas", "both"]:
-                gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['gwas_threshold'], trait))
+                gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait))
 
             if settings["selection_basis"] == "snps_from_list":
                 gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))

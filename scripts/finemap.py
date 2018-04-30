@@ -55,7 +55,6 @@ def prep_finemap(locus, window):
     # are using same reference genome.
     if eqtl_vcf == gwas_vcf:
         # Get and filter the single VCF.
-        print "loading"
         vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window, ["eqtl", "gwas"])
         assert vcf.shape[0] == combined.shape[0]
 
@@ -203,7 +202,6 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # First, extract nearby variants using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 500 | grep \\#CHROM".format(filename), shell=True).strip().split()
-    print "tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename)
     if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
         stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
     else:

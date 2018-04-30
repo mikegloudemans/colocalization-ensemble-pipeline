@@ -70,13 +70,17 @@ finemap = merge(genes, finemap)
 # that with a simple regression if needed, but let's skip that for now.
 #
 dim(finemap)	# Total number of tests performed
-pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
+#pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
+pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 7.3,]
 dim(pass_pval_cutoffs)	# Total number of tests (gwas SNP - eqtl gene pairs) passing eQTL and GWAS pval thresholds
-final_set = pass_pval_cutoffs[pass_pval_cutoffs$clpp_mod > 0.3,]
-dim(final_set)	# Total number of tests passing our colocalization criteria
+pre_final_set = pass_pval_cutoffs[pass_pval_cutoffs$clpp_mod > 0.3,]
+dim(pre_final_set)	# Total number of tests passing our colocalization criteria
+pre_final_set = pre_final_set[rev(order(pre_final_set$clpp_mod)),]
+
+pre_final_set = pre_final_set[!duplicated(paste(pre_final_set$feature, pre_final_set$eqtl_file, pre_final_set$base_gwas_file)),]
 
 # Remove duplicates from this list
-final_set = final_set[!duplicated(paste(final_set$ref_snp, final_set$feature, sep="_")),]
+final_set = pre_final_set[!duplicated(paste(pre_final_set$ref_snp, pre_final_set$feature, sep="_")),]
 
 #
 # Then, for each SNP-gene pair passing the test, show full summary statistics across
@@ -105,7 +109,8 @@ for (i in 1:dim(final_set)[1])
 					 finemap$ref_snp == final_set$ref_snp[i] & finemap$feature == final_set$feature[i],]
 			result_trunc = finemap[finemap$eqtl_file == eqtl_files[j] & finemap$gwas_trait == gwas_traits[k] & 
 					 finemap$ref_snp == final_set$ref_snp[i] & finemap$feature == final_set$feature[i] &
-					 finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
+					 #finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
+					 finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 7.3,]
 
 			if (dim(result)[1] == 0)
 			{
@@ -231,15 +236,12 @@ priority$rank_at_locus = sapply(1:dim(priority)[1], function(x)
 priority$hgnc = as.character(priority$hgnc)
 priority[which(priority$hgnc == ""),]$hgnc = "missing"
 
-
-write.table(priority, file="/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/results/prioritized_gene_rankings_clpp_mod.txt", quote=FALSE, col.names=TRUE, row.names=FALSE)
-
 # Then can plot the total number of colocalizations found for each gene and include that in the presentation too
 
 last_only = priority[!rev(duplicated(rev(priority$rsid))),]	# Get last appearance of each rsid in the list
 hist(last_only$rank_at_locus, breaks=0:max(last_only$rank_at_locus))
 
-# TODO: We'd also like to know, out of all genes tested in the region, how close is the gene compared to other nearby ones?
+#  We'd also like to know, out of all genes tested in the region, how close is the gene compared to other nearby ones?
 # We obtained this file from BioMart
 gene_locs = read.csv("/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/ensembl_genes_with_coordinates.txt", header=TRUE, sep="\t")
 
@@ -288,12 +290,46 @@ priority$proximity = sapply(1:dim(priority)[1], function(x)
 		return(which(uniq$Gene.stable.ID == coloc_sub$ensembl))
        })
 
+# Get gene distance from TS
+priority$tss_distance = sapply(1:dim(priority)[1], function(x)
+       {
+		coloc_sub = priority[x,]
+		coloc_chrom = as.numeric(strsplit(coloc_sub$ref_snp, "_")[[1]][1])
+		coloc_pos = as.numeric(strsplit(coloc_sub$ref_snp, "_")[[1]][2])
+
+		my_gene = gene_locs[gene_locs$Gene.stable.ID == coloc_sub$ensembl,]
+		return(min(abs(coloc_pos - my_gene$Transcription.start.site..TSS.)))
+       })
+
+
 # Could ask this question:
 # If we consider all the genes that are colocalized with our SNP, what is the proximity
 # rank of the BEST one? (This way, we're not penalizing genes that happen to just have a slightly
 # lower colocalization score with the nearby gene than with the distant one).
 
 min_proximity = priority %>% group_by(rsid) %>% summarize(min_proximity = min(proximity))
-
 hist(min_proximity$min_proximity, breaks=0:max(min_proximity$min_proximity))
 
+# Get total number of genes tested at this locus
+genes_tested = finemap %>% group_by(rsid) %>% summarize(genes_tested=length(unique(as.character(ensembl))))
+priority = merge(priority, genes_tested)
+
+# Get total number of colocalizations found at this locus
+last_only$num_colocs = last_only$rank_at_locus
+priority = merge(priority, last_only[c("rsid", "num_colocs")], by=c("rsid"))
+
+# Get ALL hits at this locus (regardless of whether others were found in same tissue
+extra_info = priority[c("rsid", "ensembl", "rank_at_locus", "proximity", "tss_distance", "num_colocs", "genes_tested")]
+priority = merge(pre_final_set, extra_info, by=c("rsid", "ensembl"))
+
+num_gwas_colocalized = priority %>% group_by(rsid, ensembl) %>% summarize(num_gwas_colocalized = length(unique(base_gwas_file)))
+priority = merge(priority, num_gwas_colocalized, by=c("rsid", "ensembl"))
+
+num_eqtl_colocalized = priority %>% group_by(rsid, ensembl) %>% summarize(num_tissues_colocalized = length(unique(eqtl_file)))
+priority = merge(priority, num_eqtl_colocalized, by=c("rsid", "ensembl"))
+
+num_gwas_by_eqtl_colocalized = priority %>% group_by(rsid, ensembl) %>% summarize(num_gwas_by_eqtl_colocalized = length(unique(paste(base_gwas_file, eqtl_file))))
+priority = merge(priority, num_gwas_by_eqtl_colocalized, by=c("rsid", "ensembl"))
+
+priority = priority[rev(order(priority$clpp_mod)),]
+write.table(priority, file="/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/results/prioritized_gene_rankings_clpp_mod_stringent_pvalue.tsv", quote=FALSE, col.names=TRUE, row.names=FALSE, sep="\t")

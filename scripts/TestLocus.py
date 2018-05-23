@@ -48,7 +48,7 @@ class TestLocus:
 
             # NOTE: Temporary; for debugging
             if clpp == "Fail":
-                print "FAILED Analyzing {0} {6} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, trait)
+                print "FAILED Analyzing {0} {6} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, self.trait)
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)
@@ -86,5 +86,5 @@ class TestLocus:
         if plotworthy or self.settings["plot_all"] == True:
             #plot.locus_zoom_plot(self, clpp)
             #plot.pvalue_plot(self, clpp)
-            plot.locus_compare(self, clpp)
+            plot.locus_compare(self)
 

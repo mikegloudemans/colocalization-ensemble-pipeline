@@ -41,8 +41,8 @@ def main():
     # Save config file and current Git log for reproducibility.
     save_state(config_file, base_output_dir)
 
-    gwas_files = [f for f in settings["gwas_experiments"]]
-    eqtl_files = [f for f in settings["eqtl_experiments"]]
+    gwas_files = sorted([f for f in settings["gwas_experiments"]])
+    eqtl_files = sorted([f for f in settings["eqtl_experiments"]])
 
     # For each GWAS experiment:
     for gwas_file in gwas_files:
@@ -149,6 +149,7 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
     try:
         analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene)
     except Exception as e:
+        print "caught exception"
         traceback.print_exc(file=sys.stdout)
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
             a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, str(e)))
@@ -158,6 +159,13 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
     # Load relevant GWAS and eQTL data.
     gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings, trait) # Get GWAS data
     eqtl_data = preprocess.get_eqtl_data(eqtl_file, snp, settings) # Get eQTL data
+
+    # Skip it if no GWAS variants at this locus
+    if isinstance(gwas_data, basestring):
+        # Write skipped variants to a file, for later reference.
+        with open("{0}/skipped_variants.txt".format(base_output_dir),"a") as a:
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, "-1", gwas_data, trait))
+        return
 
     # Skip it if this entire locus has no genes
     if isinstance(eqtl_data, basestring):

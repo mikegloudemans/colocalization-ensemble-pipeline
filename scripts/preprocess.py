@@ -142,10 +142,10 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
         i = 0
         for line in stream:
             i = i + 1
-            if i % 3000000 == 0:
+            if i % 1000000 == 0:
                 # NOTE temporary!
-                #pass
-                break
+                pass
+                #break
             data = line.split()
             feature = data[feature_index]
             if subset_file != -1:
@@ -177,7 +177,7 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
                     gene_bests[feature] = (chrom, data[pos_index], pvalue)
 
     # For each gene, determine the most significant SNP and add it to our list
-    for gene in gene_bests:
+    for gene in sorted(gene_bests.keys()):
         best = gene_bests[gene]
         if mode == "chisq":
             snps_to_test.append((SNP.SNP((best[0], best[1], stats.chi2.sf(best[2], 1))), gene))
@@ -199,6 +199,7 @@ def get_gwas_data(gwas_file, snp, settings, trait):
             subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(gwas_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
+    gwas_table['pvalue'] = gwas_table['pvalue'].astype(float)
 
     if trait != gwas_file:
         gwas_table = gwas_table[gwas_table["trait"] == trait]
@@ -212,6 +213,11 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']]
     if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
         gwas_table['alt'] = gwas_table[settings['gwas_experiments'][gwas_file]['alt_allele_header']]
+
+    if "effect_allele" in list(gwas_table.columns.values):
+        gwas_table['alt'] = gwas_table["effect_allele"]
+        gwas_table['ref'] = gwas_table["non_effect_allele"]
+
 
     gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
     gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
@@ -232,10 +238,9 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
-        assert 'pvalue' in gwas_table #and "direction" in gwas_table
+        assert 'pvalue' in gwas_table and "effect_direction" in gwas_table
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
-        #gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)]) # * (2*(gwas_table["direction"] == "+")-1)
-        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) # * (2*(gwas_table["direction"] == "+")-1)
+        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["effect_direction"] == "+")-1)
     else:
         return "Improper GWAS format specification"
 

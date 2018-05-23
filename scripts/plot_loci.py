@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import pylab
 import math
 import numpy as np
+import pandas as pd
 
 def locus_zoom_plot(locus, clpp):
 
@@ -53,9 +54,10 @@ def pvalue_plot(locus, clpp):
     plt.gcf().clear()
     plt.close()
 
-def locus_compare(locus, clpp):
+def locus_compare(locus):
 
-    #locus.data['rsid'] = locus.data['snptestid']
+    if "rsid_column" in locus.settings["gwas_experiments"][locus.gwas_file]:
+        locus.data['rsid'] = locus.data[locus.settings["gwas_experiments"][locus.gwas_file]['rsid_column']]
 
     subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
     gwas_out_file = "{0}/plots/{4}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
@@ -78,14 +80,16 @@ def locus_compare(locus, clpp):
     eqtl_data = locus.data.loc[:,["rsid", "pvalue_eqtl"]]
     eqtl_data.to_csv(eqtl_tmp, header=["rsid", "pval"], index=False, sep="\t")
 
-    # Get lead SNP rsids for each study
+    gwas_data = gwas_data.reset_index()
+    eqtl_data = eqtl_data.reset_index()
+
     gwas_lead = list(gwas_data["rsid"])[np.argmin(gwas_data["pvalue_gwas"])]
     eqtl_lead = list(eqtl_data["rsid"])[np.argmin(eqtl_data["pvalue_eqtl"])]
-
 
     # Call it once for top SNP in study 1, once for top SNP in study 2,
     # as reference SNP.
     # For now we'll just assume 1000 Genomes is the reference population
+    print "Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, gwas_lead
     subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, gwas_lead])
     subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, eqtl_lead])
 

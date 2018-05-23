@@ -17,5 +17,6 @@ file2 = read.table(file2, header=TRUE)
 m = main(in_fn1 = file1, in_fn2 = file2, title=title1, title2=title2, vcf_fn=vcf, snp=snp)
 m
 
-ggsave(out_file, width=12, height=6)
+# Plot with low quality to reduce file size; re-plot later if needing a high-quality figure
+ggsave(out_file, width=12, height=6, dpi=100)
 

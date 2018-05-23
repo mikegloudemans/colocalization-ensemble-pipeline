@@ -108,11 +108,6 @@ def prep_finemap(locus, window):
         if min(combined["pvalue_eqtl"]) > locus.settings["screening_thresholds"]["eqtl"]:
             return "Fail"
 
-    # NOTE: To avoid dealing with reversed effects and everything, we're just going to ignore
-    # directions for now and instead only look at absolute significance.
-    combined['ZSCORE_eqtl'] = abs(combined['ZSCORE_eqtl'])
-    combined['ZSCORE_gwas'] = abs(combined['ZSCORE_gwas'])
-
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
         snps.to_csv(w, index=False, header=False, sep=" ")
@@ -167,8 +162,8 @@ def launch_finemap(locus, window, top_hits):
     # Write header of output file for FINEMAP
     trait_suffix = locus.trait.split("/")[-1].replace(".", "_")
 
-    #if finemap_clpp_mod > 0.3:
-    if finemap_clpp_mod > 0:
+    if finemap_clpp_mod > 0.3:
+    #if finemap_clpp_mod > 0:
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
 
@@ -253,15 +248,6 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
     # TODO: Verify on an example case that this filtering is working correctly.
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
-
-    #if "REF_y" in list(merged.columns.values):
-    #    merged["REF"] = merged["REF_y"]
-    #if "ALT_y" in list(merged.columns.values):
-    #    merged["ALT"] = merged["ALT_y"]
-    #if "POS_y" in list(merged.columns.values):
-    #    merged["POS"] = merged["POS_y"]
-
-    #print list(merged.columns.values)
 
     # TODO: Enforce new standard: effect measurements are always with respect to ALT status.
     keep_indices = \

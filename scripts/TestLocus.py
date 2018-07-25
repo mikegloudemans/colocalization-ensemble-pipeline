@@ -43,12 +43,13 @@ class TestLocus:
             clpp = finemap.run_finemap(self)
 
             # TODO: Modify thresholds for significance here.
-            if not clpp == "Fail" and clpp > 0.3: 
+            #if not clpp == "Fail" and clpp > 0.3: 
+            if not isinstance(clpp, basestring) and clpp > 0.3: 
                 plotworthy = True
 
             # NOTE: Temporary; for debugging
-            if clpp == "Fail":
-                print "FAILED Analyzing {0} {6} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, self.trait)
+            if isinstance(clpp, basestring):
+                print "FAILED Analyzing {0} {6} {1} {2} {3} {4} {5} {7}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, self.trait, clpp)
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)

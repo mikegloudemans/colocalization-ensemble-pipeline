@@ -142,10 +142,11 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
         i = 0
         for line in stream:
             i = i + 1
+
+            # If debugging, only run a shorter chunk
             if i % 1000000 == 0:
-                # NOTE temporary!
-                pass
-                #break
+                if "debug" in settings and settings["debug"] == True:
+                    break
             data = line.split()
             feature = data[feature_index]
             if subset_file != -1:
@@ -238,9 +239,12 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
-        assert 'pvalue' in gwas_table and "effect_direction" in gwas_table
+        assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
-        gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["effect_direction"] == "+")-1)
+        if "effect_direction" in gwas_table:
+            gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["effect_direction"] == "+")-1)
+        else:
+            gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["direction"] == "+")-1)
     else:
         return "Improper GWAS format specification"
 
@@ -255,7 +259,7 @@ def get_eqtl_data(eqtl_file, snp, settings):
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(eqtl_file), shell=True)
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
-    eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t")
+    eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t", index_col=False)
 
     if eqtls.shape[0] == 0:
         return "Gene desert."
@@ -297,6 +301,10 @@ def get_eqtl_data(eqtl_file, snp, settings):
         # Use max function to protect against underflow in chi2 computation
         eqtls['pvalue'] = stats.chi2.sf(eqtls["chisq"],1)
         eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
+    elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'pval_only':
+        assert 'pvalue' in eqtls and "effect_direction" in eqtls
+        # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
+        eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["effect_direction"] == "+")-1)
     else:
         return "Improper eQTL format specification"
 

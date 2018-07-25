@@ -5,6 +5,8 @@
 
 import json
 
+debug = False
+
 # Function load_config
 #
 # Input: Filename
@@ -34,5 +36,10 @@ def load_config(filename):
     # Default window of analysis = 500000 bp on either side of SNP
     if "window" not in config:
         config["window"] = 500000
+
+    if debug:
+        config["debug"] = True
+    if "debug" in config and config["debug"] == "True":
+        config["debug"] = True
 
     return config

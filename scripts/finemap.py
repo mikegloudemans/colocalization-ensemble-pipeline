@@ -24,8 +24,10 @@ def run_finemap(locus, window=500000):
 
     pf = prep_finemap(locus, window)
     # TODO: Make it write to an error or a "skipped" file instead of failing silently.
-    if pf == "Fail":
-        return "Fail"
+    if isinstance(pf, basestring):
+        return pf
+    #if pf == "Fail":
+    #    return "Fail"
     return launch_finemap(locus, window, pf)
 
 
@@ -60,8 +62,8 @@ def prep_finemap(locus, window):
 
         # Run PLINK on just one VCF.
         removal_list = compute_ld(vcf, locus, "eqtl")
-        if removal_list == "Fail":
-            return "Fail"
+        if isinstance(removal_list, basestring):
+            return removal_list
         subprocess.check_call("cp {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
 
         # Remove indices that produced NaNs in the LD computations
@@ -81,12 +83,12 @@ def prep_finemap(locus, window):
         # Run PLINK on both VCFs.
         while True:
             removal_list = compute_ld(evcf, locus, "eqtl")
-            if removal_list == "Fail":
-                return "Fail"
+            if isinstance(removal_list, basestring):
+                return removal_list
             
             extension_list = compute_ld(gvcf, locus, "gwas")
-            if extension_list is "Fail":
-                return "Fail"
+            if isinstance(extension_list, basestring):
+                return extension_list
  
             removal_list.extend(extension_list)
 
@@ -103,10 +105,10 @@ def prep_finemap(locus, window):
     # Check to see whether we still even have a signficant GWAS variant and a significant eQTL variant.
     if "screening_thresholds" in locus.settings and "gwas" in locus.settings["screening_thresholds"]:
         if min(combined["pvalue_gwas"]) > locus.settings["screening_thresholds"]["gwas"]:
-            return "Fail"
+            return "Fail: No GWAS SNPs pass thresholds after filtering."
     if "screening_thresholds" in locus.settings and "eqtl" in locus.settings["screening_thresholds"]:
         if min(combined["pvalue_eqtl"]) > locus.settings["screening_thresholds"]["eqtl"]:
-            return "Fail"
+            return "Fail: No eQTL SNPs pass thresholds after filtering."
 
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
@@ -243,6 +245,8 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
             return af > 0.01 and 1-af > 0.01 
         vcf = vcf[vcf["INFO"].apply(fn)]
 
+    if "POS" in list(combined.columns.values):
+        combined = combined.drop(columns=['POS'])
 
     # Remove variants where alt/ref don't match between GWAS/eQTL and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
@@ -296,7 +300,7 @@ def compute_ld(input_vcf, locus, data_type):
     removal_list = []
     while True:
         if vcf.shape[0] == 0:
-            return "Fail"
+            return "Fail: All SNPs have been eliminated through VCF filtering."
 
         # Write VCF to tmp file
         vcf.to_csv('{7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), sep="\t", index=False, header=True)

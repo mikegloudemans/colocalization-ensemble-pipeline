@@ -56,22 +56,29 @@ def pvalue_plot(locus, clpp):
 
 def locus_compare(locus):
 
+    trait = locus.trait
+    if trait == -1:
+        trait = locus.gwas_suffix
+
     if "rsid_column" in locus.settings["gwas_experiments"][locus.gwas_file]:
         locus.data['rsid'] = locus.data[locus.settings["gwas_experiments"][locus.gwas_file]['rsid_column']]
+    # If both GWAS and eQTL files have rsids, they'll have been renamed
+    if "rsid_gwas" in list(locus.data.columns.values):
+        locus.data['rsid'] = locus.data['rsid_gwas']
 
-    subprocess.call("mkdir -p {0}/plots/{4}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix), shell=True)
-    gwas_out_file = "{0}/plots/{4}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
-    eqtl_out_file = "{0}/plots/{4}/{1}_{2}/{3}/{5}_eqtl_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+    subprocess.call("mkdir -p {0}/plots/{4}/{5}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait), shell=True)
+    gwas_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
+    eqtl_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
 
     # Assume that SNP rsid is already present, has been fetched earlier in program while
     # loading the GWAS
-    subprocess.call(["mkdir", "-p", "{0}/locuscompare/{4}/{1}_{2}/{3}".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix)])
-    gwas_tmp = "{0}/locuscompare/{4}/{1}_{2}/{3}/{5}_gwas_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
-    eqtl_tmp = "{0}/locuscompare/{4}/{1}_{2}/{3}/{5}_eqtl_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+    subprocess.call(["mkdir", "-p", "{0}/locuscompare/{4}/{5}/{1}_{2}/{3}".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait)])
+    gwas_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_gwas_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
+    eqtl_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
  
     # Subset down to the region of interest, save this region
     vcf_file = "/mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz".format(locus.chrom)
-    vcf_tmp = "{0}/locuscompare/{4}/{1}_{2}/{3}/{5}_vcf_tmp.vcf".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene)
+    vcf_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_vcf_tmp.vcf".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
     subprocess.check_call("zcat {0} | tail -n +253 | head -n 1 > {1}".format(vcf_file, vcf_tmp), shell=True)
     subprocess.check_call('tabix {3} {0}:{1}-{2} >> {4}'.format(locus.chrom, locus.pos - locus.settings["window"], locus.pos + locus.settings["window"], vcf_file, vcf_tmp), shell=True)
      

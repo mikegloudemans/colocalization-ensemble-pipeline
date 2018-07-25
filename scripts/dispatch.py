@@ -8,7 +8,7 @@
 #
 
 #max_cores = 1
-max_cores = 10
+max_cores = 8
 #max_cores = 12
 
 # Built-in libraries
@@ -31,10 +31,13 @@ def main():
     # Read config file
     config_file = sys.argv[1]
     settings = config.load_config(config_file)
- 
+
     # Make timestamped results directory, under which all output for this run will be stored.
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
+    if "out_dir_group" in settings:
+        base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}/{1}".format(settings["out_dir_group"], now)
+    else:
+        base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
     base_output_dir = base_output_dir + "_" + config_file.split("/")[-1].split(".")[0]
     base_tmp_dir = "/users/mgloud/projects/brain_gwas/tmp/{0}".format(now)
 
@@ -73,6 +76,8 @@ def main():
         assert len(traits) != 0
 
         for trait in traits:
+
+            print "Testing", trait
 
             gwas_snp_list = []
             # Get a list of which SNPs we should test in this GWAS.
@@ -114,7 +119,7 @@ def main():
                 pool.join()
      
                 # Clean up after ourselves
-                subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+                subprocess.call("rm -r {0} > /dev/null".format(base_tmp_dir), shell=True)
 
                 # Run GWAS SNPs separately just in case there happen to be any overlaps,
                 # which could lead to a race.
@@ -126,7 +131,7 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                subprocess.call("rm -r {0}".format(base_tmp_dir), shell=True)
+                subprocess.call("rm -r {0} > /dev/null".format(base_tmp_dir), shell=True)
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
@@ -136,11 +141,11 @@ def main():
            
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
     # TODO: Move this to a separate function
-    for gwas_file in gwas_files:
-        gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
-
-        subprocess.check_call("mkdir -p {0}/manhattan".format(base_output_dir), shell=True)
-        subprocess.check_call("Rscript /users/mgloud/projects/brain_gwas/scripts/full_genome_plot.R {0}/{1}_finemap_clpp_status.txt {0}/manhattan".format(base_output_dir, gwas_suffix), shell=True)
+    #for gwas_file in gwas_files:
+    #    gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
+    #
+    #    subprocess.check_call("mkdir -p {0}/manhattan".format(base_output_dir), shell=True)
+    #    subprocess.check_call("Rscript /users/mgloud/projects/brain_gwas/scripts/full_genome_plot.R {0}/{1}_finemap_clpp_status.txt {0}/manhattan".format(base_output_dir, gwas_suffix), shell=True)
 
 
 # If we're running in parallel and a thread fails, catch the exception
@@ -153,6 +158,7 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
         traceback.print_exc(file=sys.stdout)
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
             a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, str(e)))
+        raise Exception("Failed coloc run.")
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):
 
@@ -215,7 +221,7 @@ def save_state(config_file, base_output_dir):
     copyfile(config_file, "{0}/settings_used.config".format(base_output_dir))
 
     # For reproducibility, store the current state of the project in Git
-    subprocess.check_call('git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
     subprocess.check_call('git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
     subprocess.check_call('git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
     subprocess.check_call('git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)

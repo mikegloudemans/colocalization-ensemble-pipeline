@@ -90,7 +90,7 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
 # between two selected SNPs.  Output: A list of significant SNPs to test.
 def select_snps_from_list(list_file):
 
-    gwas_table = pd.read_csv(list_file, sep="\\s*", header=None)
+    gwas_table = pd.read_csv(list_file, sep="\s+", header=None)
 
     snp_list = zip(list(gwas_table.iloc[:,0]), list(gwas_table.iloc[:,1]), [-1]*gwas_table.shape[0])
     snp_list = [SNP.SNP(s) for s in snp_list]

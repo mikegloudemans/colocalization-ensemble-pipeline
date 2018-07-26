@@ -22,18 +22,13 @@ def run_coloc(locus, window=500000):
 def prep_coloc(locus, window):
     # Write a simple table-formatted file containing the necessary information
     # for coloc to run
-
-    # TODO: Standardize the input format so this can be used on all input files.
-
-    subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
-
-    #locus.data.to_csv("/users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", columns=["pvalue_gwas", "pvalue_eqtl", "allele_freq"], index=False)
-    locus.data.to_csv("/users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", columns=["pvalue_gwas", "pvalue_eqtl", "Kgenomes_maf"], index=False)
+    subprocess.call("mkdir -p /users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3} > /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    data = locus.data.copy()
+    locus.data.to_csv("/users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep="\t", columns=["pvalue_gwas", "pvalue_eqtl", "effect_af_eqtl", "effect_af_gwas"], index=False)
 
 def launch_coloc(locus, window):
+
     # Launch an R script to run the coloc package.
-    # NOTE: UNSAFE call here. Fix these all over the code. I should use piped input with shell=False instead
-    # Do not distribute before fixing this.
     coloc_prob_h4 = float(subprocess.check_output("Rscript /users/mgloud/projects/brain_gwas/scripts/run_coloc.R /users/mgloud/projects/brain_gwas/tmp/coloc/{0}/{1}_{2}/{3}/{4}_level{5}.csv {6} {7} {8} {9}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, \
         locus.settings["gwas_experiments"][locus.gwas_file]["N"], \
         locus.settings["gwas_experiments"][locus.gwas_file]["s"], \

@@ -7,6 +7,7 @@
 
 import finemap
 import ecaviar
+import caviarbf
 import coloc
 import plot_loci as plot
 import math
@@ -53,11 +54,15 @@ class TestLocus:
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)
-
-            if clpp > 0.5 and max(-1*math.log10(self.data["pvalue_gwas"])) > 5 and max(-1*math.log10(self.data["pvalue_eqtl"])) > 5: 
+            if clpp > 0.02: 
                 plotworthy = True
 
-        if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"]:
+        if "caviarbf" in self.settings["methods"]:
+            clpp = caviarbf.run_caviarbf(self)
+            if clpp > 0.02:
+                plotworthy = True
+
+        if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"] or "caviarbf" in self.settings["methods"]:
             finemap.purge_tmp_files(self)
 
         if "coloc" in self.settings["methods"]:
@@ -85,7 +90,5 @@ class TestLocus:
 
         # Plot the result if it's significant.
         if plotworthy or self.settings["plot_all"] == True:
-            #plot.locus_zoom_plot(self, clpp)
-            #plot.pvalue_plot(self, clpp)
             plot.locus_compare(self)
 

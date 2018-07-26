@@ -51,9 +51,20 @@ def main():
     for gwas_file in gwas_files:
 
         # Write header of output file for FINEMAP
+
         gwas_suffix = gwas_file.split("/")[-1].replace(".", "_") 
-        with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-            w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+        if "finemap" in settings["methods"]:
+            with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+
+        # Write COLOC results to the desired file.
+        if "coloc" in settings["methods"]:
+            with open("{0}/{1}_coloc_h4pp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp_h4\n")
+
+        if "ecaivar" in settings["methods"]:
+            with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         # Get list of traits measured in this GWAS
         traits = set([])
@@ -119,7 +130,7 @@ def main():
                 pool.join()
      
                 # Clean up after ourselves
-                subprocess.call("rm -r {0} > /dev/null".format(base_tmp_dir), shell=True)
+                subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
                 # Run GWAS SNPs separately just in case there happen to be any overlaps,
                 # which could lead to a race.
@@ -131,7 +142,7 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                subprocess.call("rm -r {0} > /dev/null".format(base_tmp_dir), shell=True)
+                #subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:

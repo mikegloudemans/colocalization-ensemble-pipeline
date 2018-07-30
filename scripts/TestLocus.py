@@ -9,6 +9,7 @@ import finemap
 import ecaviar
 import caviarbf
 import coloc
+import rtc
 import plot_loci as plot
 import math
 
@@ -68,6 +69,11 @@ class TestLocus:
         if "coloc" in self.settings["methods"]:
             h4pp = coloc.run_coloc(self)
             if h4pp > 0.5:
+                plotworthy = True
+
+        if "rtc" in self.settings["methods"]:
+            rtc_score = rtc.run_rtc(self)
+            if rtc_score > 0.8:
                 plotworthy = True
 
         ''' 

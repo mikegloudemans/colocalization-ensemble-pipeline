@@ -35,7 +35,7 @@ def run_ecaviar(locus, window=500000):
     command = "awk '{{sum += $2}} END {{print sum}}' {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir) 
     clpp = float(subprocess.check_output(command, shell=True))
 
-    snps_tested = int(check_output("wc -l {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True))
+    snps_tested = int(subprocess.check_output("wc -l {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True))
 
     # Add results to the desired file
     with open("{0}/{1}_ecaviar_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:

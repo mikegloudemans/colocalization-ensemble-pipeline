@@ -7,8 +7,10 @@
 
 import subprocess
 from scipy import stats
+from scipy import misc
 import finemap
 import sys
+import math
 
 def run_caviarbf(locus, window=500000):
 
@@ -25,10 +27,11 @@ def run_caviarbf(locus, window=500000):
               -z {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z \
               -t 0 \
               -a 1 \
-              --appr \
               -n {7} \
               -c 1'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["gwas_experiments"][locus.gwas_file]["N"])
+    print command
     subprocess.check_call(command, shell=True)
+
 
     command = '/users/mgloud/software/caviarbf/caviarbf/caviarbf \
               -o {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_caviarbf_results_eqtl \
@@ -36,21 +39,39 @@ def run_caviarbf(locus, window=500000):
               -z {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z \
               -t 0 \
               -a 1 \
-              --appr \
               -n {7} \
               -c 1'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["eqtl_experiments"][locus.eqtl_file]["N"])
     subprocess.check_call(command, shell=True)
 
-    sys.exit()
-
     # Parse eCAVIAR results to compute CLPP score
-    command = "awk '{{sum += $2}} END {{print sum}}' ../tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level) 
-    clpp = float(subprocess.check_output(command, shell=True))
-    
-    snps_tested = int(check_output("wc -l ../tmp/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_ecaviar_results_col".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True))
+    with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_caviarbf_results_gwas".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)) as f:
+        f.readline()
+        f.readline()
+        bf = []
+        for line in f:
+            bf.append(float(line.strip().split()[0]))
+    denom = misc.logsumexp(bf)
+    gwas_bf = [b - denom for b in bf]
+
+    with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_caviarbf_results_eqtl".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)) as f:
+        f.readline()
+        f.readline()
+        bf = []
+        for line in f:
+            bf.append(float(line.strip().split()[0]))
+    denom = misc.logsumexp(bf)
+    eqtl_bf = [b - denom for b in bf]
+
+    assert len(eqtl_bf) == len(gwas_bf)
+
+    coloc_probs = [math.exp(eqtl_bf[i]) * math.exp(gwas_bf[i]) for i in range(len(gwas_bf))]
+    clpp = sum(coloc_probs)
+
+    snps_tested = int(subprocess.check_output("wc -l {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_caviarbf_results_eqtl".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True).split()[0]) - 2
 
     # Add results to the desired file
-    with open("{0}/{1}_ecaviar_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
+    with open("{0}/{1}_caviarbf_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
         a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, snps_tested, clpp))
 
+    print clpp
     return clpp

@@ -10,6 +10,7 @@ import ecaviar
 import caviarbf
 import coloc
 import rtc
+import twas
 import plot_loci as plot
 import math
 
@@ -76,6 +77,11 @@ class TestLocus:
             if rtc_score > 0.8:
                 plotworthy = True
 
+        if "twas" in self.settings["methods"]:
+            twas_p = twas.run_twas(self)
+            if twas_p > 5:
+                plotworthy = True
+
         ''' 
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)
@@ -89,8 +95,6 @@ class TestLocus:
         if "gwaspw" in self.settings.keys():
             run_gwaspw(basedir, data, settings)
 
-        if "twas" in self.settings.keys():
-            run_twas(basedir, data, settings)
         '''
         #plotworthy=True
 

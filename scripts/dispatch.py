@@ -74,7 +74,11 @@ def main():
             with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
-            # Get list of traits measured in this GWAS
+        if "twas" in settings["methods"]:
+            with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
+
+        # Get list of traits measured in this GWAS
         traits = set([])
 
         # Are there multiple traits in this GWAS?
@@ -150,7 +154,7 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
+                #subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:

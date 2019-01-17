@@ -72,6 +72,7 @@ def locus_compare(locus):
 
     # Assume that SNP rsid is already present, has been fetched earlier in program while
     # loading the GWAS
+    print locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait
     subprocess.call(["mkdir", "-p", "{0}/locuscompare/{4}/{5}/{1}_{2}/{3}".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait)])
     gwas_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_gwas_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
     eqtl_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)

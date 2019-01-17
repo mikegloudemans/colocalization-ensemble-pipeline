@@ -99,6 +99,6 @@ class TestLocus:
         #plotworthy=True
 
         # Plot the result if it's significant.
-        if plotworthy or self.settings["plot_all"] == True:
+        if (plotworthy or self.settings["plot_all"] == True) and self.settings["plot_none"] == False:
             plot.locus_compare(self)
 

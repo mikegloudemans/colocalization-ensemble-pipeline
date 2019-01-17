@@ -28,10 +28,15 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
 
     stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True))
     gwas_table = pd.read_csv(stream, sep="\t")
-    subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
-    # TODO: Fix this line! Something is wrong with it I guess
+    if trait == gwas_file:
+        subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
+    else:
+        subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']]
+    
+    print subset.head()
     subset['pvalue'] = subset['pvalue'].astype(float)
     subset = subset[subset['pvalue'] <= gwas_threshold]
+    print subset.head()
 
     if trait != gwas_file:
         subset = subset[subset['trait'] == trait]
@@ -202,7 +207,7 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
     gwas_table['pvalue'] = gwas_table['pvalue'].astype(float)
 
-    if trait != gwas_file:
+    if trait != gwas_file.split("/")[-1]:
         gwas_table = gwas_table[gwas_table["trait"] == trait]
 
     if gwas_table.shape[0] == 0:
@@ -236,6 +241,8 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         assert 'log_or' in gwas_table and 'se' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['log_or'] / gwas_table['se']
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'effect_size':
+        if "log_or" in gwas_table:
+            gwas_table['beta'] = gwas_table['log_or']
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
@@ -258,6 +265,8 @@ def get_eqtl_data(eqtl_file, snp, settings):
     # Get eQTL data using tabix
     header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(eqtl_file), shell=True)
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
+            snp.chrom, snp.pos - window, snp.pos + window), shell=True)
+    raw_eqtls += subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(eqtl_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t", index_col=False)
 
@@ -302,9 +311,13 @@ def get_eqtl_data(eqtl_file, snp, settings):
         eqtls['pvalue'] = stats.chi2.sf(eqtls["chisq"],1)
         eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'pval_only':
-        assert 'pvalue' in eqtls and "effect_direction" in eqtls
+        assert 'pvalue' in eqtls and ("effect_direction" in eqtls or "beta" in eqtls)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
-        eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["effect_direction"] == "+")-1)
+        if "effect_direction" in eqtls:
+            eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["effect_direction"] == "+")-1)
+        else:
+            eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["beta"] > 0)-1)
+
     else:
         return "Improper eQTL format specification"
 

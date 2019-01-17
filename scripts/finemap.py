@@ -209,7 +209,6 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # NOTE: The following line takes up about 80% of the computational time
     # for your average FINEMAP locus. I should try to accelerate this.
     vcf = pd.read_csv(stream, sep="\t", names=header)
-
     # Remove variants not in the GWAS table
     vcf["POS"] = (vcf["POS"]).astype(int)
     vcf = vcf[vcf["POS"].isin(list(combined["snp_pos"]))]

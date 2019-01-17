@@ -7,10 +7,6 @@
 # methods.
 #
 
-#max_cores = 1
-max_cores = 8
-#max_cores = 12
-
 # Built-in libraries
 import sys
 from shutil import copyfile
@@ -20,6 +16,7 @@ import math
 from multiprocessing import Pool
 import traceback
 import gzip
+import os
 
 # Custom libraries
 import config
@@ -32,8 +29,22 @@ def main():
     config_file = sys.argv[1]
     settings = config.load_config(config_file)
 
+    max_cores = int(sys.argv[2])
+
     # Make timestamped results directory, under which all output for this run will be stored.
-    now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    # Note: sometimes this might conflict with another run of the script. If so, keep trying until
+    # a directory name is free
+    while True:
+        now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
+        if not os.path.isdir("/users/mgloud/projects/brain_gwas/tmp/{0}".format(now)):  
+            try:
+                subprocess.check_call("mkdir /users/mgloud/projects/brain_gwas/tmp/{0}".format(now), shell=True)
+                # If another script beats us to it, this we'll fail so we'll try again then
+            except:
+                continue
+            break
+
+
     if "out_dir_group" in settings:
         base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}/{1}".format(settings["out_dir_group"], now)
     else:
@@ -78,23 +89,28 @@ def main():
             with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
 
+        if "metaxcan" in settings["methods"]:
+            with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
+
         # Get list of traits measured in this GWAS
         traits = set([])
 
         # Are there multiple traits in this GWAS?
-        with gzip.open(gwas_file) as f:
-            header = f.readline().strip().split("\t")
-            if "trait" in header:
-                trait_index = header.index("trait")
-                for line in f:
-                    traits.add(line.strip().split("\t")[trait_index])
-            else:
-                traits.add(gwas_file)
-        traits = list(traits)
+        if "traits" not in settings["gwas_experiments"][gwas_file]:
+            with gzip.open(gwas_file) as f:
+                header = f.readline().strip().split("\t")
+                if "trait" in header:
+                    trait_index = header.index("trait")
+                    for line in f:
+                        traits.add(line.strip().split("\t")[trait_index])
+                else:
+                    traits.add(gwas_file.split("/")[-1])
+            traits = list(traits)
 
         # Subset down to traits of interest, if specified
         if "traits" in settings["gwas_experiments"][gwas_file]:
-            traits = [t for t in settings["gwas_experiments"][gwas_file]["traits"]]
+            traits = settings["gwas_experiments"][gwas_file]["traits"]
 
         assert len(traits) != 0
 
@@ -154,7 +170,7 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                #subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
+                subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
@@ -221,6 +237,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # NOTE: It might be easier to just do this step once outside of this loop,
         # and then filter down to the gene of interest. Consider modifying.
         allow_insignificant_gwas = restrict_gene != -1
+
         combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True, allow_insignificant_gwas=allow_insignificant_gwas)
 
         # Skip it if this site is untestable.
@@ -245,9 +262,9 @@ def save_state(config_file, base_output_dir):
 
     # For reproducibility, store the current state of the project in Git
     subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
  
 # Use SplicePlot to generate splice plots
 def splice_plot(results_file, eqtl_file, settings):

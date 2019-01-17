@@ -12,18 +12,6 @@ import pandas as pd
 import gzip
 import os
 
-# TODO: Right now, I suspect that the weighting part is putting the weight
-# on SNPs that aren't actually used in downstream steps. Change this so that only
-# SNPs appearing in the reference will actually be included in the weighting stage,
-# or else we risk getting this error all the time.
-
-# I think this will require converting the LD reference to the right format (just maintain uncompressed copies of all these), then
-# figuring out which SNPs to remove from the VCF, and then removing those same SNPs from the GWAS file? Probably not though...
-# I think they'll be auto-removed from the GWAS at the appropriate stage.
-
-# So all I need to do is add a line in here in the initial VCF loading that throws away any irrelevant SNPs
-
-
 def run_twas(locus, window=500000):
 
     subprocess.call("mkdir -p {4}/twas/{0}/{1}_{2}/{3}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.tmpdir), shell=True)
@@ -59,7 +47,7 @@ def run_twas(locus, window=500000):
             --out {6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_weights \
             --models top1,lasso,enet \
             --hsq_p 1 \
-            --verbose 2".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
+            --verbose 0".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
     subprocess.check_call(command, shell=True)
   
     # Some genes don't make it through the above part, presumably because there's no
@@ -97,12 +85,15 @@ def run_twas(locus, window=500000):
         f.readline()
         data = f.readline().strip().split()
         twas_p = float(data[18])
-        twas_p_perm = float(data[21])
+        #twas_p_perm = float(data[21]) # Figure out what the deal with this is before trying to report it and crashing the script
+        twas_p_perm = "NA"
         snps_tested = int(data[12])
+
+    print twas_p, twas_p_perm, snps_tested
 
     # Add results to the desired file
     with open("{0}/{1}_twas_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-        a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, snps_tested, -1*math.log10(twas_p), -1*math.log10(twas_p_perm)))
+        a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, snps_tested, -1*math.log10(twas_p), twas_p_perm))
     
     return twas_p
 

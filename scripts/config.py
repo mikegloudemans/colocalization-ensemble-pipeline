@@ -32,6 +32,11 @@ def load_config(filename):
         config["plot_all"] = True
     else:
         config["plot_all"] = False
+    
+    if "plot_none" in config and config["plot_none"]=="True":
+        config["plot_none"] = True
+    else:
+        config["plot_none"] = False
 
     # Default window of analysis = 500000 bp on either side of SNP
     if "window" not in config:

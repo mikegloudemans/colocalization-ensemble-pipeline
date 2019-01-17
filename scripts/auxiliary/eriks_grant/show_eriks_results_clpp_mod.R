@@ -70,10 +70,11 @@ finemap = merge(genes, finemap)
 # that with a simple regression if needed, but let's skip that for now.
 #
 dim(finemap)	# Total number of tests performed
-#pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
-pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 7.3,]
+pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 5,]
+#pass_pval_cutoffs = finemap[finemap$X.log_gwas_pval > 5 & finemap$X.log_eqtl_pval > 7.3,]
 dim(pass_pval_cutoffs)	# Total number of tests (gwas SNP - eqtl gene pairs) passing eQTL and GWAS pval thresholds
-pre_final_set = pass_pval_cutoffs[pass_pval_cutoffs$clpp_mod > 0.3,]
+#pre_final_set = pass_pval_cutoffs[pass_pval_cutoffs$clpp_mod > 0.3,]
+pre_final_set = pass_pval_cutoffs
 dim(pre_final_set)	# Total number of tests passing our colocalization criteria
 pre_final_set = pre_final_set[rev(order(pre_final_set$clpp_mod)),]
 
@@ -332,4 +333,4 @@ num_gwas_by_eqtl_colocalized = priority %>% group_by(rsid, ensembl) %>% summariz
 priority = merge(priority, num_gwas_by_eqtl_colocalized, by=c("rsid", "ensembl"))
 
 priority = priority[rev(order(priority$clpp_mod)),]
-write.table(priority, file="/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/results/prioritized_gene_rankings_clpp_mod_stringent_pvalue.tsv", quote=FALSE, col.names=TRUE, row.names=FALSE, sep="\t")
+write.table(priority, file="/users/mgloud/projects/brain_gwas/scripts/auxiliary/eriks_grant/results/prioritized_gene_rankings_no_clpp_mod_cutoff.tsv", quote=FALSE, col.names=TRUE, row.names=FALSE, sep="\t")

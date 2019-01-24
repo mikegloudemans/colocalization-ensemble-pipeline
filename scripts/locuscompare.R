@@ -1,5 +1,5 @@
-#require(locuscomparer)
-source("/users/mgloud/software/locuscompare/locuscomparer/R/locuscompare.R")
+require(locuscomparer)
+require(ggplot2)
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -14,7 +14,7 @@ snp = args[7]
 file1 = read.table(file1, header=TRUE)
 file2 = read.table(file2, header=TRUE)
 
-m = main(in_fn1 = file1, in_fn2 = file2, title=title1, title2=title2, vcf_fn=vcf, snp=snp)
+m = main(in_fn1 = file1, in_fn2 = file2, title=title1, title2=title2, snp=snp) # vcf_fn=vcf, snp=snp)
 m
 
 # Plot with low quality to reduce file size; re-plot later if needing a high-quality figure

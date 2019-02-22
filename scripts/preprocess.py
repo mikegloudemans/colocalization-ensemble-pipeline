@@ -124,6 +124,12 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
             mode = "chisq"
             pval_index = header.index("chisq")
             chisq_threshold = stats.chi2.isf(settings['selection_thresholds']['eqtl'],1)
+        elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == "effect_size":
+            assert 'se' in header
+            assert 'beta' in header
+            se_index = header.index('se')
+            beta_index = header.index('beta')
+            mode = "effect_size"
         else:
             mode = "pvalue"
             pval_index = header.index("pvalue")
@@ -174,6 +180,11 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
 
                 if feature not in gene_bests or gene_bests[feature][2] < chisq:
                     gene_bests[feature] = (chrom, data[pos_index], chisq)
+            elif mode == "effect_size":
+                zscore = abs(float(data[beta_index]) / float(data[se_index]))
+                pvalue = stats.norm.sf(zscore) * 2
+                if feature not in gene_bests or gene_bests[feature][2] > pvalue:
+                    gene_bests[feature] = (chrom, data[pos_index], pvalue)
             else:
                 pvalue = float(data[pval_index])
                 if pvalue > settings['selection_thresholds']['eqtl']:
@@ -245,6 +256,7 @@ def get_gwas_data(gwas_file, snp, settings, trait):
             gwas_table['beta'] = gwas_table['log_or']
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
+        gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
         assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)

@@ -315,6 +315,7 @@ def get_eqtl_data(eqtl_file, snp, settings):
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'effect_size':
         assert 'beta' in eqtls
         eqtls['ZSCORE'] = eqtls['beta'] / eqtls['se']
+        eqtls['pvalue'] = stats.norm.sf(abs(eqtls['beta'] / eqtls['se']))*2
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'chisq':
         assert "chisq" in eqtls
         # Here we're dealing with RASQUAL data

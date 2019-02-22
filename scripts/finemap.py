@@ -16,6 +16,7 @@ else:
 import pandas as pd
 import numpy as np
 import math
+from operator import mul
 
 # TODO: Make it so that different traits are written in different temporary files
 # Otherwise there may be concurrency bugs if running in parallel across loci
@@ -132,9 +133,14 @@ def launch_finemap(locus, window, top_hits):
     subprocess.check_call('echo "z;ld;snp;config;n-ind" > {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
     subprocess.check_call('echo "{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.config;{6}" >> {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, gwas_n, locus.tmpdir), shell=True)
     subprocess.check_call('echo "{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.fixed.ld;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp;{7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.config;{6}" >> {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, eqtl_n, locus.tmpdir), shell=True)
-    
+   
+    max_causal = 1
+    if "max_causal" in locus.settings["methods"]["finemap"]:
+        max_causal = int(locus.settings["methods"]["finemap"]["max_causal"])
+
     # Run FINEMAP
-    subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max 1 --n-iterations 1000000 --n-convergence 50000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), shell=True)
+    #subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+    subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
     
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []
@@ -156,7 +162,10 @@ def launch_finemap(locus, window, top_hits):
     for i in range(len(gwas_probs)):
             assert gwas_probs[i][0] == eqtl_probs[i][0]
 
-    finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
+    #finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
+    
+    finemap_clpp = 1 - reduce(mul, [1-(gwas_probs[i][1]*eqtl_probs[i][1]) for i in range(len(gwas_probs))])
+    print finemap_clpp
 
     ld_file = "{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
     finemap_clpp_mod = get_clpp_mod(gwas_probs, eqtl_probs, ld_file)
@@ -164,7 +173,7 @@ def launch_finemap(locus, window, top_hits):
     # Write header of output file for FINEMAP
     trait_suffix = locus.trait.split("/")[-1].replace(".", "_")
 
-    if finemap_clpp_mod > 0.3:
+    if finemap_clpp_mod > 0.3 or ("save_all_finemap" in locus["settings"]["methods"]["finemap"] and locus["settings"]["methods"]["finemap"]["save_all_finemap"] == "True"):
     #if finemap_clpp_mod > 0:
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))

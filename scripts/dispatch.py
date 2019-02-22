@@ -71,7 +71,7 @@ def main():
         # Write COLOC results to the desired file.
         if "coloc" in settings["methods"]:
             with open("{0}/{1}_coloc_h4pp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp_h4\n")
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h4\tbase_gwas_file\n")
 
         if "ecaviar" in settings["methods"]:
             with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
@@ -222,10 +222,21 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
     # Temporary mod for splice eQTLs. May be best to specify a "feature" ID in the future
     if 'feature' in eqtl_data:
         eqtl_data['gene'] = eqtl_data['feature']
+    if 'Gene' in eqtl_data:
+        eqtl_data['gene'] = eqtl_data['Gene']
     # Don't want to have colons in our filenames later
     eqtl_data['gene'] = eqtl_data['gene'].str.replace(':', '.')
+    # Don't want our temporary filename to be too long
+    def trim_trait(x):
+        if len(x) > 100:
+            return x[:100] + "_trimmed"
+        else:
+            return x
+    eqtl_data['gene'] = eqtl_data['gene'].apply(trim_trait)
 
     # Get all genes whose eQTLs we're testing at this locus
+    if len(restrict_gene) > 100:
+        restrict_gene = restrict_gene[:100] + "_trimmed"
     if restrict_gene == -1:
         genes = set(eqtl_data['gene'])
     else:

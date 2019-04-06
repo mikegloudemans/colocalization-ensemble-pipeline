@@ -95,7 +95,7 @@ def main():
 
         if "baseline" in settings["methods"]:
             with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\n")
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\n")
 
 
 

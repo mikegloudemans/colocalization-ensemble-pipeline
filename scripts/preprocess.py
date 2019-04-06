@@ -28,7 +28,7 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
 
     stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True))
     gwas_table = pd.read_csv(stream, sep="\t")
-    if trait == gwas_file:
+    if trait == gwas_file.split("/")[-1]:
         subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
     else:
         subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']]
@@ -38,7 +38,7 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
     subset = subset[subset['pvalue'] <= gwas_threshold]
     print subset.head()
 
-    if trait != gwas_file:
+    if trait != gwas_file.split("/")[-1]:
         subset = subset[subset['trait'] == trait]
 
     all_snps = [tuple(x) for x in subset.values]
@@ -349,6 +349,9 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
 
+    if eqtl_subset.shape[0] == 0: 
+        return "The pre-specified gene was not tested in this sample."
+    
     # Sometimes the GWAS SNP is outside of the range of eQTLs tested for a certain
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.

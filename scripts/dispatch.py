@@ -93,6 +93,12 @@ def main():
             with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
 
+        if "baseline" in settings["methods"]:
+            with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\n")
+
+
+
         # Get list of traits measured in this GWAS
         traits = set([])
 
@@ -195,8 +201,10 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
     except Exception as e:
         print "caught exception"
         traceback.print_exc(file=sys.stdout)
+        error = str(e)
+        error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
-            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, str(e)))
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, error))
         raise Exception("Failed coloc run.")
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):
@@ -235,7 +243,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
     eqtl_data['gene'] = eqtl_data['gene'].apply(trim_trait)
 
     # Get all genes whose eQTLs we're testing at this locus
-    if len(restrict_gene) > 100:
+    if isinstance(restrict_gene, basestring) and len(restrict_gene) > 100:
         restrict_gene = restrict_gene[:100] + "_trimmed"
     if restrict_gene == -1:
         genes = set(eqtl_data['gene'])

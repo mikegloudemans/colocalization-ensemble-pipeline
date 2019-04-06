@@ -139,8 +139,8 @@ def launch_finemap(locus, window, top_hits):
         max_causal = int(locus.settings["methods"]["finemap"]["max_causal"])
 
     # Run FINEMAP
-    #subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
-    subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+    subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+    #subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
     
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []
@@ -173,7 +173,7 @@ def launch_finemap(locus, window, top_hits):
     # Write header of output file for FINEMAP
     trait_suffix = locus.trait.split("/")[-1].replace(".", "_")
 
-    if finemap_clpp_mod > 0.3 or ("save_all_finemap" in locus["settings"]["methods"]["finemap"] and locus["settings"]["methods"]["finemap"]["save_all_finemap"] == "True"):
+    if finemap_clpp_mod > 0.3 or ("save_all_finemap" in locus.settings["methods"]["finemap"] and locus.settings["methods"]["finemap"]["save_all_finemap"] == "True"):
     #if finemap_clpp_mod > 0:
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.eqtl.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_{7}_finemap_eqtl.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, trait_suffix))

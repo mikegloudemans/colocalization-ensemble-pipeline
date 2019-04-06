@@ -10,9 +10,10 @@ import ecaviar
 import caviarbf
 import coloc
 import rtc
-import twas
+import twas_real_data
 import plot_loci as plot
 import math
+import baseline
 
 class TestLocus:
     def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file, trait):
@@ -45,8 +46,6 @@ class TestLocus:
         if "finemap" in self.settings["methods"]:
             clpp = finemap.run_finemap(self)
 
-            # TODO: Modify thresholds for significance here.
-            #if not clpp == "Fail" and clpp > 0.3: 
             if not isinstance(clpp, basestring) and clpp > 0.3: 
                 plotworthy = True
 
@@ -78,9 +77,14 @@ class TestLocus:
                 plotworthy = True
 
         if "twas" in self.settings["methods"]:
-            twas_p = twas.run_twas(self)
+            twas_p = twas_real_data.run_twas(self)
             if twas_p > 5:
                 plotworthy = True
+
+        if "baseline" in self.settings["methods"]:
+            pval = baseline.run_baseline(self)
+
+            print pval
 
         ''' 
         if "enloc" in self.settings.keys():

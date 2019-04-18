@@ -314,6 +314,8 @@ coloc_imputed_Astle_et_al_2016_Lymphocyte_counts.txt.gz	173480
 The file names must exactly match the corresponding `basename` of the files specified in   
 `gwas_experiments` and `eqtl_experiments`.  
 
+Look [here](https://github.com/mikegloudemans/brain_gwas/blob/coloc_dev/config/coloc_example.config) for an example of a config file written for COLOC.  
+
 ----
 
 ### `finemap`

@@ -106,6 +106,8 @@ name a time stamp of the time at which the pipeline was started running.
 
 The directory where you'll store temporary files (these files will be removed at the end of each run).  
 Default: `/users/mgloud/projects/brain_gwas/tmp`  
+
+---
  
 #### `eqtl_experiments` (required)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # Author: Mike Gloudemans
-# 
+#
 # Dispatch colocalization analyses
 # for various GWAS and eQTL experiments,
 # parameter settings, and colocalization
@@ -17,6 +17,7 @@ from multiprocessing import Pool
 import traceback
 import gzip
 import os
+from progress.bar import Bar
 
 # Custom libraries
 import config
@@ -31,26 +32,36 @@ def main():
 
     max_cores = int(sys.argv[2])
 
+    if "out_dir" in settings:
+        out_dir = settings["out_dir"]
+    else:
+        out_dir = "/users/mgloud/projects/brain_gwas"
+
+    if "tmp_dir" in settings:
+        tmp_dir = settings["tmp_dir"]
+    else:
+        tmp_dir = "/users/mgloud/projects/brain_gwas/tmp"
+
     # Make timestamped results directory, under which all output for this run will be stored.
     # Note: sometimes this might conflict with another run of the script. If so, keep trying until
     # a directory name is free
     while True:
         now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
-        if not os.path.isdir("/users/mgloud/projects/brain_gwas/tmp/{0}".format(now)):  
+        if not os.path.isdir("{0}/{1}".format(tmp_dir, now)):
             try:
-                subprocess.check_call("mkdir /users/mgloud/projects/brain_gwas/tmp/{0}".format(now), shell=True)
+                subprocess.check_call("mkdir {0}/{1}".format(tmp_dir, now), shell=True)
                 # If another script beats us to it, this we'll fail so we'll try again then
             except:
                 continue
             break
 
-
     if "out_dir_group" in settings:
-        base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}/{1}".format(settings["out_dir_group"], now)
+        base_output_dir = "{0}/{1}/{2}".format(out_dir, settings["out_dir_group"], now)
     else:
-        base_output_dir = "/users/mgloud/projects/brain_gwas/output/{0}".format(now)
+        base_output_dir = "{0}/{1}".format(out_dir, now)
     base_output_dir = base_output_dir + "_" + config_file.split("/")[-1].split(".")[0]
-    base_tmp_dir = "/users/mgloud/projects/brain_gwas/tmp/{0}".format(now)
+    base_tmp_dir = "{0}/{1}".format(tmp_dir, now)
+
 
     # Save config file and current Git log for reproducibility.
     save_state(config_file, base_output_dir)
@@ -60,43 +71,42 @@ def main():
 
     # For each GWAS experiment:
     for gwas_file in gwas_files:
-
+        
+        gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
+        
         # Write header of output file for FINEMAP
-
-        gwas_suffix = gwas_file.split("/")[-1].replace(".", "_") 
-        if "finemap" in settings["methods"]:
-            with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+        # if "finemap" in settings["methods"]:
+        #     with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
 
         # Write COLOC results to the desired file.
         if "coloc" in settings["methods"]:
-            with open("{0}/{1}_coloc_h4pp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h4\tbase_gwas_file\n")
+            with open("{0}/{1}_coloc_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
 
-        if "ecaviar" in settings["methods"]:
-            with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+        # if "ecaviar" in settings["methods"]:
+        #     with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
-        if "rtc" in settings["methods"]:
-            with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\ttrait\tfeature\trtc_score\tbase_gwas_file\n")
- 
-        if "caviarbf" in settings["methods"]:
-            with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+        # if "rtc" in settings["methods"]:
+        #     with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\ttrait\tfeature\trtc_score\tbase_gwas_file\n")
 
-        if "twas" in settings["methods"]:
-            with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
+        # if "caviarbf" in settings["methods"]:
+        #     with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
-        if "metaxcan" in settings["methods"]:
-            with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
+        # if "twas" in settings["methods"]:
+        #     with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
 
-        if "baseline" in settings["methods"]:
-            with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\n")
+        # if "metaxcan" in settings["methods"]:
+        #     with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
 
+        # if "baseline" in settings["methods"]:
+        #     with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+        #         w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
 
 
         # Get list of traits measured in this GWAS
@@ -114,9 +124,9 @@ def main():
                     traits.add(gwas_file.split("/")[-1])
             traits = list(traits)
 
-        # Subset down to traits of interest, if specified
-        if "traits" in settings["gwas_experiments"][gwas_file]:
-            traits = settings["gwas_experiments"][gwas_file]["traits"]
+        # # Subset down to traits of interest, if specified
+        # if "traits" in settings["gwas_experiments"][gwas_file]:
+        #     traits = settings["gwas_experiments"][gwas_file]["traits"]
 
         assert len(traits) != 0
 
@@ -133,11 +143,11 @@ def main():
             #   - both: SNPs significant in GWAS or eQTL will be tested
             # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
 
-            if settings["selection_basis"] in ["gwas", "both"]:
-                gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait))
+            # if settings["selection_basis"] in ["gwas", "both"]:
+            #     gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait))
 
-            if settings["selection_basis"] == "snps_from_list":
-                gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
+            # if settings["selection_basis"] == "snps_from_list":
+            #     gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
 
             # For each eQTL experiment:
             for eqtl_file in eqtl_files:
@@ -155,14 +165,26 @@ def main():
                 snp_list = eqtl_snp_list + gwas_snp_list
                 print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
 
+		if len(eqtl_snp_list) == 0:
+		    num_tests = len(gwas_snp_list)
+		elif len(gwas_snp_list) == 0:
+		    num_tests = len(eqtl_snp_list)
+		else:
+		    num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
+
+		bar = Bar('Processing', max=num_tests)
+
+		def update_bar(result):
+		    bar.next()
+
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
                 pool.close()
                 pool.join()
-     
+
                 # Clean up after ourselves
                 subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
@@ -171,19 +193,20 @@ def main():
                 pool = Pool(max_cores)
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
-                pool.close()
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
+		pool.close()
                 pool.join()
 
                 # Clean up after ourselves
                 subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
+
+		bar.finish()
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
                     results_file = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix)
                     splice_plot(results_file, eqtl_file, settings)
 
-           
     # Create full genome-wide plot of results (currently just for CLPP - TODO fix)
     # TODO: Move this to a separate function
     #for gwas_file in gwas_files:
@@ -248,7 +271,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
     if restrict_gene == -1:
         genes = set(eqtl_data['gene'])
     else:
-        restrict_gene_mod = restrict_gene.replace(":", ".") 
+        restrict_gene_mod = restrict_gene.replace(":", ".")
         genes = [restrict_gene_mod]
 
     # Loop through all genes now
@@ -270,7 +293,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # any important metadata about the experiment such as the directory,
         # and the Config object.
         task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file, trait)
-        task.run()
+	task.run()
 
 # At start of run, save settings so we'll know what they were when we ran it.
 def save_state(config_file, base_output_dir):
@@ -279,12 +302,12 @@ def save_state(config_file, base_output_dir):
     subprocess.check_call("mkdir -p {0}".format(base_output_dir), shell=True)
     copyfile(config_file, "{0}/settings_used.config".format(base_output_dir))
 
-    # For reproducibility, store the current state of the project in Git
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
- 
+    # # For reproducibility, store the current state of the project in Git
+    # subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    # subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    # subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    # subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+
 # Use SplicePlot to generate splice plots
 def splice_plot(results_file, eqtl_file, settings):
     map_file = settings["splice_plots"][eqtl_file]["map_file"]
@@ -293,4 +316,3 @@ def splice_plot(results_file, eqtl_file, settings):
 
 if __name__ == "__main__":
     main()
- 

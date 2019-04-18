@@ -107,6 +107,25 @@ name a time stamp of the time at which the pipeline was started running.
 The directory where you'll store temporary files (these files will be removed at the end of each run).  
 Default: `/users/mgloud/projects/brain_gwas/tmp`  
 
+#### `selection_basis`
+
+The process by which the loci to test are selected. Can be `eqtl`, `gwas`, or
+`snps_from_list`.
+
+For now, just ask me for help when you get to this part.
+
+#### `plot_all`  
+
+Plot all colocalization plots from LocusCompare.  
+Possible values are `True` and `False`.  
+
+#### `plot_none`  
+
+Do not attempt to make colocalization plots from LocusCompare.  
+Possible values are `True` and `False`.  
+For now, if you are working with GWAS not included in LocusCompare,  
+this value **must** be set to `False` to prevent errors.  
+
 ---
  
 #### `eqtl_experiments` (required)
@@ -220,13 +239,6 @@ The total number of individuals profiled in the reference population.
 (For the entire 1K genomes VCF, this number will be 2504.)
 
 ---
-
-#### `selection_basis`
-
-The process by which the loci to test are selected. Can be `eqtl`, `gwas`, or
-`snps_from_list`.
-
-For now, just ask me for help when you get to this part.
 
 #### `methods`
 

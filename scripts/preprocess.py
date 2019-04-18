@@ -257,15 +257,15 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     #   - pval_only (requires effect direction)
     #
 
-    # if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'case_control':
-    #     assert 'log_or' in gwas_table and 'se' in gwas_table
-    #     gwas_table['ZSCORE'] = gwas_table['log_or'] / gwas_table['se']
-    # elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'effect_size':
-    #     if "log_or" in gwas_table:
-    #         gwas_table['beta'] = gwas_table['log_or']
-    #     assert 'beta' in gwas_table
-    #     gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
-    #     gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
+    if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'case_control':
+        assert 'log_or' in gwas_table and 'se' in gwas_table
+        gwas_table['ZSCORE'] = gwas_table['log_or'] / gwas_table['se']
+    elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'effect_size':
+        if "log_or" in gwas_table:
+            gwas_table['beta'] = gwas_table['log_or']
+        assert 'beta' in gwas_table
+        gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
+        gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
     if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
         assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table or "beta" in gwas_table)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)

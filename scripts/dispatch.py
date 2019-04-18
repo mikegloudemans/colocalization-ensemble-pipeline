@@ -75,38 +75,38 @@ def main():
         gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         
         # Write header of output file for FINEMAP
-        # if "finemap" in settings["methods"]:
-        #     with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+        if "finemap" in settings["methods"]:
+            with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
 
         # Write COLOC results to the desired file.
         if "coloc" in settings["methods"]:
             with open("{0}/{1}_coloc_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
 
-        # if "ecaviar" in settings["methods"]:
-        #     with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+        if "ecaviar" in settings["methods"]:
+            with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
-        # if "rtc" in settings["methods"]:
-        #     with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\ttrait\tfeature\trtc_score\tbase_gwas_file\n")
+        if "rtc" in settings["methods"]:
+            with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\ttrait\tfeature\trtc_score\tbase_gwas_file\n")
 
-        # if "caviarbf" in settings["methods"]:
-        #     with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+        if "caviarbf" in settings["methods"]:
+            with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
-        # if "twas" in settings["methods"]:
-        #     with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
+        if "twas" in settings["methods"]:
+            with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
 
-        # if "metaxcan" in settings["methods"]:
-        #     with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
+        if "metaxcan" in settings["methods"]:
+            with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
 
-        # if "baseline" in settings["methods"]:
-        #     with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-        #         w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
+        if "baseline" in settings["methods"]:
+            with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
 
 
         # Get list of traits measured in this GWAS
@@ -124,9 +124,9 @@ def main():
                     traits.add(gwas_file.split("/")[-1])
             traits = list(traits)
 
-        # # Subset down to traits of interest, if specified
-        # if "traits" in settings["gwas_experiments"][gwas_file]:
-        #     traits = settings["gwas_experiments"][gwas_file]["traits"]
+        # Subset down to traits of interest, if specified
+        if "traits" in settings["gwas_experiments"][gwas_file]:
+            traits = settings["gwas_experiments"][gwas_file]["traits"]
 
         assert len(traits) != 0
 
@@ -143,11 +143,11 @@ def main():
             #   - both: SNPs significant in GWAS or eQTL will be tested
             # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
 
-            # if settings["selection_basis"] in ["gwas", "both"]:
-            #     gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait))
+            if settings["selection_basis"] in ["gwas", "both"]:
+                gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait))
 
-            # if settings["selection_basis"] == "snps_from_list":
-            #     gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
+            if settings["selection_basis"] == "snps_from_list":
+                gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
 
             # For each eQTL experiment:
             for eqtl_file in eqtl_files:

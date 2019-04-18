@@ -26,25 +26,13 @@ import gzip
 
 
 def run_coloc(locus, window=500000):
+    prep_coloc(locus, window)
+    return launch_coloc(locus, window)
 
-    try:
-        tmpdir = locus.settings["tmp_dir"]
-    except:
-        print ' "tmp_dir" not found in config file'
-        raise
-
-    if "src_dir" in locus.settings:
-        srcdir = locus.settings["src_dir"]
-    else:
-        srcdir = "/users/mgloud/projects/brain_gwas/scripts"
-
-    prep_coloc(locus, window, tmpdir)
-    return launch_coloc(locus, window, tmpdir, srcdir)
-
-def prep_coloc(locus, window, tmpdir):
+def prep_coloc(locus, window):
     # Write a simple table-formatted file containing the necessary information
     # for coloc to run
-    subprocess.call("mkdir -p {0}/coloc/{1}/{2}_{3}/{4} > /dev/null".format(tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
+    subprocess.call("mkdir -p {0}/coloc/{1}/{2}_{3}/{4} > /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     data = locus.data.copy()
     data = get_mafs(locus, data, window)
 
@@ -54,9 +42,9 @@ def prep_coloc(locus, window, tmpdir):
         data["effect_af_gwas"] = data["ref_af"]
 
     #data = data.dropna(axis=0) # remove incomplete rows to prevent error in run_coloc.R
-    data.to_csv("{0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep=",", columns=["pvalue_gwas", "pvalue_eqtl", "effect_af_eqtl", "effect_af_gwas", "ZSCORE_gwas", "ZSCORE_eqtl"], index=False)
+    data.to_csv("{0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep=",", columns=["pvalue_gwas", "pvalue_eqtl", "effect_af_eqtl", "effect_af_gwas", "ZSCORE_gwas", "ZSCORE_eqtl"], index=False)
 
-def launch_coloc(locus, window, tmpdir, srcdir):
+def launch_coloc(locus, window):
 
     # For quantitative traits there is no "s";
     # For case-control there may be no "beta" or "varbeta"
@@ -91,7 +79,7 @@ def launch_coloc(locus, window, tmpdir, srcdir):
         raise
 
     # Launch an R script to run the coloc package.
-    coloc_prob = subprocess.check_output("Rscript {0}/run_coloc.R {1}/coloc/{2}/{3}_{4}/{5}/{6}_level{7}.csv {8} {9} {10} {11}".format(srcdir, tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, \
+    coloc_prob = subprocess.check_output("Rscript ./run_coloc.R {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv {7} {8} {9} {10}".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, \
         N_gwas, \
         locus.settings["gwas_experiments"][locus.gwas_file]["s"], \
         T, \
@@ -100,14 +88,14 @@ def launch_coloc(locus, window, tmpdir, srcdir):
 
     coloc_prob_h0, coloc_prob_h1, coloc_prob_h2, coloc_prob_h3, coloc_prob_h4 = [float(x) for x in coloc_prob.strip().split()]
 
-    num_sites = int(subprocess.check_output("wc -l {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True).split()[0])-1
+    num_sites = int(subprocess.check_output("wc -l {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True).split()[0])-1
 
     # Write COLOC results to the desired file.
     with open("{0}/{1}_coloc_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
         a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\t{10}\t{11}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, num_sites, coloc_prob_h0, coloc_prob_h1, coloc_prob_h2, coloc_prob_h3, coloc_prob_h4, locus.gwas_suffix))
 
     # Purge tmp files
-    subprocess.call("rm -f {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
+    subprocess.call("rm -f {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
     #print '\t'.join([str(coloc_prob_h0), str(coloc_prob_h1), str(coloc_prob_h2), str(coloc_prob_h3), str(coloc_prob_h4)])
 

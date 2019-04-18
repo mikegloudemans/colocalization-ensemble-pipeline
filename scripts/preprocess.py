@@ -26,9 +26,7 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
-    print 'before stream'
     stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True))
-    print 'after stream'
 
     gwas_table = pd.read_csv(stream, sep="\t")
     if trait == gwas_file.split("/")[-1]:

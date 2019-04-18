@@ -5,18 +5,18 @@
 # Tools for loading summary statistics.
 #
 
-import subprocess 
-import pandas as pd 
-import operator 
-import SNP 
-from scipy import stats 
+import subprocess
+import pandas as pd
+import operator
+import SNP
+from scipy import stats
 import math
 import gzip
 
-import sys 
-if sys.version_info[0] < 3: 
-    from StringIO import StringIO 
-else: 
+import sys
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+else:
     from io import StringIO
 
 
@@ -26,13 +26,16 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
 
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
+    print 'before stream'
     stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True))
+    print 'after stream'
+
     gwas_table = pd.read_csv(stream, sep="\t")
     if trait == gwas_file.split("/")[-1]:
         subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
     else:
         subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']]
-    
+
     print subset.head()
     subset['pvalue'] = subset['pvalue'].astype(float)
     subset = subset[subset['pvalue'] <= gwas_threshold]
@@ -65,7 +68,7 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
     snps_to_test = []
     for snp in all_snps:
 
-        # See if we're done yet        
+        # See if we're done yet
         if snp.pval >= gwas_threshold:
                 break
 
@@ -83,7 +86,7 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, window=1000000):
                         break
         if not skip:
                 snps_to_test.append(snp)
-    
+
 
     # -1 here means unrestricted to a certain gene
     # TODO: Just make this part of the SNP object so that we can test SNP/gene pairs for equality
@@ -163,7 +166,7 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
             if subset_file != -1:
                 if feature not in feature_subset:
                     continue
-            
+
             chrom = data[chrom_index].replace("chr", "")
 
             # Exclude sex chromosomes for now
@@ -181,8 +184,11 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
                 if feature not in gene_bests or gene_bests[feature][2] < chisq:
                     gene_bests[feature] = (chrom, data[pos_index], chisq)
             elif mode == "effect_size":
-                zscore = abs(float(data[beta_index]) / float(data[se_index]))
-                pvalue = stats.norm.sf(zscore) * 2
+                try:
+                    zscore = abs(float(data[beta_index]) / float(data[se_index]))
+                    pvalue = stats.norm.sf(zscore) * 2
+                except ValueError: # NA values
+                    continue
                 if feature not in gene_bests or gene_bests[feature][2] > pvalue:
                     gene_bests[feature] = (chrom, data[pos_index], pvalue)
             else:
@@ -209,7 +215,10 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     window = settings["window"]
 
     # Get GWAS data using tabix
-    header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(gwas_file), shell=True)
+    #header = subprocess.check_output("zcat {0} | head -n 1".format(gwas_file), shell=True)
+
+    with gzip.open(gwas_file, 'rb') as gwas:
+        header = gwas.readline()
 
     raw_gwas = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(gwas_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True) + \
@@ -225,7 +234,7 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         return "No GWAS summary statistics found at this locus."
 
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
-    
+
     if "ref_allele_header" in settings['gwas_experiments'][gwas_file]:
         gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']]
     if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
@@ -257,11 +266,15 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
         gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
-    elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
-        assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table)
+    if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
+        assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table or "beta" in gwas_table)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
         if "effect_direction" in gwas_table:
             gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["effect_direction"] == "+")-1)
+        elif "beta" in gwas_table:
+            # replace beta == NaN with 0 (beta == NaN for large p-values)
+            gwas_table = gwas_table.fillna({'beta': 0})
+            gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["beta"] > 0)-1)
         else:
             gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["direction"] == "+")-1)
     else:
@@ -275,7 +288,11 @@ def get_eqtl_data(eqtl_file, snp, settings):
     window = settings["window"]
 
     # Get eQTL data using tabix
-    header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 1".format(eqtl_file), shell=True)
+    with gzip.open(eqtl_file, 'rb') as eqtl:
+        header = eqtl.readline()
+
+    #header = subprocess.check_output("zcat {0} | head -n 1".format(eqtl_file), shell=True)
+
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     raw_eqtls += subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(eqtl_file, \
@@ -297,7 +314,7 @@ def get_eqtl_data(eqtl_file, snp, settings):
     eqtls['alt'] = eqtls['alt'].apply(lambda x: x.upper())
 
     eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)#
-    
+
     #
     # 'eqtl_format' must be specified, to make sure the users know what they're doing.
     #
@@ -306,7 +323,7 @@ def get_eqtl_data(eqtl_file, snp, settings):
     #   - effect_size
     #   - chisq
     #
-    
+
     if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'tstat':
         assert 't-stat' or "tstat" in eqtls
         if "tstat" in eqtls:
@@ -349,16 +366,16 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     # Filter SNPs down to the gene of interest.
     eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
 
-    if eqtl_subset.shape[0] == 0: 
+    if eqtl_subset.shape[0] == 0:
         return "The pre-specified gene was not tested in this sample."
-    
+
     # Sometimes the GWAS SNP is outside of the range of eQTLs tested for a certain
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
 
     if snp.pos > max(eqtl_subset['snp_pos']) - 50000 or snp.pos < min(eqtl_subset['snp_pos']) + 50000:
             return "SNP outside range."
- 
+
     # If not explicitly allowing them, remove pvalues with danger
     # of underflow.
 
@@ -395,8 +412,8 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     #mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
 
     # TODO TODO: At this step filter out variants
-    # whose same position appears twice or more. (can steal the code 
-    # that is currently used in the FINEMAP pipeline only). This is important 
+    # whose same position appears twice or more. (can steal the code
+    # that is currently used in the FINEMAP pipeline only). This is important
     # because otherwise at this level some sites with 2 SNPs might be merged into
     # 2x2 SNPs or something like that
 
@@ -411,7 +428,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     # the overwhelming majority of variants with lower MAF end up getting filtered out
     # at later stages in the pipeline anyway.
     #combined = combined[(combined['Kgenomes_maf'] > 0.01) & (combined['Kgenomes_maf'] < 0.99)]
- 
+
     # NOTE: I don't think we really need to do this anymore; however, we DO want to make sure
     # the same exact variant/rsid doesn't appear twice in the input. That would be a malformed
     # input, but it's happened before nevertheless.
@@ -426,7 +443,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
 
     # Check to make sure there are SNPs remaining; if not, just move on
     # to next gene.
-    if combined.shape[0] == 0: 
+    if combined.shape[0] == 0:
         return "No overlapping SNPs in eQTL and GWAS"
 
     # Check to make sure we still have significant GWAS hits and eQTLs, if desired

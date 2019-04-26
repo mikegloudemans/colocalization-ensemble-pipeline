@@ -98,6 +98,8 @@ def select_snps_from_list(list_file):
     gwas_table = pd.read_csv(list_file, sep="\s+", header=None)
 
     snp_list = zip(list(gwas_table.iloc[:,0]), list(gwas_table.iloc[:,1]), [-1]*gwas_table.shape[0])
+    # Filter out X and Y for now
+    snp_list = [s for s in snp_list if ("Y" not in s[0] and "X" not in s[0])]
     snp_list = [SNP.SNP(s) for s in snp_list]
     if gwas_table.shape[1] > 2:
         return zip(snp_list, list(gwas_table.iloc[:,2]))

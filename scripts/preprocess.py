@@ -29,19 +29,16 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, settings, window=
     stream = StringIO(subprocess.check_output("zcat {0}".format(gwas_file), shell=True))
 
     if "debug" in settings and settings["debug"] == "True":
-        gwas_table = pd.read_csv(stream, sep="\t", nrows=1000000)    
+        gwas_table = pd.read_csv(stream, sep="\t", nrows=500000)    
     else:
         gwas_table = pd.read_csv(stream, sep="\t")
     if trait == gwas_file.split("/")[-1]:
-        subset = gwas_table[['chr', 'snp_pos', 'pvalue']]
+        subset = gwas_table[['chr', 'snp_pos', 'pvalue']].copy()
     else:
-        subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']]
+        subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']].copy()
 
-    print subset.head()
-    subset['pvalue'] = subset['pvalue'].astype(float)
+    subset.loc[:,'pvalue'] = subset.loc[:,'pvalue'].astype(float)
     subset = subset[subset['pvalue'] <= gwas_threshold]
-    print subset.head()
-
     if trait != gwas_file.split("/")[-1]:
         subset = subset[subset['trait'] == trait]
 

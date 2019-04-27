@@ -398,42 +398,13 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
         if min(eqtl_subset['pvalue']) > settings["screening_thresholds"]["eqtl"]:
             return "Insignificant eQTL top hit: -logp {0}".format(max([-math.log10(p) for p in eqtl_subset['pvalue']]))
 
-    # Get MAFs from 1000 Genomes.
-    # Filter out multi-allelic or non-polymorphic sites.
-    # TODO TODO TODO: Make sure direction of MAFs is consistent between eQTL and GWAS
-    # It only works right now because we're only using MAF for filtering
-    # Currently, some MAFs may be > 0.5
-    # (Could eventually be in separate function)
-    # Get the region of interest from 1K genomes VCFs using tabix
-    #output = subprocess.check_output("tabix /mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz {0}:{1}-{2}".format(snp.chrom, snp.pos - window, snp.pos + window), shell=True).strip().split("\n")
-    #mafs = [[int(line.split('\t')[0]), int(line.split('\t')[1]), line.split('\t')[7]] for line in output if "MULTI_ALLELIC" not in line and ";AF=1;" not in line and ";AF=0;" not in line and "," not in line.split('\t')[4]]
-    #for m in mafs:
-    #    m[2] = float(m[2].split(";")[1][3::])
-    #mafs = pd.DataFrame(mafs, columns=["chr_eqtl", "snp_pos", "Kgenomes_maf"])
+    # NOTE: At some point, we may want to do all 1K genomes filtering here by default, if necessary.
 
-    # TODO TODO: At this step filter out variants
-    # whose same position appears twice or more. (can steal the code
-    # that is currently used in the FINEMAP pipeline only). This is important
-    # because otherwise at this level some sites with 2 SNPs might be merged into
-    # 2x2 SNPs or something like that
-
-    # TODO: Convert this to an indexed join operation instead
-    # (only if this is actually a limiting factor though)
-    # Join the list of eQTL SNPs with the list of GWAS SNPs
     combined = pd.merge(gwas_data, eqtl_subset, on="snp_pos", suffixes=("_gwas", "_eqtl"))
-    #combined = pd.merge(combined, mafs, on=["snp_pos", "chr_eqtl"])
-
-    # Filter out variants where 1K genomes MAF < 0.01. We can think more about
-    # whether this is the best strategy, but for now it's best to do this, because
-    # the overwhelming majority of variants with lower MAF end up getting filtered out
-    # at later stages in the pipeline anyway.
-    #combined = combined[(combined['Kgenomes_maf'] > 0.01) & (combined['Kgenomes_maf'] < 0.99)]
-
-    # NOTE: I don't think we really need to do this anymore; however, we DO want to make sure
-    # the same exact variant/rsid doesn't appear twice in the input. That would be a malformed
-    # input, but it's happened before nevertheless.
+   
     # For now, remove all positions that appear multiple times in the GWAS table.
     # This will avoid problems later in the pipeline, and doesn't remove too many SNPs anyway.
+    # NOTE: This might not actually be necessary at this point in the process, but we'll keep it just in case.
     dup_counts = {}
     for pos in combined['snp_pos']:
             dup_counts[pos] = dup_counts.get(pos, 0) + 1

@@ -28,9 +28,9 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, settings, window=
 
     with gzip.open(gwas_file) as f:
         if "debug" in settings and settings["debug"] == "True":
-            gwas_table = pd.read_csv(f, sep="\t", nrows=500000)    
+            gwas_table = pd.read_csv(f, sep="\t", nrows=500000, dtype=str)
         else:
-            gwas_table = pd.read_csv(f, sep="\t")
+            gwas_table = pd.read_csv(f, sep="\t", dtype=str)
 
     if trait == gwas_file.split("/")[-1]:
         subset = gwas_table[['chr', 'snp_pos', 'pvalue']].copy()

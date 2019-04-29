@@ -1,5 +1,5 @@
-suppressMessages(require(locuscomparer))
-suppressMessages(require(ggplot2))
+suppressWarnings(suppressMessages(require(locuscomparer)))
+suppressWarnings(suppressMessages(require(ggplot2)))
 
 args = commandArgs(trailingOnly=TRUE)
 

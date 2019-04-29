@@ -49,7 +49,8 @@ class TestLocus:
 
             # NOTE: Temporary; for debugging
             if isinstance(clpp, basestring):
-                print "FAILED Analyzing {0} {6} {1} {2} {3} {4} {5} {7}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, self.trait, clpp)
+                with open("{0}/skipped_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, clpp, self.trait))
 
         if "ecaviar" in self.settings["methods"]:
             clpp = ecaviar.run_ecaviar(self)

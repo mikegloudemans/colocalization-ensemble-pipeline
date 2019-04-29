@@ -14,6 +14,7 @@ import pylab
 import math
 import numpy as np
 import pandas as pd
+import gzip
 
 def locus_zoom_plot(locus, clpp):
 
@@ -95,8 +96,8 @@ def locus_compare(locus):
     gwas_data = gwas_data.reset_index()
     eqtl_data = eqtl_data.reset_index()
 
-    gwas_lead = list(gwas_data["rsid"])[np.argmin(gwas_data["pvalue_gwas"])]
-    eqtl_lead = list(eqtl_data["rsid"])[np.argmin(eqtl_data["pvalue_eqtl"])]
+    gwas_lead = list(gwas_data["rsid"])[np.argmin(np.array(gwas_data["pvalue_gwas"]))]
+    eqtl_lead = list(eqtl_data["rsid"])[np.argmin(np.array(eqtl_data["pvalue_eqtl"]))]
 
     # Call it once for top SNP in study 1, once for top SNP in study 2,
     # as reference SNP.

@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 import math
 from operator import mul
+import gzip
 
 # TODO: Make it so that different traits are written in different temporary files
 # Otherwise there may be concurrency bugs if running in parallel across loci
@@ -27,8 +28,6 @@ def run_finemap(locus, window=500000):
     # TODO: Make it write to an error or a "skipped" file instead of failing silently.
     if isinstance(pf, basestring):
         return pf
-    #if pf == "Fail":
-    #    return "Fail"
     return launch_finemap(locus, window, pf)
 
 
@@ -208,7 +207,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
         line = f.readline()
         while line.startswith("##"):
             line = f.readline()
-        header = f.readline().strip().split()
+        header = line.strip().split()
     if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
         stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
     else:

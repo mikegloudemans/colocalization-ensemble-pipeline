@@ -146,7 +146,10 @@ def main():
                 gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait, settings))
 
             if settings["selection_basis"] == "snps_from_list":
-                gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
+                if "snp_list_file" in settings:
+                    gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
+                else:
+                    gwas_snp_list.extend(preprocess.select_snps_from_list(settings["gwas_experiments"][gwas_file]["snp_list_file"]))
 
             # For each eQTL experiment:
             for eqtl_file in eqtl_files:

@@ -35,7 +35,7 @@ def main():
     if "out_dir" in settings:
         out_dir = settings["out_dir"]
     else:
-        out_dir = "/users/mgloud/projects/brain_gwas"
+        out_dir = "/users/mgloud/projects/brain_gwas/output"
 
     if "tmp_dir" in settings:
         tmp_dir = settings["tmp_dir"]

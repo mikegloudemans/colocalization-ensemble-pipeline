@@ -100,7 +100,7 @@ def select_snps_from_list(list_file):
 
     snp_list = zip(list(gwas_table.iloc[:,0]), list(gwas_table.iloc[:,1]), [-1]*gwas_table.shape[0])
     # Filter out X and Y for now
-    snp_list = [s for s in snp_list if ("Y" not in s[0] and "X" not in s[0])]
+    snp_list = [s for s in snp_list if ("Y" not in str(s[0]) and "X" not in str(s[0]))]
     snp_list = [SNP.SNP(s) for s in snp_list]
     if gwas_table.shape[1] > 2:
         return zip(snp_list, list(gwas_table.iloc[:,2]))
@@ -267,6 +267,8 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
         assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table or "beta" in gwas_table)
+        gwas_table = gwas_table[~gwas_table["pvalue"].isna()]
+
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
         if "effect_direction" in gwas_table:
             gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["effect_direction"] == "+")-1)

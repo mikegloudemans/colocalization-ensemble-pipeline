@@ -34,18 +34,18 @@ def prep_coloc(locus, window):
     # for coloc to run
     subprocess.call("mkdir -p {0}/coloc/{1}/{2}_{3}/{4} > /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix), shell=True)
     data = locus.data.copy()
-    data = get_mafs(locus, data, window)
+    if "effect_af_eqtl" not in data or "effect_af_gwas" not in data:
+        data = get_mafs(locus, data, window)
 
-    if "effect_af_eqtl" not in data:
-        data["effect_af_eqtl"] = data["ref_af"]
-    if "effect_af_gwas" not in data:
-        data["effect_af_gwas"] = data["ref_af"]
+        if "effect_af_eqtl" not in data:
+            data["effect_af_eqtl"] = data["ref_af"]
+        if "effect_af_gwas" not in data:
+            data["effect_af_gwas"] = data["ref_af"]
 
     #data = data.dropna(axis=0) # remove incomplete rows to prevent error in run_coloc.R
     data.to_csv("{0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep=",", columns=["pvalue_gwas", "pvalue_eqtl", "effect_af_eqtl", "effect_af_gwas", "ZSCORE_gwas", "ZSCORE_eqtl"], index=False)
 
 def launch_coloc(locus, window):
-
     # For quantitative traits there is no "s";
     # For case-control there may be no "beta" or "varbeta"
     if "s" not in locus.settings["gwas_experiments"][locus.gwas_file]:

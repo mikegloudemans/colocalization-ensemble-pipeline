@@ -266,7 +266,7 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         assert 'beta' in gwas_table
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
         gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
-    if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
+    elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
         assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table or "beta" in gwas_table)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
         if "effect_direction" in gwas_table:

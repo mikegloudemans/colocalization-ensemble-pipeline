@@ -97,9 +97,13 @@ class TestLocus:
             run_gwaspw(basedir, data, settings)
 
         '''
-        #plotworthy=True
 
         # Plot the result if it's significant.
-        if (plotworthy or self.settings["plot_all"] == True) and self.settings["plot_none"] == False:
-            plot.locus_compare(self)
+        if (plotworthy or self.settings["plot_all"] == True) and ("plot_none" not in self.settings or self.settings["plot_none"] != True):
+            plotted = plot.locus_compare(self)
+
+            if isinstance(plotted, basestring):
+                with open("{0}/unplotted_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, plotted, self.trait))
+
 

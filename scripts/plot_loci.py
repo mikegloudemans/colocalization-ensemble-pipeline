@@ -28,6 +28,12 @@ def locus_compare(locus):
     if "rsid_gwas" in list(locus.data.columns.values):
         locus.data['rsid'] = locus.data['rsid_gwas']
 
+    if "rsid" not in list(locus.data.columns.values):
+        return "No rsid found for plotting"
+
+    # Throw away columns that don't have an rsid specified.
+    plot_data = locus.data[~locus.data["rsid"].isna()]
+ 
     subprocess.call("mkdir -p {0}/plots/{4}/{5}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait), shell=True)
     gwas_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
     eqtl_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)

@@ -97,8 +97,6 @@ def launch_coloc(locus, window):
     # Purge tmp files
     subprocess.call("rm -f {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True)
 
-    #print '\t'.join([str(coloc_prob_h0), str(coloc_prob_h1), str(coloc_prob_h2), str(coloc_prob_h3), str(coloc_prob_h4)])
-
     return coloc_prob_h4
 
 # Get MAFs for data based on a reference VCF file

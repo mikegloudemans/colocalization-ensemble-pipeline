@@ -165,7 +165,6 @@ def launch_finemap(locus, window, top_hits):
     #finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
     
     finemap_clpp = 1 - reduce(mul, [1-(gwas_probs[i][1]*eqtl_probs[i][1]) for i in range(len(gwas_probs))])
-    print finemap_clpp
 
     ld_file = "{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
     finemap_clpp_mod = get_clpp_mod(gwas_probs, eqtl_probs, ld_file)
@@ -204,10 +203,12 @@ def purge_tmp_files(locus):
 
 def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     
-    # TODO: Spot check all of these tests to ensure they're working as desired.
-
     # First, extract nearby variants using tabix
-    header = subprocess.check_output("zcat {0} 2> /dev/null | head -n 500 | grep \\#CHROM".format(filename), shell=True).strip().split()
+    with gzip.open(filename) as f:
+        line = f.readline()
+        while line.startswith("##"):
+            line = f.readline()
+        header = f.readline().strip().split()
     if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
         stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
     else:
@@ -215,8 +216,6 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # For readability, load the header too
     # Load with pandas
-    # NOTE: The following line takes up about 80% of the computational time
-    # for your average FINEMAP locus. I should try to accelerate this.
     vcf = pd.read_csv(stream, sep="\t", names=header)
     # Remove variants not in the GWAS table
     vcf["POS"] = (vcf["POS"]).astype(int)

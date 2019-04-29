@@ -1,5 +1,5 @@
-require(locuscomparer)
-require(ggplot2)
+suppressMessages(require(locuscomparer))
+suppressMessages(require(ggplot2))
 
 args = commandArgs(trailingOnly=TRUE)
 

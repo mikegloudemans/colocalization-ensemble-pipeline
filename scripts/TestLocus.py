@@ -36,8 +36,6 @@ class TestLocus:
     # on the settings file.
     def run(self):
 
-        #print "Analyzing {0} {6} {1} {2} {3} {4} {5}".format(self.gwas_suffix, self.eqtl_suffix, self.gene, self.chrom, self.pos, self.pval, self.trait)
-
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.
 
@@ -83,8 +81,6 @@ class TestLocus:
 
         if "baseline" in self.settings["methods"]:
             pval = baseline.run_baseline(self)
-
-            print pval
 
         ''' 
         if "enloc" in self.settings.keys():

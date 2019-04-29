@@ -215,7 +215,6 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     window = settings["window"]
 
     # Get GWAS data using tabix
-    #header = subprocess.check_output("zcat {0} | head -n 1".format(gwas_file), shell=True)
 
     with gzip.open(gwas_file, 'rb') as gwas:
         header = gwas.readline()
@@ -290,8 +289,6 @@ def get_eqtl_data(eqtl_file, snp, settings):
     # Get eQTL data using tabix
     with gzip.open(eqtl_file, 'rb') as eqtl:
         header = eqtl.readline()
-
-    #header = subprocess.check_output("zcat {0} | head -n 1".format(eqtl_file), shell=True)
 
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)

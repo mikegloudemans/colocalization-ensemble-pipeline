@@ -357,8 +357,6 @@ def get_eqtl_data(eqtl_file, snp, settings):
 # Returns: a combined table of summary statistics, or None if we need to skip
 #   the site due to insufficient data.
 def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=False, allow_insignificant_gwas=False):
-    # TODO TODO TODO: Fix the SettingWithCopyWarning. It seems likely to be error-prone, according
-    # to the manual!
 
     window = settings["window"]
 

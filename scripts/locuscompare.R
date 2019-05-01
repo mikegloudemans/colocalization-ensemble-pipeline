@@ -11,9 +11,6 @@ title2 = args[5]
 vcf = args[6]
 snp = args[7]
 
-file1 = read.table(file1, header=TRUE)
-file2 = read.table(file2, header=TRUE)
-
 m = main(in_fn1 = file1, in_fn2 = file2, title=title1, title2=title2, snp=snp) # vcf_fn=vcf, snp=snp)
 m
 

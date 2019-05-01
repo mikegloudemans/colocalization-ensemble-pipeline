@@ -5,7 +5,6 @@
 # Produce a paired Manhattan plot and/or a colocalization
 # scatterplot for the given locus. 
 
-# Definitely need
 import subprocess
 import matplotlib as mpl
 mpl.use('Agg')
@@ -15,6 +14,12 @@ import math
 import numpy as np
 import pandas as pd
 import gzip
+import sys
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+else:
+    from io import StringIO
+
 
 def locus_compare(locus):
 
@@ -29,7 +34,31 @@ def locus_compare(locus):
         locus.data['rsid'] = locus.data['rsid_gwas']
 
     if "rsid" not in list(locus.data.columns.values):
-        return "No rsid found for plotting"
+        if "rsid_index_file" in locus.settings:
+
+            # First, extract nearby variants using tabix
+            stream = StringIO(subprocess.check_output("tabix {0} {1}:{2}-{3}".format(locus.settings["rsid_index_file"], locus.data['chr_gwas'][0], np.min(np.array(locus.data["snp_pos"])), np.max(np.array(locus.data["snp_pos"]))), shell=True))
+
+            # For readability, load the header too
+            # Load with pandas
+            dbsnp = pd.read_csv(stream, sep="\t", header=None).iloc[:,:3]
+            dbsnp = dbsnp.rename({0: "chr_gwas", 1: "snp_pos", 2:"rsid"}, axis="columns")
+           
+            # May be unsafe, but I don't think it is because I don't think
+            # we're using locus.data anywhere else
+            locus.data = pd.merge(dbsnp, locus.data, left_on=["chr_gwas", "snp_pos"], right_on=["chr_gwas", "snp_pos"])
+            
+            '''
+            # Remove variants with position appearing multiple times
+            dup_counts = {}
+            for pos in vcf["POS"]:
+                    dup_counts[pos] = dup_counts.get(pos, 0) + 1
+            vcf["dup_counts"] = [dup_counts[pos] for pos in vcf['POS']]
+            vcf = vcf[vcf["dup_counts"] == 1]
+            '''
+
+        else:
+            return "No rsids found for plotting"
 
     # Throw away columns that don't have an rsid specified.
     plot_data = locus.data[~locus.data["rsid"].isna()]

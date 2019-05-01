@@ -234,22 +234,23 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # Remove monoallelic variants.
     # Allele frequency might be input as counts or as percentages,
     # so handle this.
-    if "af_attribute" in ref:
-        af_id = ref["af_attribute"]
-        def fn(x):
-            info = [s for s in x.split(";") if s.startswith(af_id + "=")][0]
-            af = float(info.split("=")[1])
-            return af > 0.01 and 1-af > 0.01 
-        vcf = vcf[vcf["INFO"].apply(fn)]
-    else:
-        ac_id = ref["ac_attribute"]
-        an = 2*ref["N"] # Assume 2 alleles per person
-        def fn(x):
-            info = [s for s in x.split(";") if s.startswith(ac_id + "=")][0]
-            ac = float(info.split("=")[1])
-            af = ac*1.0/an
-            return af > 0.01 and 1-af > 0.01 
-        vcf = vcf[vcf["INFO"].apply(fn)]
+    if "filtered_by_af" not in ref or ref["filtered_by_af"] != "True":
+        if "af_attribute" in ref:
+            af_id = ref["af_attribute"]
+            def fn(x):
+                info = [s for s in x.split(";") if s.startswith(af_id + "=")][0]
+                af = float(info.split("=")[1])
+                return af > 0.01 and 1-af > 0.01 
+            vcf = vcf[vcf["INFO"].apply(fn)]
+        else:
+            ac_id = ref["ac_attribute"]
+            an = 2*ref["N"] # Assume 2 alleles per person
+            def fn(x):
+                info = [s for s in x.split(";") if s.startswith(ac_id + "=")][0]
+                ac = float(info.split("=")[1])
+                af = ac*1.0/an
+                return af > 0.01 and 1-af > 0.01 
+            vcf = vcf[vcf["INFO"].apply(fn)]
 
     if "POS" in list(combined.columns.values):
         combined = combined.drop(columns=['POS'])

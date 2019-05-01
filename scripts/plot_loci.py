@@ -98,6 +98,6 @@ def locus_compare(locus):
     # Call it once for top SNP in study 1, once for top SNP in study 2,
     # as reference SNP.
     # For now we'll just assume 1000 Genomes is the reference population
-    subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, gwas_lead])
-    subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, eqtl_lead])
+    subprocess.check_call(["Rscript", "./locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, gwas_lead])
+    subprocess.check_call(["Rscript", "./locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, eqtl_lead])
 

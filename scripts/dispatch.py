@@ -26,8 +26,14 @@ from TestLocus import TestLocus
 
 def main():
 
+
     # Read config file
     config_file = sys.argv[1]
+    config_file = os.getcwd() + "/" + config_file
+
+    # Change to directory of script
+    os.chdir(os.path.dirname(sys.argv[0]))
+
     settings = config.load_config(config_file)
 
     max_cores = int(sys.argv[2])

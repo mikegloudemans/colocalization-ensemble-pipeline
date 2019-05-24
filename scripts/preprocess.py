@@ -361,7 +361,7 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     window = settings["window"]
 
     # Filter SNPs down to the gene of interest.
-    eqtl_subset = eqtl_data[eqtl_data['gene'] == gene]
+    eqtl_subset = eqtl_data[eqtl_data['gene'] == gene].copy()
 
     if eqtl_subset.shape[0] == 0:
         return "The pre-specified gene was not tested in this sample."

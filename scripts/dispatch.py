@@ -29,10 +29,12 @@ def main():
 
     # Read config file
     config_file = sys.argv[1]
-    config_file = os.getcwd() + "/" + config_file
+    # Check if absolute path or relative path
+    if not config_file.startswith("/"):
+       config_file = os.getcwd() + "/" + config_file
 
     # Change to directory of script
-    os.chdir(os.path.dirname(sys.argv[0]))
+    os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
     settings = config.load_config(config_file)
 

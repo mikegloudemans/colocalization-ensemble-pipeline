@@ -14,6 +14,7 @@ import twas_real_data
 import plot_loci as plot
 import math
 import baseline
+import smr
 
 class TestLocus:
     def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file, trait):
@@ -83,19 +84,12 @@ class TestLocus:
         if "baseline" in self.settings["methods"]:
             pval = baseline.run_baseline(self)
 
+        if "smr" in self.settings["methods"]:
+            pval = smr.run_smr(self)
+
         ''' 
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)
-
-        if "pics" in self.settings.keys():
-            run_pics(basedir, data, settings)
-
-        if "smr" in self.settings.keys():
-            run_smr(basedir, data, settings)
-
-        if "gwaspw" in self.settings.keys():
-            run_gwaspw(basedir, data, settings)
-
         '''
 
         # Plot the result if it's significant.

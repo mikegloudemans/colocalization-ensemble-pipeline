@@ -110,7 +110,7 @@ def main():
         
         if "smr" in settings["methods"]:
             with open("{0}/{1}_smr_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
 
         if "metaxcan" in settings["methods"]:
             with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:

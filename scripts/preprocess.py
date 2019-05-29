@@ -243,6 +243,8 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         gwas_table['alt'] = gwas_table["effect_allele"]
         gwas_table['ref'] = gwas_table["non_effect_allele"]
 
+    if 'effect_af' in gwas_table.columns.values:
+        gwas_table = gwas_table.rename(index=str, columns={"effect_af": "effect_af_gwas"})
 
     gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
     gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
@@ -281,6 +283,11 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     else:
         return "Improper GWAS format specification"
 
+    if "beta" in gwas_table:
+        gwas_table = gwas_table.rename(index=str, columns={"beta": "beta_gwas"})
+    if "se" in gwas_table:
+        gwas_table = gwas_table.rename(index=str, columns={"se": "se_gwas"})
+
     return gwas_table
 
 # Load summary statistics for eQTL
@@ -301,13 +308,17 @@ def get_eqtl_data(eqtl_file, snp, settings):
     if eqtls.shape[0] == 0:
         return "Gene desert."
 
-    # Should probably eventually remove the following four lines, just to simplify things
-    '''
     if "ref_allele_header" in settings['eqtl_experiments'][eqtl_file]:
-        eqtl_table['ref'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
+        eqtls['ref'] = eqtls[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
     if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:
-        eqtl_table['alt'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
-    '''
+        eqtls['alt'] = eqtls[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
+
+    # NOTE: We're not worrying about direction here right now, but might want to later
+    if "maf" in eqtls.columns.values:
+        eqtls['effect_af_eqtl'] = eqtls['maf']
+
+    if "effect_af" in eqtls.columns.values:
+        eqtls = eqtls.rename(index=str, columns={"effect_af": "effect_af_eqtl"})
 
     eqtls['ref'] = eqtls['ref'].apply(lambda x: x.upper())
     eqtls['alt'] = eqtls['alt'].apply(lambda x: x.upper())
@@ -349,6 +360,11 @@ def get_eqtl_data(eqtl_file, snp, settings):
 
     else:
         return "Improper eQTL format specification"
+
+    if "beta" in eqtls:
+        eqtls = eqtls.rename(index=str, columns={"beta": "beta_eqtl"})
+    if "se" in eqtls:
+        eqtls = eqtls.rename(index=str, columns={"se": "se_eqtl"})
 
     return eqtls
 

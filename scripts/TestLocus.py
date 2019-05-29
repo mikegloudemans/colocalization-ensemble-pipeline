@@ -86,7 +86,6 @@ class TestLocus:
 
         if "smr" in self.settings["methods"]:
             pval = smr.run_smr(self)
-
         ''' 
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)

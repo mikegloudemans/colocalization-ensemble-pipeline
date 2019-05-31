@@ -15,6 +15,7 @@ import plot_loci as plot
 import math
 import baseline
 import smr
+import gsmr
 
 class TestLocus:
     def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file, trait):
@@ -86,6 +87,9 @@ class TestLocus:
 
         if "smr" in self.settings["methods"]:
             pval = smr.run_smr(self)
+
+        if "gsmr" in self.settings["methods"]:
+            pval = gsmr.run_gsmr(self)
         ''' 
         if "enloc" in self.settings.keys():
             run_enloc(basedir, data, settings)

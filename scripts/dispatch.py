@@ -112,6 +112,10 @@ def main():
             with open("{0}/{1}_smr_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
 
+        if "gsmr" in settings["methods"]:
+            with open("{0}/{1}_gsmr_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
+
         if "metaxcan" in settings["methods"]:
             with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
@@ -200,7 +204,8 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
+                if not config.debug:
+                    subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
                 # Run GWAS SNPs separately just in case there happen to be any overlaps,
                 # which could lead to a race.
@@ -212,7 +217,8 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
+                if not config.debug:
+                    subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
 		bar.finish()
 

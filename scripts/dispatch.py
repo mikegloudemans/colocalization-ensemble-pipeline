@@ -204,7 +204,7 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                if not config.debug:
+                if not settings["debug"]:
                     subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
                 # Run GWAS SNPs separately just in case there happen to be any overlaps,
@@ -217,7 +217,7 @@ def main():
                 pool.join()
 
                 # Clean up after ourselves
-                if not config.debug:
+                if not settings["debug"]:
                     subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
 		bar.finish()

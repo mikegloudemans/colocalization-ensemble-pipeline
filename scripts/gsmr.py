@@ -64,14 +64,20 @@ def run_gsmr(locus, window=1000000):
         if "effect_af_gwas" not in dat:
             dat["effect_af_gwas"] = dat["ref_af"]
 
+    # TODO: Fix this; for now we're just estimating the n_cases and n_controls and N if not present...
+    if "n_cases" not in dat.columns.values:
+        dat["n_cases"] = 5000
+    if "n_controls" not in dat.columns.values:
+        dat["n_controls"] = 5000
+    if "N" not in dat.columns.values:
+        dat["N"] = 10000
+
+
     dat.to_csv("{0}/gsmr/{1}/{2}_{3}/{4}/{5}_level{6}.csv".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), sep=",", index=False)
 
     # TODO: Display more precise error messages indicating why failed
     # tests have failed (probably due to not enough significant SNPs)
-    try:
-        pval = float(subprocess.check_output("Rscript run_gsmr.R {0}/gsmr/{1}/{2}_{3}/{4}/{5}_level{6} 2> /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True))
-    except:
-        pass
+    pval = float(subprocess.check_output("Rscript run_gsmr.R {0}/gsmr/{1}/{2}_{3}/{4}/{5}_level{6} 2> /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True))
 
     # Write results to the output file
     with open("{0}/{1}_gsmr_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:

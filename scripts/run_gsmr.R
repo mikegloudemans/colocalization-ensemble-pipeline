@@ -31,12 +31,14 @@ gsmr_result_location = '/users/raoa/coloc_comparison/gsmr_results'
 gcta_location = '/users/raoa/coloc_comparison/gcta_1.92.1beta6/gcta64'
 standardize = FALSE #If the risk factor was not standardised in GWAS, the effect sizes can be scaled, that this process requires allele frequencies, z-statistics and sample size. After scaling, bzx is interpreted as the per-allele effect of a SNP on the exposure in standard deviation units
 n_ref = 2504    # Sample size of the reference sample
-gwas_thresh = 5e-5    # GWAS threshold to select SNPs as the instruments for the GSMR analysis
+#gwas_thresh = 5e-5    # GWAS threshold to select SNPs as the instruments for the GSMR analysis
+gwas_thresh = 5e-3    # GWAS threshold to select SNPs as the instruments for the GSMR analysis
 single_snp_heidi_thresh = 0.01    # p-value threshold for single-SNP-based HEIDI-outlier analysis
 multi_snp_heidi_thresh = 0.01    # p-value threshold for multi-SNP-based HEIDI-outlier analysis
 nsnps_thresh = 2   # the minimum number of instruments required for the GSMR analysis
 heidi_outlier_flag = FALSE    # flag for HEIDI-outlier analysis
-ld_r2_thresh = 0.2    # LD r2 threshold to remove SNPs in high LD
+#ld_r2_thresh = 0.2    # LD r2 threshold to remove SNPs in high LD
+ld_r2_thresh = 0.05    # LD r2 threshold to remove SNPs in high LD
 ld_fdr_thresh = 0.05   # FDR threshold to remove the chance correlations between the SNP instruments
 gsmr_beta = 0     # 0 - the original HEIDI-outlier method; 1 - the new HEIDI-outlier method that is currently under development 
 
@@ -87,11 +89,19 @@ if (standardize) {
 
 ## run GSMR
 # saves a file with just p-value if GSMR runs successfully, there is no file generated otherwise
-gsmr_results = suppressMessages(gsmr(gsmr_df$bzx, gsmr_df$bzx_se, gsmr_df$bzx_pval, gsmr_df$bzy, gsmr_df$bzy_se, gsmr_df$bzy_pval, ldrho, snp_coeff_id, n_ref, heidi_outlier_flag, gwas_thresh, single_snp_heidi_thresh, multi_snp_heidi_thresh, nsnps_thresh, ld_r2_thresh, ld_fdr_thresh, gsmr_beta))
+
+pval = 1
+
+tryCatch(
+	 {
+		gsmr_results = suppressMessages(gsmr(gsmr_df$bzx, gsmr_df$bzx_se, gsmr_df$bzx_pval, gsmr_df$bzy, gsmr_df$bzy_se, gsmr_df$bzy_pval, ldrho, snp_coeff_id, n_ref, heidi_outlier_flag, gwas_thresh, single_snp_heidi_thresh, multi_snp_heidi_thresh, nsnps_thresh, ld_r2_thresh, ld_fdr_thresh, gsmr_beta))
+		pval = gsmr_results$bxy_pval
+	 },
+	 error = function(err){})
 
 sink()
 
-cat(gsmr_results$bxy_pval)
+cat(pval)
 
 ## NOTE
 # bzx is SNP effect on risk factor, in this case gene expression

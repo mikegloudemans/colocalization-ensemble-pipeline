@@ -46,5 +46,7 @@ def load_config(filename):
         config["debug"] = True
     if "debug" in config and config["debug"] == "True":
         config["debug"] = True
+    else:
+        config["debug"] = False
 
     return config

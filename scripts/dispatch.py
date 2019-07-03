@@ -190,7 +190,7 @@ def main():
 		else:
 		    num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 
-		bar = Bar('Processing', max=num_tests)
+		bar = Bar('Processing\n', max=num_tests)
 
 		def update_bar(result):
 		    bar.next()

@@ -10,7 +10,7 @@ import ecaviar
 import caviarbf
 import coloc
 import rtc
-import twas_real_data
+import twas
 import plot_loci as plot
 import math
 import baseline
@@ -78,7 +78,7 @@ class TestLocus:
                 plotworthy = True
 
         if "twas" in self.settings["methods"]:
-            twas_p = twas_real_data.run_twas(self)
+            twas_p = twas.run_twas(self)
             if twas_p > 5:
                 plotworthy = True
 

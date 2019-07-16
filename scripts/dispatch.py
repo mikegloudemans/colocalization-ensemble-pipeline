@@ -105,8 +105,8 @@ def main():
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "twas" in settings["methods"]:
-            with open("{0}/{1}_twas_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\ttwas_perm_log_pval\n")
+            with open("{0}/{1}_twas_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\ttwas_log_pval\ttwas_perm_log_pval\tbase_gwas_file\n")
         
         if "smr" in settings["methods"]:
             with open("{0}/{1}_smr_status.txt".format(base_output_dir, gwas_suffix), "w") as w:

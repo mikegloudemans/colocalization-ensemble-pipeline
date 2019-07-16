@@ -158,8 +158,9 @@ def run_twas(locus, window=500000):
     print twas_p, twas_p_perm, snps_tested
 
     # Add results to the desired file
-    with open("{0}/{1}_twas_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-        a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, snps_tested, -1*math.log10(twas_p), twas_p_perm))
+    with open("{0}/{1}_twas_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
+        w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\ttwas_log_pval\ttwas_perm_log_pval\tbase_gwas_file\n")
+        a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, snps_tested, -1*math.log10(twas_p), twas_p_perm, locus.gwas_suffix))
     
     return twas_p
 

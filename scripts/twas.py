@@ -78,7 +78,7 @@ def run_twas(locus, window=500000):
                 # Format phenotypes data appropriately for TWAS to compute expression weights
                 add_phenos_to_fam("{6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_plinked.fam".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_plinked.fam".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), locus.settings["eqtl_experiments"][locus.eqtl_file]["phenos"])
             else:
-                return("Could not find phenotypes file to supply for TWAS.")
+                raise Exception("Could not find phenotypes file to supply for TWAS.")
                 
             # Compute expression weights
             # TODO-test_parameter Several models are included...consider just deciding which is the best and using that. Or could
@@ -89,7 +89,7 @@ def run_twas(locus, window=500000):
                     --out {6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_weights \
                     --models top1,lasso,enet \
                     --hsq_p 1 \
-                    --verbose 0".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
+                    --verbose 0 > /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
             subprocess.check_call(command, shell=True)
           
         # Some genes don't make it through the above part, presumably because there's no
@@ -114,7 +114,10 @@ def run_twas(locus, window=500000):
         weight_file = locus.settings["eqtl_experiments"][locus.eqtl_file]["model"]["gene"].format(locus.gene)
 
         subprocess.check_call("head -n 1 {7} > {6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_weights.pos".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["eqtl_experiments"][locus.eqtl_file]["model"]["pos"]), shell=True)
-        subprocess.check_call("grep {8} {7} >> {6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_weights.pos".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["eqtl_experiments"][locus.eqtl_file]["model"]["pos"], locus.gene), shell=True)
+        try:
+            subprocess.check_call("grep {8} {7} >> {6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_weights.pos".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["eqtl_experiments"][locus.eqtl_file]["model"]["pos"], locus.gene), shell=True)
+        except:
+            raise Exception("No TWAS model exists for the gene " + locus.gene + " in " + locus.eqtl_file)
         subprocess.check_call("mkdir -p {6}/twas/{0}/{1}_{2}/{3}/{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["eqtl_experiments"][locus.eqtl_file]["model"]["gene_dir_name"]), shell=True)
         subprocess.check_call("cp {7} {6}/twas/{0}/{1}_{2}/{3}/{4}/{5}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.settings["eqtl_experiments"][locus.eqtl_file]["model"]["gene_dir_name"], weight_file.split("/")[-1], locus.tmpdir, weight_file), shell=True)
 
@@ -138,12 +141,11 @@ def run_twas(locus, window=500000):
             --ref_ld_chr /users/mgloud/software/TWAS-Fusion/fusion_twas-master/LDREF/1000G.EUR. \
             --chr {1} \
             --out {6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_results.dat \
-            --perm 1000".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
+            --perm 1000 > /dev/null".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
     subprocess.check_call(command, shell=True)
 
     # Parse results
     # TODO: Figure out whether to use twas_p or twas_p_perm, and why this is crashing apparently...
-    print "{6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_results.dat".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
     with open("{6}/twas/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_twas_results.dat".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)) as f:
         f.readline()
         data = f.readline().strip().split()
@@ -155,11 +157,8 @@ def run_twas(locus, window=500000):
         twas_p_perm = "NA"
         snps_tested = int(data[12])
 
-    print twas_p, twas_p_perm, snps_tested
-
     # Add results to the desired file
     with open("{0}/{1}_twas_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-        w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\ttwas_log_pval\ttwas_perm_log_pval\tbase_gwas_file\n")
         a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, snps_tested, -1*math.log10(twas_p), twas_p_perm, locus.gwas_suffix))
     
     return twas_p

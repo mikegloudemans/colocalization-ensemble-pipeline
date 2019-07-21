@@ -246,7 +246,7 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
         error = str(e)
         error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
-            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, error))
+            a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tgeneral_error\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, error))
         raise Exception("Failed colocalization run.")
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):

@@ -1,11 +1,11 @@
 # Author: Mike Gloudemans
 #
-# Class: TestLocus
-# A locus to test for colocalization, along with all of the
+# Class: TestLocus A locus to test for colocalization, along with all of the
 # relevant data needed to conduct the tests.
 #
 
 import finemap
+import traceback
 import ecaviar
 import caviarbf
 import coloc
@@ -38,61 +38,131 @@ class TestLocus:
     # on the settings file.
     def run(self):
 
+
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.
 
         plotworthy = False
 
         if "finemap" in self.settings["methods"]:
-            clpp = finemap.run_finemap(self)
+            try:
+                clpp = finemap.run_finemap(self)
 
-            if not isinstance(clpp, basestring) and clpp > 0.3: 
-                plotworthy = True
+                if not isinstance(clpp, basestring) and clpp > 0.3: 
+                    plotworthy = True
 
-            # NOTE: Temporary; for debugging
-            if isinstance(clpp, basestring):
-                with open("{0}/skipped_variants.txt".format(self.basedir),"a") as a:
-                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, clpp, self.trait))
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tfinemap\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
+
 
         if "ecaviar" in self.settings["methods"]:
-            clpp = ecaviar.run_ecaviar(self)
-            if clpp > 0.02: 
-                plotworthy = True
+            try:
+                clpp = ecaviar.run_ecaviar(self)
+                if clpp > 0.02: 
+                    plotworthy = True
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tecaviar\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
         if "caviarbf" in self.settings["methods"]:
-            clpp = caviarbf.run_caviarbf(self)
-            if clpp > 0.02:
-                plotworthy = True
+            try:
+                clpp = caviarbf.run_caviarbf(self)
+                if clpp > 0.02:
+                    plotworthy = True
 
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tcaviarbf\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
+
+        # This isn't a very clean way to purge shared temporary files, 
+        # though technically it should usually work? Fix this later
         if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"] or "caviarbf" in self.settings["methods"]:
             finemap.purge_tmp_files(self)
 
         if "coloc" in self.settings["methods"]:
-            h4pp = coloc.run_coloc(self)
-            if h4pp > 0.5:
-                plotworthy = True
+            try:
+                h4pp = coloc.run_coloc(self)
+                if h4pp > 0.5:
+                    plotworthy = True
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tcoloc\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
         if "rtc" in self.settings["methods"]:
-            rtc_score = rtc.run_rtc(self)
-            if rtc_score > 0.8:
-                plotworthy = True
+            try:
+                rtc_score = rtc.run_rtc(self)
+                if rtc_score > 0.8:
+                    plotworthy = True
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\trtc\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
         if "twas" in self.settings["methods"]:
-            twas_p = twas.run_twas(self)
-            if twas_p > 5:
-                plotworthy = True
+            try:
+                twas_p = twas.run_twas(self)
+                if twas_p > 5:
+                    plotworthy = True
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\ttwas\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
         if "baseline" in self.settings["methods"]:
-            pval = baseline.run_baseline(self)
+            try:
+                pval = baseline.run_baseline(self)
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tbaseline\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
         if "smr" in self.settings["methods"]:
-            pval = smr.run_smr(self)
+            try:
+                pval = smr.run_smr(self)
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tsmr\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
         if "gsmr" in self.settings["methods"]:
-            pval = gsmr.run_gsmr(self)
+            try:
+                pval = gsmr.run_gsmr(self)
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tgsmr\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
+
         ''' 
         if "enloc" in self.settings.keys():
-            run_enloc(basedir, data, settings)
+            try:
+                enloc = enloc.run_enloc(self)
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tenloc\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
         '''
 
         # Plot the result if it's significant.
@@ -100,7 +170,7 @@ class TestLocus:
             plotted = plot.locus_compare(self)
 
             if isinstance(plotted, basestring):
-                with open("{0}/unplotted_variants.txt".format(self.basedir),"a") as a:
+                with open("{0}/unplotted_variants.txt".format(self.self.basedir),"a") as a:
                     a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, plotted, self.trait))
 
 

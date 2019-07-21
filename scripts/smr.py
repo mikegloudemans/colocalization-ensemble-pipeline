@@ -23,7 +23,7 @@ def run_smr(locus, window=1000000):
 
     # We need beta and se for GWAS, or else this analysis won't work
     if "beta_gwas" not in dat or "se_gwas" not in dat:
-        return "Need beta and SE for GWAS in order to run SMR."
+        raise Exception("Need beta and SE for GWAS in order to run SMR.")
 
     # Get rsids
     # TODO later: Move this to an earlier point so it doesn't have to be repeated
@@ -47,7 +47,7 @@ def run_smr(locus, window=1000000):
             dat = pd.merge(dbsnp, dat, left_on=["chr_gwas", "snp_pos"], right_on=["chr_gwas", "snp_pos"])
 
         else:
-            return "No rsids specified; skipping locus."
+            raise Exception("No rsids specified; skipping locus.")
 
     # See if we need to infer effect_af from the reference VCF
     if "effect_af_gwas" not in dat.columns.values or "effect_af_eqtl" not in dat.columns.values:

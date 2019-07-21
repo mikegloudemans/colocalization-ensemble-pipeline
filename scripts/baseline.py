@@ -28,7 +28,6 @@ def run_baseline(locus):
     pval4 = 2 # Will combine p-values from the GWAS and eQTL (max)
     pval5 = 2 # Will combine p-values from the GWAS and eQTL (max)
     hit = combined[(combined["chr_gwas"] == locus.chrom) & (combined["snp_pos"] == locus.pos)]
-    print hit.head()
     if hit.shape[0] == 1:
         # If the locus is in the data, return its p-value
         pval = hit["pvalue_eqtl"].iloc[0]

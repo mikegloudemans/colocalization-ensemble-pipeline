@@ -16,7 +16,6 @@ def run_rtc(locus, window=500000):
     # Directions for running RTC are online at https://qtltools.github.io/qtltools/pages/mode_rtc.html
 
     # Step 1: Run the permutation pass
-
     subprocess.call("mkdir -p {0}/rtc".format(locus.tmpdir), shell=True)
     # This next line is important; otherwise if one run falls through,
     # its results will be counted for the next run
@@ -26,6 +25,7 @@ def run_rtc(locus, window=500000):
     #
     #print "QTLtools cis --vcf {0} --bed {1} --permute 200 --out {2}/rtc/permutations_all.txt".format(locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_genos"], locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_phenos"], locus.tmpdir)
     subprocess.check_call("QTLtools cis --vcf {0} --bed {1} --permute 200 --out {2}/rtc/permutations_all.txt > /dev/null".format(locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_genos"], locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_phenos"], locus.tmpdir), shell=True)
+    #subprocess.check_call("QTLtools cis --vcf {0} --bed {1} --permute 200 --out {2}/rtc/permutations_all.txt".format(locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_genos"], locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_phenos"], locus.tmpdir), shell=True)
 
     # TODO: Implement this FDR filtering once we get the simulations going for
     # genome-wide simulations. Then we can consider the exact level of FDR filtering
@@ -48,8 +48,8 @@ def run_rtc(locus, window=500000):
     # That was easy, I hope
 
     # NOTE: This step can be tuned with a "--conditional" option to run for independent conditional eQTLs (see website for more info)
-    #print "QTLtools rtc --vcf {0} --bed {1} --hotspots /users/mgloud/projects/brain_gwas/data/rtc/hotspots_b37_hg19.bed --gwas-cis {2}/rtc/gwas.txt {2}/rtc/permutations_all.txt --normal --out {2}/rtc/rtc_results.txt".format(locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_genos"], locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_phenos"], locus.tmpdir)
     subprocess.check_call("QTLtools rtc --vcf {0} --bed {1} --hotspots /users/mgloud/projects/brain_gwas/data/rtc/hotspots_b37_hg19.bed --gwas-cis {2}/rtc/gwas.txt {2}/rtc/permutations_all.txt --normal --out {2}/rtc/rtc_results.txt > /dev/null".format(locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_genos"], locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_phenos"], locus.tmpdir), shell=True)
+    #subprocess.check_call("QTLtools rtc --vcf {0} --bed {1} --hotspots /users/mgloud/projects/brain_gwas/data/rtc/hotspots_b37_hg19.bed --gwas-cis {2}/rtc/gwas.txt {2}/rtc/permutations_all.txt --normal --out {2}/rtc/rtc_results.txt".format(locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_genos"], locus.settings["eqtl_experiments"][locus.eqtl_file]["rtc_phenos"], locus.tmpdir), shell=True)
    
     # NOTE: A lot of the time, RTC won't run at all if the top eQTL SNP and the top
     # GWAS SNP are separated by one of the recombination hotspots. This is probably

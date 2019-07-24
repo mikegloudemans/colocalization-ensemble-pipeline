@@ -413,3 +413,20 @@ I'll happily work with you to help you out or to fix any bugs you might find.
 cite
 
 [add others before making public]
+
+### Contributors
+
+* Mike Gloudemans
+* Abhiram Rao
+* Brunilda Balliu
+* Nicole Gay
+* Boxiang Liu
+* Jeremy Tien
+
+
+### Additional Acknowledgments
+
+A big thanks to the following people with help troubleshooting and testing the pipeline:
+
+* Pagé Goddard
+* Derek Klarin

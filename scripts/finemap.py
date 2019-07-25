@@ -320,11 +320,14 @@ def compute_ld(input_vcf, locus, data_type):
         command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
         subprocess.check_call(command, shell=True)
 
+        sys.exit()
+
         # See if nans remain. If so, remove the offending lines.
         try:
             lines = [int(n.split(":")[0])-1 for n in subprocess.check_output("grep -n nan {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), shell=True).strip().split("\n")]
         except:
             break
+
 
         # Save IDs of items being removed
         removal_list.extend(list(vcf.iloc[lines]['ID']))

@@ -99,8 +99,8 @@ def run_twas(locus, window=500000):
             # If the previous step failed to produce weights, there's not much we can do after that.
             # Return p-value of 1    
             # Add results to the desired file
-            with open("{0}/{1}_twas_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-                    a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, combined.shape[0], 0, 1))
+            with open("{0}/{1}_twas_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
+                    a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, combined.shape[0], locus.trait, locus.gwas_suffix, 0, 1))
              
             return 1
 
@@ -159,8 +159,7 @@ def run_twas(locus, window=500000):
 
     # Add results to the desired file
     with open("{0}/{1}_twas_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
-        a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, snps_tested, -1*math.log10(twas_p), twas_p_perm, locus.gwas_suffix))
-    
+        a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, combined.shape[0], locus.trait, locus.gwas_suffix, -1*math.log10(twas_p), twas_p_perm))
     return twas_p
 
 def vcf_to_plink(vcf_file, plink_file):

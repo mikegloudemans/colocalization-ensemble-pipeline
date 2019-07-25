@@ -98,7 +98,7 @@ def main():
 
         if "rtc" in settings["methods"]:
             with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\ttrait\tfeature\trtc_score\tbase_gwas_file\n")
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
 
         if "caviarbf" in settings["methods"]:
             with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
@@ -106,7 +106,7 @@ def main():
 
         if "twas" in settings["methods"]:
             with open("{0}/{1}_twas_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\ttwas_log_pval\ttwas_perm_log_pval\tbase_gwas_file\n")
+                w.write("ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
         
         if "smr" in settings["methods"]:
             with open("{0}/{1}_smr_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
@@ -118,7 +118,7 @@ def main():
 
         if "metaxcan" in settings["methods"]:
             with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\ttwas_log_pval\n")
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
 
         if "baseline" in settings["methods"]:
             with open("{0}/{1}_baseline_status.txt".format(base_output_dir, gwas_suffix), "w") as w:

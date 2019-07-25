@@ -57,4 +57,4 @@ def run_baseline(locus):
     # (Might even consider a few variations on this baseline model, like allowing another SNP or
     # allowing the best in the region...whichever one gives best results.)
 
-    return pval
+    return pval, pval5

@@ -182,7 +182,7 @@ def launch_finemap(locus, window, top_hits):
     with open("{0}/{1}_finemap_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
                 a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\t{10}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, len(gwas_probs), finemap_clpp, -1*math.log10(top_hits[0]), -1*math.log10(top_hits[1]), locus.gwas_suffix, finemap_clpp_mod))
 
-    return finemap_clpp_mod
+    return finemap_clpp, finemap_clpp_mod
 
 # Function purge_tmp_files
 # Remove temporary files created during this run of eCAVIAR,

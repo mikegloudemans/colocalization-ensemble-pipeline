@@ -2,7 +2,6 @@
 #
 # Class: TestLocus A locus to test for colocalization, along with all of the
 # relevant data needed to conduct the tests.
-#
 
 import finemap
 import traceback
@@ -16,6 +15,7 @@ import math
 import baseline
 import smr
 import gsmr
+import ensemble
 
 class TestLocus:
     def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file, trait):
@@ -33,11 +33,11 @@ class TestLocus:
         self.tmpdir = tmpdir
         self.conditional_level = 0      # Currently serves no purpose, but may be implemented later
         self.trait = trait
+        self.scores = ScoreContainer()
 
     # Run colocalization tests. Which ones to do will depend
     # on the settings file.
     def run(self):
-
 
         # Note: Might eventually create a wrapper function for finemap and ecaviar that dispatches the two 
         # as necessary, depending on overlaps.
@@ -46,10 +46,15 @@ class TestLocus:
 
         if "finemap" in self.settings["methods"]:
             try:
-                clpp = finemap.run_finemap(self)
+                clpps = finemap.run_finemap(self)
 
-                if not isinstance(clpp, basestring) and clpp > 0.3: 
-                    plotworthy = True
+                if not isinstance(clpps, basestring):
+                    clpp, clpp_mod = clpps
+                    if clpp_mod > 0.3: 
+                        plotworthy = True
+                    
+                    self.scores.finemap_clpp = clpp
+                    self.scores.finemap_clpp_mod = clpp_mod
 
             except Exception as e:
                 error = str(e)
@@ -93,6 +98,8 @@ class TestLocus:
                 if h4pp > 0.5:
                     plotworthy = True
 
+                self.scores.coloc_h4 = h4pp
+
             except Exception as e:
                 error = str(e)
                 error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
@@ -104,6 +111,8 @@ class TestLocus:
                 rtc_score = rtc.run_rtc(self)
                 if rtc_score > 0.8:
                     plotworthy = True
+
+                self.scores.rtc_neg_log_pval = rtc_score
 
             except Exception as e:
                 error = str(e)
@@ -117,6 +126,8 @@ class TestLocus:
                 if twas_p > 5:
                     plotworthy = True
 
+                self.scores.twas_neg_log_pval = twas_p
+
             except Exception as e:
                 error = str(e)
                 error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
@@ -125,7 +136,10 @@ class TestLocus:
 
         if "baseline" in self.settings["methods"]:
             try:
-                pval = baseline.run_baseline(self)
+                pval, pval5 = baseline.run_baseline(self)
+
+                self.scores.baseline_neg_log_pval = pval
+                self.scores.smart_baseline_neg_log_pval = pval5
 
             except Exception as e:
                 error = str(e)
@@ -136,6 +150,7 @@ class TestLocus:
         if "smr" in self.settings["methods"]:
             try:
                 pval = smr.run_smr(self)
+                self.scores.smr_neg_log_pval = pval
 
             except Exception as e:
                 error = str(e)
@@ -146,6 +161,7 @@ class TestLocus:
         if "gsmr" in self.settings["methods"]:
             try:
                 pval = gsmr.run_gsmr(self)
+                self.scores.gsmr_neg_log_pval = pval
 
             except Exception as e:
                 error = str(e)
@@ -164,6 +180,18 @@ class TestLocus:
                 with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
                     a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tenloc\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
         '''
+
+        if "ensemble" in self.settings["methods"]:
+            try:
+                score = ensemble.run_ensemble(self)
+                self.scores.ensemble_score = score
+
+            except Exception as e:
+                error = str(e)
+                error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
+                with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
+                    a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tensemble\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
+
 
         # Plot the result if it's significant.
         if (plotworthy or self.settings["plot_all"] == True) and ("plot_none" not in self.settings or self.settings["plot_none"] != True):

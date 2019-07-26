@@ -11,7 +11,7 @@ else:
 import pandas as pd
 import math
 
-def run_baseline(locus):
+def run_ensemble(locus):
     
     # TODO for Jeremy:
     # Compute ensemble score using scores passed in from other functions.

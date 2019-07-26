@@ -16,6 +16,7 @@ import baseline
 import smr
 import gsmr
 import ensemble
+from ScoreContainer import ScoreContainer
 
 class TestLocus:
     def __init__(self, data, settings, basedir, tmpdir, gene, snp, gwas_file, eqtl_file, trait):
@@ -62,7 +63,6 @@ class TestLocus:
                 with open("{0}/ERROR_variants.txt".format(self.basedir),"a") as a:
                     a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tfinemap\n".format(self.gwas_file, self.eqtl_file, self.chrom, self.pos, self.gene, self.trait, error))
 
-
         if "ecaviar" in self.settings["methods"]:
             try:
                 clpp = ecaviar.run_ecaviar(self)
@@ -91,7 +91,7 @@ class TestLocus:
         # though technically it should usually work? Fix this later
         if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"] or "caviarbf" in self.settings["methods"]:
             finemap.purge_tmp_files(self)
-
+        
         if "coloc" in self.settings["methods"]:
             try:
                 h4pp = coloc.run_coloc(self)

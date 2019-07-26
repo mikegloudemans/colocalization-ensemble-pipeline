@@ -52,11 +52,11 @@ def prep_finemap(locus, window):
     eqtl_vcf = eqtl_ref["file"].format(locus.chrom)
     gwas_vcf = gwas_ref["file"].format(locus.chrom)
 
-
     # Two different cases depending on whether GWAS and eQTL
     # are using same reference genome.
     if eqtl_vcf == gwas_vcf:
         # Get and filter the single VCF.
+
         vcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window, ["eqtl", "gwas"])
         assert vcf.shape[0] == combined.shape[0]
 
@@ -69,7 +69,6 @@ def prep_finemap(locus, window):
         # Remove indices that produced NaNs in the LD computations
         removal_list = list(set(removal_list))
         combined = combined.drop(combined.index[removal_list])
-
     else:
         # Get and filter both VCFs.
         evcf, combined = load_and_filter_variants(eqtl_vcf, locus, combined, eqtl_ref, window, ["eqtl"])
@@ -102,6 +101,7 @@ def prep_finemap(locus, window):
             evcf = evcf.drop(evcf.index[removal_list])
             gvcf = gvcf.drop(gvcf.index[removal_list])
 
+
     # Check to see whether we still even have a signficant GWAS variant and a significant eQTL variant.
     if "screening_thresholds" in locus.settings and "gwas" in locus.settings["screening_thresholds"]:
         if min(combined["pvalue_gwas"]) > locus.settings["screening_thresholds"]["gwas"]:
@@ -117,7 +117,6 @@ def prep_finemap(locus, window):
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_gwas']]
         snps.to_csv(w, index=False, header=False, sep=" ")
-    
     return (min(combined["pvalue_gwas"]), min(combined["pvalue_eqtl"]))
 
 # This function contains the code that's specific to FINEMAP,
@@ -188,7 +187,7 @@ def launch_finemap(locus, window, top_hits):
 # Remove temporary files created during this run of eCAVIAR,
 # to free up space.
 def purge_tmp_files(locus):
-   
+    
     # Why not just purge everything from the entire directory of the GWAS that we're working on?
     # Answer: it's possible that other jobs are still using those files.
     # Only purge the specific files created in this run.
@@ -319,8 +318,6 @@ def compute_ld(input_vcf, locus, data_type):
         # Use PLINK to generate LD score
         command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
         subprocess.check_call(command, shell=True)
-
-        sys.exit()
 
         # See if nans remain. If so, remove the offending lines.
         try:

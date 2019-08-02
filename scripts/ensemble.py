@@ -21,14 +21,8 @@ from sklearn.metrics import accuracy_score
 
 
 def run_ensemble(locus):
-    
-    # TODO for Jeremy:
-    # Compute ensemble score using scores passed in from other functions.
-    # The scores from the other functions will be stored in locus.scores,
-    # which is an object of class StoreContainer and should be the only information
-    # you need for this I think. Scores that have not been
-    # successfully computed (or just weren't requested) will have a value of NoneType.
-    #
+    # TODO: rectify package versions and corresponding dependencies later
+    # when updating software to latest.
     
     ###################
     ## PREPROCESSING ##
@@ -74,7 +68,7 @@ def run_ensemble(locus):
     methods_used.append("colocalization_status") # always include answer key
     matrix = matrix[methods_used]
 
-    print(methods_used)
+    #print(methods_used)
 
     # use all data in matrix for training (no need for train test split)
     trainX = matrix.drop('colocalization_status', 1)
@@ -106,27 +100,31 @@ def run_ensemble(locus):
     ###############################
     
     #predict using real data
-    print(scores)
+    #print(scores)
     # for sklearn version < 0.20.0, scores.reshape(1,-1) is necessary
     scores = scores.reshape(1,-1)
 
     predY = randfor.predict(scores)
-    print(predY)
+    #print(predY)
     predProbY = randfor.predict_proba(scores)
-    print("COLOCALIZATION SCORE:")
-    print(predProbY[:,1])
+    #print("COLOCALIZATION SCORE:")
+    #print(predProbY[:,1])
     
+    ############
+    ## OUTPUT ##
+    ############
 
-    # TODO: Set this value equal to the ensemble score once you've computed it, 
-    # and then it will be written to the output file.
+    # Set ensemble_score to (true) prediction probability 
+    # of random forest classifier.
     ensemble_score = predProbY[0,1]
 
-    # TODO for Jeremy: Write the names of all the methods / scores that were included (not NoneType) in this file so we can
+    # Write the names of all the methods / scores that were included (not NoneType) in this file so we can
     # reference it later
     methods_used.remove('colocalization_status')
     with open("{0}/ensemble_methods_used.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as w:
+        w.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, locus.data.shape[0], locus.gwas_suffix))
 	for method in methods_used:
-            w.write("%s\t" % method)       
+            w.write("%s," % method)       
 	w.write("\n") 
 
     with open("{0}/{1}_ensemble_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:

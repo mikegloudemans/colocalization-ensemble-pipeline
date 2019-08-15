@@ -1,5 +1,5 @@
-# Author: Mike Gloudemans
 # Author: Jeremy Tien
+# Author: Mike Gloudemans
 
 import subprocess
 from scipy import stats
@@ -28,8 +28,9 @@ def run_ensemble(locus):
     ## PREPROCESSING ##
     ###################
 
-    # Load matrix of simulated data for training. Consider making this hard-coded in -- path is "/users/j29tien/colocalization_ML/colocalization_matrix_NEW_UNRANKED.tsv"
-    matrix_save_path = locus.settings["methods"]["ensemble"]["training_data"] # current matrix contains COLOC, RTC, FINEMAP_STANDARD, FINEMAP_MODIFIED, CAVIARBF, BASELINE, SMARTBASELINE, SMR, SMR_HEIDIADJUSTED, GSMR, TWAS 
+    # Load matrix of SIMULATED data for training.
+    matrix_save_path = "/users/j29tien/colocalization_ML/colocalization_matrix_NEW_UNRANKED.tsv" #locus.settings["methods"]["ensemble"]["training_data"] 
+    # current simulated data matrix contains COLOC, RTC, FINEMAP_STANDARD, FINEMAP_MODIFIED, CAVIARBF, BASELINE, SMARTBASELINE, SMR, SMR_HEIDIADJUSTED, GSMR, TWAS 
     matrix = pd.read_csv(matrix_save_path, sep="\t")
 
     # remove any submethods based on input and create ScoreContainer numpy array
@@ -78,15 +79,13 @@ def run_ensemble(locus):
     trainX = trainX.to_numpy()  # access the numpy array containing values
     trainY = trainY.to_numpy()  # access the numpy array containing values
     
-    # Binarize the output for training
-    #trainY = label_binarize(trainY, classes=[0, 1])
-    #n_classes = trainY.shape[1]
-
     ####################
     ## TRAIN ENSEMBLE ##
     ####################
     
-    # initiate and fit the random forest classifier -- need to tweak parameters --> n_estimators = 150, max_depth = 7, min_samples_leaf=1
+    # initiate and fit the random forest classifier -- tweaked parameters: n_estimators = 150, max_depth = 7, min_samples_leaf=1
+    
+    # for sklearn version > 0.20.0
     #randfor = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini', max_depth=7, max_features='auto', max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=1, min_samples_split=2, min_weight_fraction_leaf=0.0, n_estimators=150, n_jobs=None, oob_score=False, random_state=None, verbose=0, warm_start=False)
     
     # for sklearn version < 0.20.0, remove min_impurity_decrease=0.0, set min_impurity_split=0, remove n_jobs=None    

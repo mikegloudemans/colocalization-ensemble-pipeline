@@ -125,7 +125,7 @@ def main():
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
 
         if "ensemble" in settings["methods"]:
-            with open("{0}/{1}_baseline_ensemble.txt".format(base_output_dir, gwas_suffix), "w") as w:
+            with open("{0}/{1}_ensemble_status.txt".format(base_output_dir, gwas_suffix), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
         
         # Get list of traits measured in this GWAS

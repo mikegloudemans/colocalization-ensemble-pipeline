@@ -357,12 +357,14 @@ def get_eqtl_data(eqtl_file, snp, settings):
             eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["effect_direction"] == "+")-1)
         else:
             eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["beta"] > 0)-1)
-
     else:
         return "Improper eQTL format specification"
+    eqtls = eqtls[~eqtls["pvalue"].isna()]
+    eqtls = eqtls[~eqtls["ZSCORE"].isna()]
 
     if "beta" in eqtls:
         eqtls = eqtls.rename(index=str, columns={"beta": "beta_eqtl"})
+        eqtls = eqtls.fillna({'beta': 0})
     if "se" in eqtls:
         eqtls = eqtls.rename(index=str, columns={"se": "se_eqtl"})
 

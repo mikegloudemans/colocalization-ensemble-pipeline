@@ -38,6 +38,14 @@ def main():
 
     settings = config.load_config(config_file)
 
+    # Verify that all GWAS and eQTL files exist; if not, abort with an error message.
+    for f in settings["gwas_experiments"]:
+        if not os.path.exists(f):
+            raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
+    for f in settings["eqtl_experiments"]:
+        if not os.path.exists(f):
+            raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
+
     max_cores = int(sys.argv[2])
 
     if "out_dir" in settings:

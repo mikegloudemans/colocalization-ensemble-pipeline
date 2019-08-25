@@ -109,7 +109,7 @@ def prep_finemap(locus, window):
     if "screening_thresholds" in locus.settings and "eqtl" in locus.settings["screening_thresholds"]:
         if min(combined["pvalue_eqtl"]) > locus.settings["screening_thresholds"]["eqtl"]:
             return "Fail: No eQTL SNPs pass thresholds after filtering."
-
+    
     with open("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_eqtl.z".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "w") as w:
         snps = combined[['snp_pos', 'ZSCORE_eqtl']]
         snps.to_csv(w, index=False, header=False, sep=" ")
@@ -137,8 +137,10 @@ def launch_finemap(locus, window, top_hits):
         max_causal = int(locus.settings["methods"]["finemap"]["max_causal"])
 
     # Run FINEMAP
-    subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
-    #subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+    if locus.settings["debug"] == True:
+        subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+    else:
+        subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
     
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []

@@ -1,0 +1,13 @@
+*.pos
+*.hsq
+*nohup.out
+*.pyc
+scripts/data_prep/vcfs
+*.log
+*.pdf
+output
+data
+config
+scripts/old
+tmp
+scripts/data_prep/twas

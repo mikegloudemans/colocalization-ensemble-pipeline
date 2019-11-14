@@ -23,31 +23,35 @@ else:
 
 def locus_compare(locus):
 
+    data_copy = locus.data.copy()
+
     trait = locus.trait
     if trait == -1:
         trait = locus.gwas_suffix
 
     if "rsid_column" in locus.settings["gwas_experiments"][locus.gwas_file]:
-        locus.data['rsid'] = locus.data[locus.settings["gwas_experiments"][locus.gwas_file]['rsid_column']]
+        data_copy['rsid'] = data_copy[locus.settings["gwas_experiments"][locus.gwas_file]['rsid_column']]
     # If both GWAS and eQTL files have rsids, they'll have been renamed
-    if "rsid_gwas" in list(locus.data.columns.values):
-        locus.data['rsid'] = locus.data['rsid_gwas']
+    if "rsid_gwas" in list(data_copy.columns.values):
+        data_copy['rsid'] = data_copy['rsid_gwas']
 
-    if "rsid" not in list(locus.data.columns.values):
+    if "rsid" not in list(data_copy.columns.values) or ("reobtain_rsids" in locus.settings and str(locus.settings["reobtain_rsids"]) == "True"):
         if "rsid_index_file" in locus.settings:
 
             # First, extract nearby variants using tabix
-            stream = StringIO(subprocess.check_output("tabix {0} {1}:{2}-{3}".format(locus.settings["rsid_index_file"], locus.data['chr_gwas'][0], np.min(np.array(locus.data["snp_pos"])), np.max(np.array(locus.data["snp_pos"]))), shell=True))
+            stream = StringIO(subprocess.check_output("tabix {0} {1}:{2}-{3}".format(locus.settings["rsid_index_file"], str(data_copy['chr_gwas'][0]).replace("chr", ""), np.min(np.array(data_copy["snp_pos"])), np.max(np.array(data_copy["snp_pos"]))), shell=True))
 
             # For readability, load the header too
             # Load with pandas
-            dbsnp = pd.read_csv(stream, sep="\t", header=None).iloc[:,:3]
+            dbsnp = pd.read_csv(stream, sep="\t", comment="#", header=None).iloc[:,:3]
             dbsnp = dbsnp.rename({0: "chr_gwas", 1: "snp_pos", 2:"rsid"}, axis="columns")
-           
+
+            data_copy['chr_gwas'] = data_copy['chr_gwas'].astype(str).str.replace("chr", "", regex=False).astype(int)
+
             # May be unsafe, but I don't think it is because I don't think
-            # we're using locus.data anywhere else
-            locus.data = pd.merge(dbsnp, locus.data, left_on=["chr_gwas", "snp_pos"], right_on=["chr_gwas", "snp_pos"])
-            
+            # we're using data_copy anywhere else
+            data_copy = pd.merge(dbsnp, data_copy, left_on=["chr_gwas", "snp_pos"], right_on=["chr_gwas", "snp_pos"], suffixes = ["", "_original"])
+
             '''
             # Remove variants with position appearing multiple times
             dup_counts = {}
@@ -61,7 +65,7 @@ def locus_compare(locus):
             return "No rsids found for plotting"
 
     # Throw away columns that don't have an rsid specified.
-    plot_data = locus.data[~locus.data["rsid"].isna()]
+    plot_data = data_copy[~data_copy["rsid"].isna()]
  
     subprocess.call("mkdir -p {0}/plots/{4}/{5}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait), shell=True)
     gwas_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
@@ -84,9 +88,9 @@ def locus_compare(locus):
             w.write(line)
     subprocess.check_call('tabix {3} {0}:{1}-{2} >> {4}'.format(locus.chrom, locus.pos - locus.settings["window"], locus.pos + locus.settings["window"], vcf_file, vcf_tmp), shell=True)
      
-    gwas_data = locus.data.loc[:,["rsid", "pvalue_gwas"]]
+    gwas_data = data_copy.loc[:,["rsid", "pvalue_gwas"]]
     gwas_data.to_csv(gwas_tmp, header=["rsid", "pval"], index=False, sep="\t")
-    eqtl_data = locus.data.loc[:,["rsid", "pvalue_eqtl"]]
+    eqtl_data = data_copy.loc[:,["rsid", "pvalue_eqtl"]]
     eqtl_data.to_csv(eqtl_tmp, header=["rsid", "pval"], index=False, sep="\t")
 
     gwas_data = gwas_data.reset_index()

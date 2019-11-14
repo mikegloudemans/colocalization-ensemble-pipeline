@@ -26,7 +26,6 @@ from TestLocus import TestLocus
 
 def main():
 
-
     # Read config file
     config_file = sys.argv[1]
     # Check if absolute path or relative path
@@ -182,6 +181,8 @@ def main():
             # For each eQTL experiment:
             for eqtl_file in eqtl_files:
 
+                print eqtl_file
+
                 eqtl_snp_list = []
                 if settings["selection_basis"] in ["eqtl", "both"]:
                     # If a "selection subset" is specified for the eQTL experiment, then genes will
@@ -307,8 +308,14 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
 
     # Loop through all genes now
     for gene in genes:
-        # NOTE: It might be easier to just do this step once outside of this loop,
+        # NOTE: It would be faster to just do this step once outside of this loop,
         # and then filter down to the gene of interest. Consider modifying.
+
+        # Make sure this is a gene we actually care about
+        if "selection_subset" in settings['eqtl_experiments'][eqtl_file] and gene not in settings['eqtl_experiments'][eqtl_file]["selection_subset"]:
+            continue
+        print gene
+
         allow_insignificant_gwas = restrict_gene != -1
 
         combined = preprocess.combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe=True, allow_insignificant_gwas=allow_insignificant_gwas)

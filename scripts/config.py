@@ -3,7 +3,9 @@
 # Load and parse config file.
 #
 
-import json
+import json 
+import glob
+import copy
 
 debug = False
 
@@ -38,6 +40,11 @@ def load_config(filename):
     else:
         config["plot_none"] = False
 
+    if "plot_only" in config and config["plot_only"]=="True":
+        config["plot_only"] = True
+    else:
+        config["plot_only"] = False
+
     # Default window of analysis = 500000 bp on either side of SNP
     if "window" not in config:
         config["window"] = 500000
@@ -49,4 +56,29 @@ def load_config(filename):
     else:
         config["debug"] = False
 
+    config = expand_glob_eqtl_files(config)
+
+    for ee in config['eqtl_experiments']:
+        if "selection_subset" in config['eqtl_experiments'][ee]:
+            config['eqtl_experiments'][ee]["selection_subset"] = get_selection_subset(config['eqtl_experiments'][ee]["selection_subset"])
+
     return config
+
+def get_selection_subset(filename):
+    selection_subset = set([])
+    with open(filename) as f:
+        for line in f:
+            selection_subset.add(line.strip())
+    return selection_subset
+
+def expand_glob_eqtl_files(config):
+
+    new_config = copy.deepcopy(config)
+
+    for ee in config['eqtl_experiments']:
+        all_experiments = glob.glob(ee)
+        del new_config['eqtl_experiments'][ee]
+
+        for ae in all_experiments:
+            new_config['eqtl_experiments'][ae] = copy.deepcopy(config['eqtl_experiments'][ee])
+    return new_config

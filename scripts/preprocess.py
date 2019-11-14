@@ -27,10 +27,10 @@ def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, settings, window=
     print("Selecting GWAS hits from {0}".format(gwas_file))
 
     with gzip.open(gwas_file) as f:
-        if "debug" in settings and settings["debug"] == "True":
-            gwas_table = pd.read_csv(f, sep="\t", nrows=500000, dtype=str)
-        else:
-            gwas_table = pd.read_csv(f, sep="\t", dtype=str)
+        #if "debug" in settings and settings["debug"] == "True":
+        #    gwas_table = pd.read_csv(f, sep="\t", nrows=500000, dtype=str)
+        #else:
+        gwas_table = pd.read_csv(f, sep="\t", dtype=str)
 
     if trait == gwas_file.split("/")[-1]:
         subset = gwas_table[['chr', 'snp_pos', 'pvalue']].copy()
@@ -158,9 +158,9 @@ def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
             i = i + 1
 
             # If debugging, only run a shorter chunk
-            if i % 1000000 == 0:
-                if "debug" in settings and settings["debug"] == True:
-                    break
+            #if i % 1000000 == 0:
+                #if "debug" in settings and settings["debug"] == True:
+                #    break
             data = line.split()
             feature = data[feature_index]
             if subset_file != -1:

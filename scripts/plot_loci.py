@@ -60,6 +60,33 @@ def locus_compare(locus):
         else:
             return "No rsids found for plotting"
 
+    # get title for GWAS plots
+    if "plot_title_gwas" in locus.settings:
+        title_gwas = locus.settings["plot_title_gwas"]
+    elif "plot_title_gwas" in locus.settings["gwas_experiments"][locus.gwas_file]:
+        title_gwas = locus.settings["gwas_experiments"][locus.gwas_file]["plot_title_gwas"]
+    else:
+        title_gwas = locus.gwas_suffix
+
+
+    # get LD and title information for eQTL plots
+    # get specified ref population for LD
+    if "plot_ld_pop" in locus.settings:
+        pop = locus.settings["plot_ld_pop"]
+    elif "plot_ld_pop" in locus.settings["eqtl_experiments"][locus.eqtl_file]:
+        pop = locus.settings["eqtl_experiments"][locus.eqtl_file]["plot_ld_pop"]
+    else:
+        pop = "EUR"
+
+    # get specified title for eQTL data in plot
+    if "plot_title_eqtl" in locus.settings:
+        title_eqtl = locus.settings["plot_title_eqtl"]
+    elif "plot_title_eqtl" in locus.settings["eqtl_experiments"][locus.eqtl_file]:
+        title_eqtl = locus.settings["eqtl_experiments"][locus.eqtl_file]["plot_title_eqtl"]
+    else:
+        title_eqtl = locus.eqtl_suffix
+
+
     # Throw away columns that don't have an rsid specified.
     plot_data = locus.data[~locus.data["rsid"].isna()]
  
@@ -98,6 +125,6 @@ def locus_compare(locus):
     # Call it once for top SNP in study 1, once for top SNP in study 2,
     # as reference SNP.
     # For now we'll just assume 1000 Genomes is the reference population
-    subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, gwas_lead])
-    subprocess.check_call(["Rscript", "/users/mgloud/projects/brain_gwas/scripts/locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, locus.gwas_suffix, locus.eqtl_suffix, vcf_tmp, eqtl_lead])
+    subprocess.check_call(["Rscript", "./locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, title_gwas, title_eqtl, vcf_tmp, gwas_lead, pop])
+    subprocess.check_call(["Rscript", "./locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, title_gwas, title_eqtl, vcf_tmp, eqtl_lead, pop])
 

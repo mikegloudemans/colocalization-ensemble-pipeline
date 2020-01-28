@@ -68,7 +68,7 @@ def get_selection_subset(filename):
     selection_subset = set([])
     with open(filename) as f:
         for line in f:
-            selection_subset.add(line.strip())
+            selection_subset.add(line.strip().replace(":", "."))
     return selection_subset
 
 def expand_glob_eqtl_files(config):

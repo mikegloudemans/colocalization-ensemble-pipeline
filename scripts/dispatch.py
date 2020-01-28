@@ -306,6 +306,8 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         restrict_gene_mod = restrict_gene.replace(":", ".")
         genes = [restrict_gene_mod]
 
+    print genes
+
     # Loop through all genes now
     for gene in genes:
         # NOTE: It would be faster to just do this step once outside of this loop,

@@ -25,8 +25,10 @@ import gzip
 def run_finemap(locus, window=500000):
 
     pf = prep_finemap(locus, window)
+
     # TODO: Make it write to an error or a "skipped" file instead of failing silently.
     if isinstance(pf, basestring):
+        print pf
         return pf
     return launch_finemap(locus, window, pf)
 
@@ -35,7 +37,6 @@ def run_finemap(locus, window=500000):
 # launching of finemap. This is done to avoid duplicating code,
 # since eCAVIAR and FINEMAP use very similar setups.
 def prep_finemap(locus, window):
-
 
     locus.conditional_level = 0   # Currently not used at all, but we may re-add this functionality later.
     combined = locus.data.copy()

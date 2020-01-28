@@ -235,19 +235,20 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
 
     if "ref_allele_header" in settings['gwas_experiments'][gwas_file]:
-        gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']]
+        gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']].str.upper()
     if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
-        gwas_table['alt'] = gwas_table[settings['gwas_experiments'][gwas_file]['alt_allele_header']]
+        gwas_table['alt'] = gwas_table[settings['gwas_experiments'][gwas_file]['alt_allele_header']].str.upper()
 
     if "effect_allele" in list(gwas_table.columns.values):
-        gwas_table['alt'] = gwas_table["effect_allele"]
-        gwas_table['ref'] = gwas_table["non_effect_allele"]
+        gwas_table['alt'] = gwas_table["effect_allele"].str.upper()
+        gwas_table['ref'] = gwas_table["non_effect_allele"].str.upper()
 
     if 'effect_af' in gwas_table.columns.values:
         gwas_table = gwas_table.rename(index=str, columns={"effect_af": "effect_af_gwas"})
 
-    gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
-    gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
+        gwas_table['alt'] = gwas_table['e']
+        gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
+        gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
 
     #
     # 'gwas_format' must be specified, to make sure the users know what they're doing.
@@ -268,7 +269,6 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         gwas_table['ZSCORE'] = gwas_table['beta'] / gwas_table['se']
         gwas_table['ZSCORE'] = gwas_table['ZSCORE'].fillna(0)
     elif settings['gwas_experiments'][gwas_file]['gwas_format'] == 'pval_only':
-        assert 'pvalue' in gwas_table and ("effect_direction" in gwas_table or "direction" in gwas_table or "beta" in gwas_table)
         gwas_table = gwas_table[~gwas_table["pvalue"].isna()]
 
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
@@ -278,8 +278,11 @@ def get_gwas_data(gwas_file, snp, settings, trait):
             # replace beta == NaN with 0 (beta == NaN for large p-values)
             gwas_table = gwas_table.fillna({'beta': 0})
             gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["beta"] > 0)-1)
-        else:
+        elif "direction" in gwas_table:
             gwas_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(gwas_table["pvalue"] / 2)], index=gwas_table.index) * (2*(gwas_table["direction"] == "+")-1)
+        else:
+            # We don't always need zscore. Like not if running FINEMAP
+            pass
     else:
         return "Improper GWAS format specification"
 
@@ -320,8 +323,9 @@ def get_eqtl_data(eqtl_file, snp, settings):
     if "effect_af" in eqtls.columns.values:
         eqtls = eqtls.rename(index=str, columns={"effect_af": "effect_af_eqtl"})
 
-    eqtls['ref'] = eqtls['ref'].apply(lambda x: x.upper())
-    eqtls['alt'] = eqtls['alt'].apply(lambda x: x.upper())
+    if "ref" in eqtls.columns.values:
+        eqtls['ref'] = eqtls['ref'].apply(lambda x: x.upper())
+        eqtls['alt'] = eqtls['alt'].apply(lambda x: x.upper())
 
     eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)#
 

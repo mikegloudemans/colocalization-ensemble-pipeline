@@ -19,81 +19,84 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
+# Commented sections have now been deprecated; the overlap tool should be used for
+# selecting SNPs instead.
 
 # Input: gwas file location, threshold of significance, minimum distance
 # between two selected SNPs.  Output: A list of significant SNPs to test.
-def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, settings, window=1000000):
+#def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, settings, window=1000000):
+#
+#    print("Selecting GWAS hits from {0}".format(gwas_file))
+#
+#    with gzip.open(gwas_file) as f:
+#        #if "debug" in settings and settings["debug"] == "True":
+#        #    gwas_table = pd.read_csv(f, sep="\t", nrows=500000, dtype=str)
+#        #else:
+#        gwas_table = pd.read_csv(f, sep="\t", dtype=str)
+#
+#    if trait == gwas_file.split("/")[-1]:
+#        subset = gwas_table[['chr', 'snp_pos', 'pvalue']].copy()
+#    else:
+#        subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']].copy()
+#
+#    subset.loc[:,'pvalue'] = subset.loc[:,'pvalue'].astype(float)
+#    subset = subset[subset['pvalue'] <= gwas_threshold]
+#    if trait != gwas_file.split("/")[-1]:
+#        subset = subset[subset['trait'] == trait]
+#
+#    all_snps = [tuple(x) for x in subset.values]
+#    all_snps = sorted(all_snps, key=operator.itemgetter(2))
+#
+#    # For now, include only autosomal SNPs.
+#    filtered = []
+#    for s in all_snps:
+#        if "chr" in str(s[0]):
+#            try:
+#                filtered.append((int(s[0][3:]), s[1], s[2]))
+#            except:
+#                pass
+#        else:
+#            try:
+#                filtered.append((int(s[0]), s[1], s[2]))
+#            except:
+#                pass
+#
+#    all_snps = [SNP.SNP(x) for x in filtered]
+#
+#    # Go through the list of SNPs in order, adding the ones
+#    # passing our criteria.
+#    snps_to_test = []
+#    for snp in all_snps:
+#
+#        # See if we're done yet
+#        if snp.pval >= gwas_threshold:
+#                break
+#
+#        # For now, ignore a SNP if it's in the MHC region -- this
+#        # would require alternative methods.
+#        if (snp.chrom == 6) and snp.pos > 25000000 and snp.pos < 35000000:
+#                continue
+#
+#        # Before adding a SNP, make sure it's not right next
+#        # to another SNP that we've already selected.
+#        skip = False
+#        for kept_snp in snps_to_test:
+#                if kept_snp.chrom == snp.chrom and abs(kept_snp.pos - snp.pos) < window:
+#                        skip = True
+#                        break
+#        if not skip:
+#                snps_to_test.append(snp)
+#
+#
+#    # -1 here means unrestricted to a certain gene
+#    # TODO: Just make this part of the SNP object so that we can test SNP/gene pairs for equality
+#    snps_to_test = [(s, -1) for s in snps_to_test]
+#
+#    return snps_to_test
+#
+## Input: gwas file location, threshold of significance, minimum distance
+## between two selected SNPs.  Output: A list of significant SNPs to test.
 
-    print("Selecting GWAS hits from {0}".format(gwas_file))
-
-    with gzip.open(gwas_file) as f:
-        #if "debug" in settings and settings["debug"] == "True":
-        #    gwas_table = pd.read_csv(f, sep="\t", nrows=500000, dtype=str)
-        #else:
-        gwas_table = pd.read_csv(f, sep="\t", dtype=str)
-
-    if trait == gwas_file.split("/")[-1]:
-        subset = gwas_table[['chr', 'snp_pos', 'pvalue']].copy()
-    else:
-        subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']].copy()
-
-    subset.loc[:,'pvalue'] = subset.loc[:,'pvalue'].astype(float)
-    subset = subset[subset['pvalue'] <= gwas_threshold]
-    if trait != gwas_file.split("/")[-1]:
-        subset = subset[subset['trait'] == trait]
-
-    all_snps = [tuple(x) for x in subset.values]
-    all_snps = sorted(all_snps, key=operator.itemgetter(2))
-
-    # For now, include only autosomal SNPs.
-    filtered = []
-    for s in all_snps:
-        if "chr" in str(s[0]):
-            try:
-                filtered.append((int(s[0][3:]), s[1], s[2]))
-            except:
-                pass
-        else:
-            try:
-                filtered.append((int(s[0]), s[1], s[2]))
-            except:
-                pass
-
-    all_snps = [SNP.SNP(x) for x in filtered]
-
-    # Go through the list of SNPs in order, adding the ones
-    # passing our criteria.
-    snps_to_test = []
-    for snp in all_snps:
-
-        # See if we're done yet
-        if snp.pval >= gwas_threshold:
-                break
-
-        # For now, ignore a SNP if it's in the MHC region -- this
-        # would require alternative methods.
-        if (snp.chrom == 6) and snp.pos > 25000000 and snp.pos < 35000000:
-                continue
-
-        # Before adding a SNP, make sure it's not right next
-        # to another SNP that we've already selected.
-        skip = False
-        for kept_snp in snps_to_test:
-                if kept_snp.chrom == snp.chrom and abs(kept_snp.pos - snp.pos) < window:
-                        skip = True
-                        break
-        if not skip:
-                snps_to_test.append(snp)
-
-
-    # -1 here means unrestricted to a certain gene
-    # TODO: Just make this part of the SNP object so that we can test SNP/gene pairs for equality
-    snps_to_test = [(s, -1) for s in snps_to_test]
-
-    return snps_to_test
-
-# Input: gwas file location, threshold of significance, minimum distance
-# between two selected SNPs.  Output: A list of significant SNPs to test.
 def select_snps_from_list(list_file):
 
     gwas_table = pd.read_csv(list_file, sep="\s+", header=None)
@@ -109,105 +112,106 @@ def select_snps_from_list(list_file):
 
 
 
-def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
-
-    print("Selecting eQTL hits from {0}".format(eqtl_file))
-
-    snps_to_test = []
-
-    # Load eQTL file
-    with gzip.open(eqtl_file) as stream:
-
-        # TODO: I may have tried this before, but I don't see what we don't
-        # just convert chisq to p-value straight off the bat to make things simple?
-        # But I shouldn't fix this until I'm about to run it on chisq-formatted samples again
-        header = stream.readline().strip().split()
-        if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == "chisq":
-            assert 'chisq' in header
-            mode = "chisq"
-            pval_index = header.index("chisq")
-            chisq_threshold = stats.chi2.isf(settings['selection_thresholds']['eqtl'],1)
-        elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == "effect_size":
-            assert 'se' in header
-            assert 'beta' in header
-            se_index = header.index('se')
-            beta_index = header.index('beta')
-            mode = "effect_size"
-        else:
-            mode = "pvalue"
-            pval_index = header.index("pvalue")
-
-        if "feature" in header:
-            feature_index = header.index("feature")
-        else:
-            feature_index = header.index("gene")
-        pos_index = header.index("snp_pos")
-        chrom_index = header.index("chr")
-
-        gene_bests = {}
-
-        if subset_file != -1:
-            feature_subset = []
-            with open(subset_file) as f:
-                for line in f:
-                    feature_subset.append(line.strip())
-            feature_subset = set(feature_subset)
-
-        i = 0
-        for line in stream:
-            i = i + 1
-
-            # If debugging, only run a shorter chunk
-            #if i % 1000000 == 0:
-                #if "debug" in settings and settings["debug"] == True:
-                #    break
-            data = line.split()
-            feature = data[feature_index]
-            if subset_file != -1:
-                if feature not in feature_subset:
-                    continue
-
-            chrom = data[chrom_index].replace("chr", "")
-
-            # Exclude sex chromosomes for now
-            try:
-                chrom = int(chrom)
-            except:
-                continue
-
-
-            if mode == "chisq":
-                chisq = float(data[pval_index])
-                if chisq < chisq_threshold:
-                    continue
-
-                if feature not in gene_bests or gene_bests[feature][2] < chisq:
-                    gene_bests[feature] = (chrom, data[pos_index], chisq)
-            elif mode == "effect_size":
-                try:
-                    zscore = abs(float(data[beta_index]) / float(data[se_index]))
-                    pvalue = stats.norm.sf(zscore) * 2
-                except ValueError: # NA values
-                    continue
-                if feature not in gene_bests or gene_bests[feature][2] > pvalue:
-                    gene_bests[feature] = (chrom, data[pos_index], pvalue)
-            else:
-                pvalue = float(data[pval_index])
-                if pvalue > settings['selection_thresholds']['eqtl']:
-                    continue
-
-                if feature not in gene_bests or gene_bests[feature][2] > pvalue:
-                    gene_bests[feature] = (chrom, data[pos_index], pvalue)
-
-    # For each gene, determine the most significant SNP and add it to our list
-    for gene in sorted(gene_bests.keys()):
-        best = gene_bests[gene]
-        if mode == "chisq":
-            snps_to_test.append((SNP.SNP((best[0], best[1], stats.chi2.sf(best[2], 1))), gene))
-        else:
-            snps_to_test.append((SNP.SNP((best[0], best[1], best[2])), gene))
-
-    return snps_to_test
+#def select_test_snps_by_eqtl(eqtl_file, settings, subset_file=-1):
+#
+#    print("Selecting eQTL hits from {0}".format(eqtl_file))
+#
+#    snps_to_test = []
+#
+#    # Load eQTL file
+#    with gzip.open(eqtl_file) as stream:
+#
+#        # TODO: I may have tried this before, but I don't see what we don't
+#        # just convert chisq to p-value straight off the bat to make things simple?
+#        # But I shouldn't fix this until I'm about to run it on chisq-formatted samples again
+#        header = stream.readline().strip().split()
+#        if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == "chisq":
+#            assert 'chisq' in header
+#            mode = "chisq"
+#            pval_index = header.index("chisq")
+#            chisq_threshold = stats.chi2.isf(settings['selection_thresholds']['eqtl'],1)
+#        elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == "effect_size":
+#            assert 'se' in header
+#            assert 'beta' in header
+#            se_index = header.index('se')
+#            beta_index = header.index('beta')
+#            mode = "effect_size"
+#        else:
+#            mode = "pvalue"
+#            pval_index = header.index("pvalue")
+#
+#        if "feature" in header:
+#            feature_index = header.index("feature")
+#        else:
+#            feature_index = header.index("gene")
+#        pos_index = header.index("snp_pos")
+#        chrom_index = header.index("chr")
+#
+#        gene_bests = {}
+#
+#        if subset_file != -1:
+#            feature_subset = []
+#            with open(subset_file) as f:
+#                for line in f:
+#                    feature_subset.append(line.strip())
+#            feature_subset = set(feature_subset)
+#
+#        i = 0
+#        for line in stream:
+#            i = i + 1
+#
+#            # If debugging, only run a shorter chunk
+#            #if i % 1000000 == 0:
+#                #if "debug" in settings and settings["debug"] == True:
+#                #    break
+#            data = line.split()
+#            feature = data[feature_index]
+#            if subset_file != -1:
+#                if feature not in feature_subset:
+#                    continue
+#
+#            chrom = data[chrom_index].replace("chr", "")
+#
+#            # Exclude sex chromosomes for now
+#            try:
+#                chrom = int(chrom)
+#            except:
+#                continue
+#
+#
+#            if mode == "chisq":
+#                chisq = float(data[pval_index])
+#                if chisq < chisq_threshold:
+#                    continue
+#
+#                if feature not in gene_bests or gene_bests[feature][2] < chisq:
+#                    gene_bests[feature] = (chrom, data[pos_index], chisq)
+#            elif mode == "effect_size":
+#                try:
+#                    zscore = abs(float(data[beta_index]) / float(data[se_index]))
+#                    pvalue = stats.norm.sf(zscore) * 2
+#                except ValueError: # NA values
+#                    continue
+#                if feature not in gene_bests or gene_bests[feature][2] > pvalue:
+#                    gene_bests[feature] = (chrom, data[pos_index], pvalue)
+#            else:
+#                pvalue = float(data[pval_index])
+#                if pvalue > settings['selection_thresholds']['eqtl']:
+#                    continue
+#
+#                if feature not in gene_bests or gene_bests[feature][2] > pvalue:
+#                    gene_bests[feature] = (chrom, data[pos_index], pvalue)
+#
+#    # For each gene, determine the most significant SNP and add it to our list
+#    for gene in sorted(gene_bests.keys()):
+#        best = gene_bests[gene]
+#        if mode == "chisq":
+#            snps_to_test.append((SNP.SNP((best[0], best[1], stats.chi2.sf(best[2], 1))), gene))
+#        else:
+#            snps_to_test.append((SNP.SNP((best[0], best[1], best[2])), gene))
+#
+#    return snps_to_test
+#
 
 # Load summary statistics for GWAS
 def get_gwas_data(gwas_file, snp, settings, trait):

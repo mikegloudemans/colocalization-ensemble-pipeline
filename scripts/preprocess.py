@@ -37,6 +37,78 @@ def select_snps_from_list(list_file):
     else:
         return zip(snp_list, [-1]*len(snp_list))
 
+# Input: gwas file location, threshold of significance, minimum distance
+# between two selected SNPs.  Output: A list of significant SNPs to test.
+def select_test_snps_by_gwas(gwas_file, gwas_threshold, trait, settings, window=1000000):
+
+    print("Selecting GWAS hits from {0}".format(gwas_file))
+
+    with gzip.open(gwas_file) as f:
+        #if "debug" in settings and settings["debug"] == "True":
+        #    gwas_table = pd.read_csv(f, sep="\t", nrows=500000, dtype=str)
+        #else:
+        gwas_table = pd.read_csv(f, sep="\t", dtype=str)
+
+    if trait == gwas_file.split("/")[-1]:
+        subset = gwas_table[['chr', 'snp_pos', 'pvalue']].copy()
+    else:
+        subset = gwas_table[['chr', 'snp_pos', 'pvalue', 'trait']].copy()
+
+    subset.loc[:,'pvalue'] = subset.loc[:,'pvalue'].astype(float)
+    subset = subset[subset['pvalue'] <= gwas_threshold]
+    if trait != gwas_file.split("/")[-1]:
+        subset = subset[subset['trait'] == trait]
+
+    all_snps = [tuple(x) for x in subset.values]
+    all_snps = sorted(all_snps, key=operator.itemgetter(2))
+
+    # For now, include only autosomal SNPs.
+    filtered = []
+    for s in all_snps:
+        if "chr" in str(s[0]):
+            try:
+                filtered.append((int(s[0][3:]), s[1], s[2]))
+            except:
+                pass
+        else:
+            try:
+                filtered.append((int(s[0]), s[1], s[2]))
+            except:
+                pass
+
+    all_snps = [SNP.SNP(x) for x in filtered]
+
+    # Go through the list of SNPs in order, adding the ones
+    # passing our criteria.
+    snps_to_test = []
+    for snp in all_snps:
+
+        # See if we're done yet
+        if snp.pval >= gwas_threshold:
+                break
+
+        # For now, ignore a SNP if it's in the MHC region -- this
+        # would require alternative methods.
+        if (snp.chrom == 6) and snp.pos > 25000000 and snp.pos < 35000000:
+                continue
+
+        # Before adding a SNP, make sure it's not right next
+        # to another SNP that we've already selected.
+        skip = False
+        for kept_snp in snps_to_test:
+                if kept_snp.chrom == snp.chrom and abs(kept_snp.pos - snp.pos) < window:
+                        skip = True
+                        break
+        if not skip:
+                snps_to_test.append(snp)
+
+
+    # -1 here means unrestricted to a certain gene
+    # TODO: Just make this part of the SNP object so that we can test SNP/gene pairs for equality
+    snps_to_test = [(s, -1) for s in snps_to_test]
+
+    return snps_to_test
+
 # Load summary statistics for GWAS
 def get_gwas_data(gwas_file, snp, settings, trait):
 
@@ -74,7 +146,6 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     if 'effect_af' in gwas_table.columns.values:
         gwas_table = gwas_table.rename(index=str, columns={"effect_af": "effect_af_gwas"})
 
-        gwas_table['alt'] = gwas_table['e']
         gwas_table['ref'] = gwas_table['ref'].apply(lambda x: x.upper())
         gwas_table['alt'] = gwas_table['alt'].apply(lambda x: x.upper())
 

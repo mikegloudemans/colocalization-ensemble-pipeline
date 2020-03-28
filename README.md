@@ -17,6 +17,14 @@ and [tabix](http://www.htslib.org/doc/tabix.html). Binary executables for these 
 `/bin` directory on the level under the project directory. The PLINK executable must be named `plink`, the FINEMAP executable must be named `finemap`,
 and the `tabix` executable must be named `tabix`.
 
+The following python2 modules must also be installed:  
+  - [`progress.bar`](https://pypi.org/project/progress/)
+  - <add>
+  
+The following R (vN.N or higher) must also be installed:  
+  - `coloc` to run COLOC 
+  - <add> 
+
 ### Preparing Input Files
 
 #### GWAS and eQTL summary statistics

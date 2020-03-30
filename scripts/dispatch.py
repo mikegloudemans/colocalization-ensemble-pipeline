@@ -316,7 +316,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # Make sure this is a gene we actually care about
         if "selection_subset" in settings['eqtl_experiments'][eqtl_file] and gene not in settings['eqtl_experiments'][eqtl_file]["selection_subset"]:
             continue
-        #print gene
+        print gene
 
         allow_insignificant_gwas = restrict_gene != -1
 

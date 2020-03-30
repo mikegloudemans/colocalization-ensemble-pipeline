@@ -210,14 +210,30 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
         while line.startswith("##"):
             line = f.readline()
         header = line.strip().split()
-    if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
-        stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+      
+    # get the proper chromosome prefix
+    if "chr_prefix" in ref:
+        chrom_prefix = ref["chr_prefix"]
     else:
-        stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
-
-    # for debugging:
-    print filename, str(locus.chrom), str(locus.pos-window), str(locus.pos+window) 
+        # pull it from the first non-header line of the VCF 
+        with gzip.open(filename) as f:
+            while line.startswith("#"):
+                line = f.readline()
+                  
+        l = line.strip().split()
+        chrom = l[0]
+        if chrom.startswith('chr'):
+            chrom_prefix = 'chr'
+        elif chrom[0].isdigit():
+            chrom_prefix = '' 
    
+    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, chrom_prefix + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+   
+    #if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
+    #    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+    #else:
+    #    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+
     # For readability, load the header too
     # Load with pandas
     vcf = pd.read_csv(stream, sep="\t", names=header)

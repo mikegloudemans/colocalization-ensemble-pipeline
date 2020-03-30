@@ -232,6 +232,8 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # Remove multiallelic variants with only one entry in VCF
     l = lambda x: "," not in x
     vcf = vcf[vcf["REF"].apply(l) & vcf["ALT"].apply(l)]
+    print '1'
+    print vcf.shape
 
     # Remove monoallelic variants.
     # Allele frequency might be input as counts or as percentages,
@@ -244,6 +246,8 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
                 af = float(info.split("=")[1])
                 return af > 0.01 and 1-af > 0.01 
             vcf = vcf[vcf["INFO"].apply(fn)]
+            print '2'
+            print vcf.shape
         else:
             ac_id = ref["ac_attribute"]
             an = 2*ref["N"] # Assume 2 alleles per person
@@ -259,7 +263,10 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # Remove variants where alt/ref don't match between GWAS/eQTL and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
-    # TODO: Verify on an example case that this filtering is working correctly.
+    # TODO: Verify on an example case that this filtering is working correctly
+    print '3'
+    print combined.shape 
+    print vcf.shape
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
 
     # TODO: Enforce new standard: effect measurements are always with respect to ALT status.

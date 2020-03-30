@@ -217,7 +217,6 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # for debugging:
     print filename, str(locus.chrom), str(locus.pos-window), str(locus.pos+window) 
-    quit()
    
     # For readability, load the header too
     # Load with pandas

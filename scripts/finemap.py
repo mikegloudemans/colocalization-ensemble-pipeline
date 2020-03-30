@@ -215,6 +215,10 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     else:
         stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
 
+    # for debugging:
+    print filename, str(locus.chrom), str(locus.pos-window), str(locus.pos+window) 
+    quit()
+   
     # For readability, load the header too
     # Load with pandas
     vcf = pd.read_csv(stream, sep="\t", names=header)

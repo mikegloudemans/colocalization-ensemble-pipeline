@@ -218,9 +218,11 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # For readability, load the header too
     # Load with pandas
     vcf = pd.read_csv(stream, sep="\t", names=header)
+    print 'Number of SNPs in VCF: {}'.format(vcf.shape)
     # Remove variants not in the GWAS table
     vcf["POS"] = (vcf["POS"]).astype(int)
     vcf = vcf[vcf["POS"].isin(list(combined["snp_pos"]))]
+    print 'Number of SNPs in VCF after filtering on combined["snp_pos"]: {}'.format(vcf.shape)
 
     # Remove variants with position appearing multiple times
     dup_counts = {}
@@ -228,12 +230,12 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
             dup_counts[pos] = dup_counts.get(pos, 0) + 1
     vcf["dup_counts"] = [dup_counts[pos] for pos in vcf['POS']]
     vcf = vcf[vcf["dup_counts"] == 1]
+    print 'Number of SNPs in VCF after removing dup_counts: {}'.format(vcf.shape)
 
     # Remove multiallelic variants with only one entry in VCF
     l = lambda x: "," not in x
     vcf = vcf[vcf["REF"].apply(l) & vcf["ALT"].apply(l)]
-    print '1'
-    print vcf.shape
+    print 'Number of SNPs in VCF after removing multiallelic variants: {}'.format(vcf.shape)
 
     # Remove monoallelic variants.
     # Allele frequency might be input as counts or as percentages,
@@ -246,8 +248,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
                 af = float(info.split("=")[1])
                 return af > 0.01 and 1-af > 0.01 
             vcf = vcf[vcf["INFO"].apply(fn)]
-            print '2'
-            print vcf.shape
+            print 'Number of SNPs in VCF after filtering on AF: {}'.format(vcf.shape)
         else:
             ac_id = ref["ac_attribute"]
             an = 2*ref["N"] # Assume 2 alleles per person
@@ -264,9 +265,8 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
     # Remove variants where alt/ref don't match between GWAS/eQTL and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
     # TODO: Verify on an example case that this filtering is working correctly
-    print '3'
-    print combined.shape 
-    print vcf.shape
+    print 'Number of SNPs in VCF before merging: {}'.format(vcf.shape)
+    print 'Number of SNPs in "combined" before merging: {}'.format(combined.shape)
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
 
     # TODO: Enforce new standard: effect measurements are always with respect to ALT status.

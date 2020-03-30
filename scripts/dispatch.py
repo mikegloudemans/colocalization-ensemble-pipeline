@@ -17,7 +17,7 @@ from multiprocessing import Pool
 import traceback
 import gzip
 import os
-from progress.bar import Bar
+#from progress.bar import Bar
 
 # Custom libraries
 import config
@@ -203,16 +203,16 @@ def main():
 		else:
 		    num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 
-		bar = Bar('Processing\n', max=num_tests)
+		#bar = Bar('Processing\n', max=num_tests)
 
-		def update_bar(result):
-		    bar.next()
+		#def update_bar(result):
+		#    bar.next()
 
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
                 pool.close()
                 pool.join()
 
@@ -225,7 +225,7 @@ def main():
                 pool = Pool(max_cores)
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
 		pool.close()
                 pool.join()
 
@@ -233,7 +233,7 @@ def main():
                 if not settings["debug"]:
                     subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
-		bar.finish()
+		#bar.finish()
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
@@ -306,7 +306,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         restrict_gene_mod = restrict_gene.replace(":", ".")
         genes = [restrict_gene_mod]
 
-    print genes
+    #print genes
 
     # Loop through all genes now
     for gene in genes:
@@ -316,7 +316,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # Make sure this is a gene we actually care about
         if "selection_subset" in settings['eqtl_experiments'][eqtl_file] and gene not in settings['eqtl_experiments'][eqtl_file]["selection_subset"]:
             continue
-        print gene
+        #print gene
 
         allow_insignificant_gwas = restrict_gene != -1
 
@@ -343,10 +343,10 @@ def save_state(config_file, base_output_dir):
     copyfile(config_file, "{0}/settings_used.config".format(base_output_dir))
 
     # For reproducibility, store the current state of the project in Git
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
-    subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    #subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git log >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    #subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git diff >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    #subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git branch >> {0}/git_status.txt'.format(base_output_dir), shell=True)
+    #subprocess.check_call('git --git-dir /users/mgloud/projects/brain_gwas/.git status >> {0}/git_status.txt'.format(base_output_dir), shell=True)
 
 # Use SplicePlot to generate splice plots
 def splice_plot(results_file, eqtl_file, settings):

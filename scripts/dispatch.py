@@ -17,6 +17,7 @@ from multiprocessing import Pool
 import traceback
 import gzip
 import os
+import time 
 #from progress.bar import Bar
 
 # Custom libraries
@@ -204,15 +205,32 @@ def main():
 		    num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 
 		#bar = Bar('Processing\n', max=num_tests)
-
-		#def update_bar(result):
-		#    bar.next()
+		
+		def update_progress(progress):
+		    barLength = 200 # Modify this to change the length of the progress bar
+		    status = ""
+		    if isinstance(progress, int):
+			progress = float(progress)
+		    if not isinstance(progress, float):
+			progress = 0
+			status = "error: progress var must be float\r\n"
+		    if progress < 0:
+			progress = 0
+			status = "Halt...\r\n"
+		    if progress >= 1:
+			progress = 1
+			status = "Done...\r\n"
+		    block = int(round(barLength*progress))
+		    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+		    sys.stdout.write(text)
+		    sys.stdout.flush()
 
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
                     pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
+                    update_progress(i/len(eqtl_snp_list))
                 pool.close()
                 pool.join()
 

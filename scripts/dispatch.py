@@ -196,8 +196,10 @@ def main():
 
                 snp_list = eqtl_snp_list + gwas_snp_list
                 print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
-
+		
+		global num_tests
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
+		print num_tests 
 	        global num_tested 
 		num_tested = 0
 		
@@ -221,6 +223,7 @@ def main():
 		    sys.stdout.flush()
 		
 		def update_bar(result):
+		    global num_tests
 		    global num_tested 
 		    num_tested += 1
 		    update_progress(num_tested/num_tests)

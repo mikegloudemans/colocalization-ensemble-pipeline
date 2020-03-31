@@ -202,8 +202,6 @@ def main():
 		
 		global num_tests
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
-	        global num_tested 
-		num_tested = 0
 		
 		def update_progress(progress):
 		    barLength = 50 # Modify this to change the length of the progress bar
@@ -231,7 +229,7 @@ def main():
 		    print num_tests
 		    print num_tested 
 		    print num_tested/num_tests
-		    update_progress(num_tested/num_tests)
+		    update_progress(float(num_tested)/float(num_tests))
 			
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)

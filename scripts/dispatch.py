@@ -221,6 +221,7 @@ def main():
 		    sys.stdout.flush()
 		
 		def update_bar(result):
+		    global num_tested 
 		    num_tested += 1
 		    update_progress(num_tested/num_tests)
 			

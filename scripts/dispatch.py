@@ -197,14 +197,7 @@ def main():
                 snp_list = eqtl_snp_list + gwas_snp_list
                 print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
 
-		if len(eqtl_snp_list) == 0:
-		    num_tests = len(gwas_snp_list)
-		elif len(gwas_snp_list) == 0:
-		    num_tests = len(eqtl_snp_list)
-		else:
-		    num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
-
-		#bar = Bar('Processing\n', max=num_tests)
+		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 		
 		def update_progress(progress):
 		    barLength = 200 # Modify this to change the length of the progress bar
@@ -224,13 +217,16 @@ def main():
 		    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
 		    sys.stdout.write(text)
 		    sys.stdout.flush()
-
+		
+		num_tested = 0
+			
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
                     pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
-                    update_progress(i/len(eqtl_snp_list))
+                    num_tested += 1
+		    update_progress(num_tested/num_tests)
                 pool.close()
                 pool.join()
 
@@ -244,6 +240,8 @@ def main():
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
                     pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
+		    num_tested += 1
+		    update_progress(num_tested/num_tests)
 		pool.close()
                 pool.join()
 
@@ -334,7 +332,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # Make sure this is a gene we actually care about
         if "selection_subset" in settings['eqtl_experiments'][eqtl_file] and gene not in settings['eqtl_experiments'][eqtl_file]["selection_subset"]:
             continue
-        print gene
+        #print gene
 
         allow_insignificant_gwas = restrict_gene != -1
 

@@ -198,6 +198,8 @@ def main():
                 print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
 
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
+	        global num_tested 
+		num_tested = 0
 		
 		def update_progress(progress):
 		    barLength = 50 # Modify this to change the length of the progress bar
@@ -217,9 +219,6 @@ def main():
 		    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
 		    sys.stdout.write(text)
 		    sys.stdout.flush()
-		
-		global num_tested 
-		num_tested = 0
 		
 		def update_bar(result):
 		    num_tested += 1

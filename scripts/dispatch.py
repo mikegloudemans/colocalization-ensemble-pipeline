@@ -25,6 +25,9 @@ import config
 import preprocess
 from TestLocus import TestLocus
 
+num_tests = 0
+num_tested = 0
+
 def main():
 
     # Read config file
@@ -199,7 +202,6 @@ def main():
 		
 		global num_tests
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
-		print num_tests 
 	        global num_tested 
 		num_tested = 0
 		

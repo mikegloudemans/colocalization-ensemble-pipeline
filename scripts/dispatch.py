@@ -226,9 +226,6 @@ def main():
 		    global num_tests
 		    global num_tested 
 		    num_tested += 1
-		    print num_tests
-		    print num_tested 
-		    print num_tested/num_tests
 		    update_progress(float(num_tested)/float(num_tests))
 			
                 # Run key SNPs in parallel

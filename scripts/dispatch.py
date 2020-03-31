@@ -218,10 +218,11 @@ def main():
 		    sys.stdout.write(text)
 		    sys.stdout.flush()
 		
-		global num_tested = 0
+		global num_tested 
+		num_tested = 0
 		
 		def update_bar(result):
-		    global num_tested += 1
+		    num_tested += 1
 		    update_progress(num_tested/num_tests)
 			
                 # Run key SNPs in parallel

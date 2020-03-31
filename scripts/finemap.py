@@ -139,9 +139,9 @@ def launch_finemap(locus, window, top_hits):
 
     # Run FINEMAP
     if locus.settings["debug"] == True:
-        subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+        subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-snps {7} --n-iterations 1000000 --n-conv-sss 1000'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
     else:
-        subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
+        subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-snps {7} --n-iterations 1000000 --n-conv-sss 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
     
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []

@@ -200,7 +200,7 @@ def main():
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 		
 		def update_progress(progress):
-		    barLength = 200 # Modify this to change the length of the progress bar
+		    barLength = 50 # Modify this to change the length of the progress bar
 		    status = ""
 		    if isinstance(progress, int):
 			progress = float(progress)
@@ -218,15 +218,17 @@ def main():
 		    sys.stdout.write(text)
 		    sys.stdout.flush()
 		
-		num_tested = 0
+		global num_tested = 0
+		
+		def update_bar(result):
+		    global num_tested += 1
+		    update_progress(num_tested/num_tests)
 			
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
-                    num_tested += 1
-		    update_progress(num_tested/num_tests)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]),callback=update_bar)
                 pool.close()
                 pool.join()
 
@@ -239,9 +241,7 @@ def main():
                 pool = Pool(max_cores)
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]))
-		    num_tested += 1
-		    update_progress(num_tested/num_tests)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]),callback=update_bar)
 		pool.close()
                 pool.join()
 

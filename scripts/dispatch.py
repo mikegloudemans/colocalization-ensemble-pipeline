@@ -18,15 +18,12 @@ import traceback
 import gzip
 import os
 import time 
-#from progress.bar import Bar
+from progress.bar import Bar
 
 # Custom libraries
 import config
 import preprocess
 from TestLocus import TestLocus
-
-num_tests = 0
-num_tested = 0
 
 def main():
 
@@ -49,7 +46,7 @@ def main():
         if not os.path.exists(f):
             raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
 
-    max_cores = int(sys.argv[2])
+    max_cores = int(sys.argv[2]) # this is actually threads, not cores 
 
     if "out_dir" in settings:
         out_dir = settings["out_dir"]
@@ -200,39 +197,18 @@ def main():
                 snp_list = eqtl_snp_list + gwas_snp_list
                 print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
 		
-		global num_tests
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
-		
-		def update_progress(progress):
-		    barLength = 50 # Modify this to change the length of the progress bar
-		    status = ""
-		    if isinstance(progress, int):
-			progress = float(progress)
-		    if not isinstance(progress, float):
-			progress = 0
-			status = "error: progress var must be float\r\n"
-		    if progress < 0:
-			progress = 0
-			status = "Halt...\r\n"
-		    if progress >= 1:
-			progress = 1
-			status = "Done...\r\n"
-		    block = int(round(barLength*progress))
-		    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
-		    sys.stdout.write(text)
-		    sys.stdout.flush()
-		
+
+		bar = Bar('Processing\n', max=num_tests)
+
 		def update_bar(result):
-		    global num_tests
-		    global num_tested 
-		    num_tested += 1
-		    update_progress(float(num_tested)/float(num_tests))
+		    bar.next()
 			
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]),callback=update_bar)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
                 pool.close()
                 pool.join()
 
@@ -245,7 +221,7 @@ def main():
                 pool = Pool(max_cores)
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]),callback=update_bar)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
 		pool.close()
                 pool.join()
 
@@ -253,7 +229,7 @@ def main():
                 if not settings["debug"]:
                     subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
-		#bar.finish()
+		bar.finish()
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:

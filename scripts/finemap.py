@@ -28,7 +28,7 @@ def run_finemap(locus, window=500000):
 
     # TODO: Make it write to an error or a "skipped" file instead of failing silently.
     if isinstance(pf, basestring):
-        print pf
+        print(pf)
         return pf
     return launch_finemap(locus, window, pf)
 
@@ -143,6 +143,7 @@ def launch_finemap(locus, window, top_hits):
     else:
         subprocess.check_call('finemap --sss --in-files {6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_finemap.in --n-causal-max {7} --n-iterations 1000000 --n-convergence 1000 > /dev/null'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, max_causal), shell=True)
     
+   
     # Parse FINEMAP results to compute CLPP score
     gwas_probs = []
     eqtl_probs = []
@@ -210,10 +211,29 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
         while line.startswith("##"):
             line = f.readline()
         header = line.strip().split()
-    if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
-        stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+      
+    # get the proper chromosome prefix
+    if "chr_prefix" in ref:
+        chrom_prefix = ref["chr_prefix"]
     else:
-        stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+        # pull it from the first non-header line of the VCF 
+        with gzip.open(filename) as f:
+            while line.startswith("#"):
+                line = f.readline()
+                  
+        l = line.strip().split()
+        chrom = l[0]
+        if chrom.startswith('chr'):
+            chrom_prefix = 'chr'
+        elif chrom[0].isdigit():
+            chrom_prefix = '' 
+   
+    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, chrom_prefix + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+   
+    #if "chr_prefix" in ref and ref["chr_prefix"] == "chr":
+    #    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, "chr" + str(locus.chrom), locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
+    #else:
+    #    stream = StringIO(subprocess.check_output("tabix {8} {1}:{6}-{7}".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.pos-window, locus.pos+window, filename), shell=True))
 
     # For readability, load the header too
     # Load with pandas
@@ -259,7 +279,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     # Remove variants where alt/ref don't match between GWAS/eQTL and VCF
     # Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
-    # TODO: Verify on an example case that this filtering is working correctly.
+    # TODO: Verify on an example case that this filtering is working correctly
     merged = pd.merge(combined, vcf, left_on="snp_pos", right_on="POS")
 
     # TODO: Enforce new standard: effect measurements are always with respect to ALT status.
@@ -315,11 +335,11 @@ def compute_ld(input_vcf, locus, data_type):
         vcf.to_csv('{7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), sep="\t", index=False, header=True)
 
         # Use PLINK to generate bim bam fam files
-        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink --vcf {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
+        command = '''plink --vcf {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.{6}.vcf --keep-allele-order --make-bed --double-id --out {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
         subprocess.check_call(command, shell=True)
 
         # Use PLINK to generate LD score
-        command = '''/srv/persistent/bliu2/tools/plink_1.90_beta3_linux_x86_64/plink -bfile {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
+        command = '''plink -bfile {7}/plink/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}_plinked --r square --out {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6} > /dev/null'''.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir)
         subprocess.check_call(command, shell=True)
 
         # See if nans remain. If so, remove the offending lines.

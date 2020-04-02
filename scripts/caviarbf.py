@@ -29,7 +29,7 @@ def run_caviarbf(locus, window=500000):
               -a 1 \
               -n {7} \
               -c 1'.format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir, locus.settings["gwas_experiments"][locus.gwas_file]["N"])
-    print command
+    print(command)
     subprocess.check_call(command, shell=True)
 
 
@@ -73,5 +73,5 @@ def run_caviarbf(locus, window=500000):
     with open("{0}/{1}_caviarbf_clpp_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
         a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, snps_tested, clpp))
 
-    print clpp
+    print(clpp)
     return clpp

@@ -54,7 +54,7 @@ def launch_coloc(locus, window):
     if "N" not in locus.settings["eqtl_experiments"][locus.eqtl_file]:
         assert "eqtl_sample_sizes" in locus.settings
         eqtl_samples = pd.read_csv(locus.settings["eqtl_sample_sizes"], sep='\t', names=['eqtl_file','N'])
-	eqtl_filename = locus.eqtl_file.split('/')[-1]
+        eqtl_filename = locus.eqtl_file.split('/')[-1]
         N_eqtl = eqtl_samples.loc[eqtl_samples['eqtl_file']==eqtl_filename, "N"].iloc[0]
     else:
         N_eqtl = locus.settings["eqtl_experiments"][locus.eqtl_file]["N"]
@@ -75,7 +75,7 @@ def launch_coloc(locus, window):
         else:
             T = locus.settings["gwas_experiments"][locus.gwas_file]["type"]
     except ValueError:
-        print '"type" not specified for ' + locus.gwas_file
+        print('"type" not specified for ' + locus.gwas_file)
         raise
 
     # Launch an R script to run the coloc package.

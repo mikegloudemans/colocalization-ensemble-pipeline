@@ -37,11 +37,11 @@ def run_ensemble(locus):
     methods_used = []
     scores = np.array([])
     if isinstance(locus.scores.coloc_h4,numbers.Number):
-	methods_used.append("COLOC")
-	scores = np.append(scores,locus.scores.coloc_h4)
+        methods_used.append("COLOC")
+        scores = np.append(scores,locus.scores.coloc_h4)
     if isinstance(locus.scores.rtc_neg_log_pval,numbers.Number): 
         methods_used.append("RTC")
-	scores = np.append(scores,locus.scores.rtc_neg_log_pval)
+        scores = np.append(scores,locus.scores.rtc_neg_log_pval)
     if isinstance(locus.scores.finemap_clpp,numbers.Number): 
         methods_used.append("FINEMAP_STANDARD")
         scores = np.append(scores,locus.scores.finemap_clpp)
@@ -122,9 +122,9 @@ def run_ensemble(locus):
     methods_used.remove('colocalization_status')
     with open("{0}/ensemble_methods_used.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as w:
         w.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, locus.data.shape[0], locus.gwas_suffix))
-	for method in methods_used:
-            w.write("%s," % method)       
-	w.write("\n") 
+    for method in methods_used:
+        w.write("%s," % method)       
+        w.write("\n") 
 
     with open("{0}/{1}_ensemble_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:
         a.write("{0}_{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(locus.chrom, locus.pos, locus.eqtl_suffix, locus.trait, locus.gene, locus.data.shape[0], locus.gwas_suffix, ensemble_score))

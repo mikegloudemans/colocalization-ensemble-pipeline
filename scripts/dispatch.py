@@ -222,7 +222,7 @@ def main():
 		gwas_file = line.strip().split("\t")[gwas_index]
 		chrom = line.strip().split("\t")[chrom_index]
 		snp_pos = line.strip().split("\t")[snp_pos_index]
-		trait = line.strip().split("\t")[trait_index]
+		trait = os.path.basename(line.strip().split("\t")[trait_index])
 		feature = line.strip().split("\t")[feature_index]
 		
 		# format SNP

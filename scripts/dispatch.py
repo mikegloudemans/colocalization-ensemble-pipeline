@@ -268,7 +268,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
     # For each GWAS experiment:
     for gwas_file in gwas_files:
 		     
-	logging.info("Initialize anlaysis for {}.".format(os.path.basename(gwas_file))
+	logging.info("Initialize anlaysis for {}.".format(os.path.basename(gwas_file)))
         
         gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         
@@ -341,7 +341,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
         for trait in traits:
 
-	    logging.info("Starting analysis for {}.".format(trait)
+	    logging.info("Starting analysis for {}.".format(trait))
 
             gwas_snp_list = []
             # Get a list of which SNPs we should test in this GWAS.

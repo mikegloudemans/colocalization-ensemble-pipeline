@@ -197,7 +197,7 @@ def main():
                 pass
         num_tests = i + 1
 	
-	bar = Bar('Processing\n', max=num_tests)
+	bar = Bar('Processing', max=num_tests)
 	
         def update_bar(result):
 	    bar.next()

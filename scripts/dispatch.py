@@ -135,7 +135,7 @@ def main():
 	g = os.path.basename(settings["selection_basis"]["overlap_loci"]).split('.')
 	g = '.'.join(g[0:len(g)-1]).replace('.','_')
 	
-	logging.info("Starting analysis for {}.".format(os.path.basename(settings["selection_basis"]["overlap_loci"]))
+	logging.info("Starting analysis for {}.".format(os.path.basename(settings["selection_basis"]["overlap_loci"])))
 	
 	def initialize_file(f, header):
 	    if os.path.isfile(f):

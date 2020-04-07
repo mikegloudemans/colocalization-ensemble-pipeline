@@ -39,7 +39,7 @@ def main():
 
     settings = config.load_config(config_file)
 	
-    if not settings["selection_basis"] == "overlap_loci":
+    if not "overlap_loci" in settings["selection_basis"]:
         
 	# Verify that all GWAS and eQTL files exist; if not, abort with an error message.
         for f in settings["gwas_experiments"]:
@@ -119,55 +119,59 @@ def main():
     # Save config file and current Git log for reproducibility.
     save_state(config_file, base_output_dir)
 
-    if not settings["selection_basis"] == "overlap_loci":
+    if not "overlap_loci" in settings["selection_basis"]:
 	dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir)
 	
     else:
+	
+	g = os.path.basename(settings["selection_basis"]["overlap_loci"]).split('.')
+	g = '.'.join(g[0:len(g)-1]).replace('.','_')
+	
 	# Single output file for all loci
 	# Write header of output file for FINEMAP
         if "finemap" in settings["methods"]:
-            with open("{0}/finemap_clpp_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
 
         # Write COLOC results to the desired file.
         if "coloc" in settings["methods"]:
-            with open("{0}/coloc_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_coloc_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
 
         if "ecaviar" in settings["methods"]:
-            with open("{0}/ecaviar_clpp_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "rtc" in settings["methods"]:
-            with open("{0}/rtc_score_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
 
         if "caviarbf" in settings["methods"]:
-            with open("{0}/caviarbf_clpp_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "twas" in settings["methods"]:
-            with open("{0}/twas_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_twas_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
         
         if "smr" in settings["methods"]:
-            with open("{0}/smr_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_smr_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
 
         if "gsmr" in settings["methods"]:
-            with open("{0}/gsmr_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_gsmr_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
 
         if "metaxcan" in settings["methods"]:
-            with open("{0}/metaxcan_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
 
         if "baseline" in settings["methods"]:
-            with open("{0}/baseline_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_baseline_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
 
         if "ensemble" in settings["methods"]:
-            with open("{0}/ensemble_status.txt".format(base_output_dir), "w") as w:
+            with open("{0}/{1}_ensemble_status.txt".format(base_output_dir, g), "w") as w:
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
 	
 	# get total number of tests (wc of file)
@@ -330,12 +334,12 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
             #   - both: SNPs significant in GWAS or eQTL will be tested
             # To run for the entire genome, specify "eQTL" and set the pvalue cutoff to 1.
 
-            if settings["selection_basis"] in ["gwas", "both"]:
+            if "gwas" in settings["selection_basis"] or "both" in settings["selection_basis"]:
                 gwas_snp_list.extend(preprocess.select_test_snps_by_gwas(gwas_file, settings['selection_thresholds']["gwas"], trait, settings))
 
-            if settings["selection_basis"] == "snps_from_list":
-                if "snp_list_file" in settings:
-                    gwas_snp_list.extend(preprocess.select_snps_from_list(settings["snp_list_file"]))
+            if "snps_from_list" in settings["selection_basis"]:
+                if len(settings["selection_basis"]["snps_from_list"]) > 0:
+                    gwas_snp_list.extend(preprocess.select_snps_from_list(settings["selection_basis"]["snps_from_list"])
                 else:
                     gwas_snp_list.extend(preprocess.select_snps_from_list(settings["gwas_experiments"][gwas_file]["snp_list_file"]))
 
@@ -345,7 +349,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
                 print eqtl_file
 
                 eqtl_snp_list = []
-                if settings["selection_basis"] in ["eqtl", "both"]:
+		if "eqtl" in settings["selection_basis"] or "both" in settings["selection_basis"]:
                     # If a "selection subset" is specified for the eQTL experiment, then genes will
                     # only be tested if they are in this subset.
                     if "selection_subset" in settings['eqtl_experiments'][eqtl_file]:

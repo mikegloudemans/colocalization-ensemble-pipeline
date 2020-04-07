@@ -18,7 +18,7 @@ import traceback
 import gzip
 import os
 import time 
-from progress.bar import Bar
+#from progress.bar import Bar
 import pandas as pd
 import logging
 
@@ -196,11 +196,13 @@ def main():
             for i, l in enumerate(f):
                 pass
         num_tests = i + 1
+	tested = 0
 	
-	bar = Bar('Processing', max=num_tests)
-	
-        def update_bar(result):
-	    bar.next()
+        def update_progress(result):
+	    global tested 
+	    global num_tests 
+	    tested += 1
+            logging.info("{} out of {} tests complete.".format(tested, num_tests))
 	
 	pool = Pool(max_cores)
 	
@@ -251,7 +253,7 @@ def main():
 				       trait,
 				       feature), 
 				 kwds=dict(restrict_gene=-1), 
-				 callback=update_bar)
+				 callback=update_progress)
 	    pool.close()
 	    pool.join()
 

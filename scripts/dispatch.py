@@ -120,7 +120,7 @@ def main():
     save_state(config_file, base_output_dir)
 
     if not settings["selection_basis"] == "snps_from_list":
-	dispatch_all_loci(settings, max_cores, out_dir, tmp_dir, base_output_dir, base_tmp_dir)
+	dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir)
 	
     else:
 	# Single output file for all loci
@@ -235,7 +235,7 @@ def main():
 	    if not settings["debug"]:
 	        subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)	
 	
-def dispatch_all_loci(settings, max_cores, out_dir, tmp_dir, base_output_dir, base_tmp_dir):
+def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 	
     # TODO: make this cleaner? 
 	

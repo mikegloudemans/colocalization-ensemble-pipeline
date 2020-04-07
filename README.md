@@ -137,10 +137,20 @@ Default: `/users/mgloud/projects/brain_gwas/tmp`
 
 ### `selection_basis`
 
-The process by which the loci to test are selected. Can be `eqtl`, `gwas`, or
-`snps_from_list`.
+The process by which the loci to test are selected. Can be `eqtl`, `gwas`, `both`, `snps_from_list`, or `overlap_loci`. It takes the form of a dictionary:
+```
+    "selection_basis":
+    {
+        "eqtl": {},
+        "gwas": {},
+        "both": {},
+        "snps_from_list": "/path/to/snps_from_list.txt",
+        "overlap_loci": "/path/to/coloc-tests.txt"
+     },
+     ...
+```
 
-For now, just ask me for help when you get to this part.
+Note only **one** of the above methods would actually be included in the config file. For now, just ask me for help when you get to this part.
 
 ### `plot_all`  
 

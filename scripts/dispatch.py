@@ -39,7 +39,7 @@ def main():
 
     settings = config.load_config(config_file)
 	
-    if not settings["selection_basis"] == "snps_from_list":
+    if not settings["selection_basis"] == "overlap_loci":
         
 	# Verify that all GWAS and eQTL files exist; if not, abort with an error message.
         for f in settings["gwas_experiments"]:
@@ -51,12 +51,12 @@ def main():
 		
     else:
 	
-	# check for existence of files present in snps_from_list file
+	# check for existence of files present in "overlap_loci" file
 	gwas_files = set([])
 	eqtl_files = set([])
 	
 	# check required columns and existence of files 
-	with open(settings["selection_basis"]["snps_from_list"], 'r') as f:
+	with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
 	    
 	    header = f.readline().strip().split("\t")
 	    
@@ -69,7 +69,7 @@ def main():
 			     'eqtl_file' in header]
 	
 	    if not all(check_columns):
-		raise Exception("Error: A required column in {} is missing. Please see 'README.txt.'.".format(settings["selection_basis"]["snps_from_list"]))
+		raise Exception("Error: A required column in {} is missing. Please see 'README.txt.'.".format(settings["selection_basis"]["overlap_loci"]))
 	
 	    gwas_index = header.index("gwas_file")
 	    eqtl_index = header.index("eqtl_file")
@@ -119,7 +119,7 @@ def main():
     # Save config file and current Git log for reproducibility.
     save_state(config_file, base_output_dir)
 
-    if not settings["selection_basis"] == "snps_from_list":
+    if not settings["selection_basis"] == "overlap_loci":
 	dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir)
 	
     else:
@@ -171,7 +171,7 @@ def main():
                 w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
 	
 	# get total number of tests (wc of file)
-        with open(settings["selection_basis"]["snps_from_list"], 'r') as f:
+        with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
             for i, l in enumerate(f):
                 pass
         num_tests = i + 1
@@ -184,12 +184,13 @@ def main():
 	pool = Pool(max_cores)
 	
 	# iterate over loci
-	with open(settings["selection_basis"]["snps_from_list"], 'r') as f:
+	with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
 	    header = f.readline().strip().split("\t")
 	    gwas_index = header.index("gwas_file")
 	    eqtl_index = header.index("eqtl_file")
 	    chrom_index = header.index("chr")
 	    snp_pos_index = header.index("snp_pos")
+	    feature_index = header.index("feature")
 	    if "trait" in header:
 	        trait_index = header.index("trait")
 	    else:
@@ -201,6 +202,7 @@ def main():
 		chrom = line.strip().split("\t")[chrom_index]
 		snp_pos = line.strip().split("\t")[snp_pos_index]
 		trait = line.strip().split("\t")[trait_index]
+		feature = line.strip().split("\t")[feature_index]
 		
 		# format SNP
 		this_snp = tuple([chrom, snp_pos])
@@ -225,7 +227,8 @@ def main():
 				       settings, 
 				       base_output_dir, 
 				       base_tmp_dir, 
-				       trait), 
+				       trait,
+				       feature), 
 				 kwds=dict(restrict_gene=ready_snp[1]), 
 				 callback=update_bar)
 	    pool.close()
@@ -360,12 +363,14 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
 		def update_bar(result):
 		    bar.next()
-			
+		
+		feature = None
+		
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
                     snp = eqtl_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait, feature), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
                 pool.close()
                 pool.join()
 
@@ -378,7 +383,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
                 pool = Pool(max_cores)
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
-                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
+                    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait, feature), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
 		pool.close()
                 pool.join()
 
@@ -404,9 +409,9 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
 # If we're running in parallel and a thread fails, catch the exception
 # and log it to a file so we can fix it later.
-def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):
+def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, feature, restrict_gene=-1):
     try:
-        analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene)
+        analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, feature, restrict_gene)
     except Exception as e:
         traceback.print_exc(file=sys.stdout)
         error = str(e)
@@ -415,7 +420,7 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
             a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tgeneral_error\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, error))
         raise Exception("Failed colocalization run.")
 
-def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, restrict_gene=-1):
+def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, feature, restrict_gene=-1):
 
     # Load relevant GWAS and eQTL data.
     gwas_data = preprocess.get_gwas_data(gwas_file, snp, settings, trait) # Get GWAS data
@@ -460,6 +465,10 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         genes = [restrict_gene_mod]
 
     #print genes
+
+    # if "feature" is specified, only test this gene 
+    if feature is not None:
+	genes = [feature]
 
     # Loop through all genes now
     for gene in genes:

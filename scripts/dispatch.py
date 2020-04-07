@@ -193,7 +193,7 @@ def main():
 	    if "trait" in header:
 	        trait_index = header.index("trait")
 	    else:
-		trait_index = header.index("gwas_index")
+		trait_index = header.index("gwas_file")
 
 	    for line in f:
 		eqtl_file = line.strip().split("\t")[eqtl_index]
@@ -208,12 +208,12 @@ def main():
 		# skip if it's not autosomal
 		if "chr" in str(this_snp[0]):
                     try:
-                        int(this_snp[0][3:])
+                        c = int(this_snp[0][3:])
                     except:
                         continue
                 else:
                     try:
-                        int(this_snp[0])
+                        c = int(this_snp[0])
                     except:
                         continue
 		

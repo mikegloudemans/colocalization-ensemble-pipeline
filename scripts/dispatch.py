@@ -28,6 +28,9 @@ import preprocess
 from TestLocus import TestLocus
 import SNP
 
+num_tests = 100
+tested = 0
+
 def main():
 
     # add time stamps to log file 
@@ -195,7 +198,9 @@ def main():
         with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
             for i, l in enumerate(f):
                 pass
-        num_tests = i + 1
+        global num_tests
+	global tested
+	num_tests = i + 1
 	tested = 0
 	
         def update_progress(result):

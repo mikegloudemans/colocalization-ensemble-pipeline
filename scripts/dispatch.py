@@ -51,12 +51,12 @@ def main():
     if "out_dir" in settings:
         out_dir = settings["out_dir"]
     else:
-        out_dir = "/users/mgloud/projects/brain_gwas/output"
+        raise Exception("Error: 'out_dir' not specified.")
 
     if "tmp_dir" in settings:
         tmp_dir = settings["tmp_dir"]
     else:
-        tmp_dir = "/users/mgloud/projects/brain_gwas/tmp"
+        raise Exception("Error: 'tmp_dir' not specified.")
 
     # Make timestamped results directory, under which all output for this run will be stored.
     # Note: sometimes this might conflict with another run of the script. If so, keep trying until
@@ -77,7 +77,6 @@ def main():
         base_output_dir = "{0}/{1}".format(out_dir, now)
     base_output_dir = base_output_dir + "_" + config_file.split("/")[-1].split(".")[0]
     base_tmp_dir = "{0}/{1}".format(tmp_dir, now)
-
 
     # Save config file and current Git log for reproducibility.
     save_state(config_file, base_output_dir)

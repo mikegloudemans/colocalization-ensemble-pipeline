@@ -26,6 +26,7 @@ import logging
 import config
 import preprocess
 from TestLocus import TestLocus
+from SNP import SNP
 
 def main():
 

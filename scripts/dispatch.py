@@ -137,11 +137,11 @@ def main():
 	
 	logging.info("Starting analysis for {}.".format(os.path.basename(settings["selection_basis"]["overlap_loci"]))
 	
-	def initialize_file(file, header):
-	    if os.path.isfile(file):
-	        raise Exception("Output file already exists: {}".format(file))
+	def initialize_file(f, header):
+	    if os.path.isfile(f):
+	        raise Exception("Output file already exists: {}".format(f))
 	    else: 
-                with open(file, "w") as w:
+                with open(f, "w") as w:
                     w.write(header)
 	
 	# Single output file for all loci

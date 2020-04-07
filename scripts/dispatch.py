@@ -382,7 +382,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 		
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 
-		bar = Bar('Processing\n', max=num_tests)
+		bar = Bar('Processing', max=num_tests)
 
 		def update_bar(result):
 		    bar.next()

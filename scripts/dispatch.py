@@ -278,7 +278,10 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 		     
 	logging.info("Initialize anlaysis for {}.".format(os.path.basename(gwas_file)))
         
-        gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
+	g = os.path.basename(gwas_file).split('.')
+	gwas_suffix = '.'.join(g[0:len(g)-1]).replace('.','_')
+	
+        #gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         
         # Write header of output file for FINEMAP
         if "finemap" in settings["methods"]:

@@ -244,13 +244,13 @@ def main():
 		pool.apply_async(analyze_snp_wrapper, 
 				 args=(gwas_file, 
 				       eqtl_file, 
-				       ready_snp[0], 
+				       ready_snp, 
 				       settings, 
 				       base_output_dir, 
 				       base_tmp_dir, 
 				       trait,
 				       feature), 
-				 kwds=dict(restrict_gene=ready_snp[1]), 
+				 kwds=dict(restrict_gene=-1), 
 				 callback=update_bar)
 	    pool.close()
 	    pool.join()

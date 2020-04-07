@@ -20,6 +20,7 @@ import os
 import time 
 from progress.bar import Bar
 import pandas as pd
+import logging
 
 # Custom libraries
 import config
@@ -28,7 +29,11 @@ from TestLocus import TestLocus
 
 def main():
 
+    # add time stamps to log file 
+    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+
     # Read config file
+    logging.info('Load settings...')
     config_file = sys.argv[1]
     # Check if absolute path or relative path
     if not config_file.startswith("/"):
@@ -39,6 +44,7 @@ def main():
 
     settings = config.load_config(config_file)
 	
+    logging.info('Verify that input files exist...')
     if not "overlap_loci" in settings["selection_basis"]:
         
 	# Verify that all GWAS and eQTL files exist; if not, abort with an error message.
@@ -86,6 +92,7 @@ def main():
 			
     max_cores = int(sys.argv[2]) # this is actually threads, not cores 
 
+    logging.info('Set up directories...')
     if "out_dir" in settings:
         out_dir = settings["out_dir"]
     else:
@@ -123,9 +130,12 @@ def main():
 	dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir)
 	
     else:
+	logging.info("'overlap_loci' selection basis.")
 	
 	g = os.path.basename(settings["selection_basis"]["overlap_loci"]).split('.')
 	g = '.'.join(g[0:len(g)-1]).replace('.','_')
+	
+	logging.info("Starting analysis for {}.".format(os.path.basename(settings["selection_basis"]["overlap_loci"]))
 	
 	def initialize_file(file, header):
 	    if os.path.isfile(file):
@@ -257,6 +267,8 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
     # For each GWAS experiment:
     for gwas_file in gwas_files:
+		     
+	logging.info("Initialize anlaysis for {}.".format(os.path.basename(gwas_file))
         
         gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         
@@ -329,7 +341,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
         for trait in traits:
 
-            print "Testing", trait
+	    logging.info("Starting analysis for {}.".format(trait)
 
             gwas_snp_list = []
             # Get a list of which SNPs we should test in this GWAS.
@@ -352,7 +364,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
             # For each eQTL experiment:
             for eqtl_file in eqtl_files:
 
-                print eqtl_file
+                logging.info(eqtl_file)
 
                 eqtl_snp_list = []
 		if "eqtl" in settings["selection_basis"] or "both" in settings["selection_basis"]:
@@ -365,7 +377,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
                     eqtl_snp_list.extend(preprocess.select_test_snps_by_eqtl(eqtl_file, settings, eqtl_subset))
 
                 snp_list = eqtl_snp_list + gwas_snp_list
-                print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
+                logging.info("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
 		
 		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 

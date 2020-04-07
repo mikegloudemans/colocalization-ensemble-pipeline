@@ -37,15 +37,42 @@ def main():
     os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
     settings = config.load_config(config_file)
+	
+    if not settings["selection_basis"] == "snps_from_list":
+        
+	# Verify that all GWAS and eQTL files exist; if not, abort with an error message.
+        for f in settings["gwas_experiments"]:
+            if not os.path.exists(f):
+                raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
+        for f in settings["eqtl_experiments"]:
+            if not os.path.exists(f):
+                raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
+		
+    else:
+	
+	# check for existence of files present in snps_from_list file
+	gwas_files = set([])
+	eqtl_files = set([])
+	
+	with open(settings["selection_basis"]["snps_from_list"], 'r') as f:
+	    header = f.readline().strip().split("\t")
+	    if "gwas_file" in header and "eqtl_file" in header:
+	        gwas_index = header.index("gwas_file")
+		eqtl_index = header.index("eqtl_file")
 
-    # Verify that all GWAS and eQTL files exist; if not, abort with an error message.
-    for f in settings["gwas_experiments"]:
-        if not os.path.exists(f):
-            raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
-    for f in settings["eqtl_experiments"]:
-        if not os.path.exists(f):
-            raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
-
+		for line in f:
+		    gwas_files.add(line.strip().split("\t")[gwas_index])
+		    eqtl_files.add(line.strip().split("\t")[eqtl_index])
+            else: 
+		raise Exception("Error: 'eqtl_file' or 'gwas_file' not in header of {}.".format(settings["selection_basis"]["snps_from_list"]))
+	
+	for f in gwas_files:
+	    if not os.path.exists(f):
+	        raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
+	for f in eqtl_files:
+	    if not os.path.exists(f):
+		raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
+			
     max_cores = int(sys.argv[2]) # this is actually threads, not cores 
 
     if "out_dir" in settings:
@@ -81,6 +108,86 @@ def main():
     # Save config file and current Git log for reproducibility.
     save_state(config_file, base_output_dir)
 
+    if not settings["selection_basis"] == "snps_from_list":
+	dispatch_all_loci(settings, max_cores, out_dir, tmp_dir, base_output_dir, base_tmp_dir)
+	
+    else:
+	# Single output file for all loci
+	# Write header of output file for FINEMAP
+        if "finemap" in settings["methods"]:
+            with open("{0}/finemap_clpp_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+
+        # Write COLOC results to the desired file.
+        if "coloc" in settings["methods"]:
+            with open("{0}/coloc_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
+
+        if "ecaviar" in settings["methods"]:
+            with open("{0}/ecaviar_clpp_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+
+        if "rtc" in settings["methods"]:
+            with open("{0}/rtc_score_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
+
+        if "caviarbf" in settings["methods"]:
+            with open("{0}/caviarbf_clpp_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+
+        if "twas" in settings["methods"]:
+            with open("{0}/twas_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
+        
+        if "smr" in settings["methods"]:
+            with open("{0}/smr_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
+
+        if "gsmr" in settings["methods"]:
+            with open("{0}/gsmr_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
+
+        if "metaxcan" in settings["methods"]:
+            with open("{0}/metaxcan_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
+
+        if "baseline" in settings["methods"]:
+            with open("{0}/baseline_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
+
+        if "ensemble" in settings["methods"]:
+            with open("{0}/ensemble_status.txt".format(base_output_dir), "w") as w:
+                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
+	
+	# pull GWAS SNPs from 
+	
+	
+	snp_list = eqtl_snp_list + gwas_snp_list
+	print("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
+
+	num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
+
+	bar = Bar('Processing\n', max=num_tests)
+
+	def update_bar(result):
+	    bar.next()
+
+	# Run key SNPs in parallel
+	pool = Pool(max_cores)
+	for i in xrange(0, len(eqtl_snp_list)):
+	    snp = eqtl_snp_list[i]
+	    pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
+	pool.close()
+	pool.join()
+
+	# Clean up after ourselves
+	if not settings["debug"]:
+	    subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)	
+	
+def dispatch_all_loci(settings, max_cores, out_dir, tmp_dir, base_output_dir, base_tmp_dir):
+	
+    # TODO: make this cleaner? 
+	
     gwas_files = sorted([f for f in settings["gwas_experiments"]])
     eqtl_files = sorted([f for f in settings["eqtl_experiments"]])
 

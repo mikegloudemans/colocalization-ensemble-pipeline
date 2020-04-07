@@ -357,7 +357,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
             if "snps_from_list" in settings["selection_basis"]:
                 if len(settings["selection_basis"]["snps_from_list"]) > 0:
-                    gwas_snp_list.extend(preprocess.select_snps_from_list(settings["selection_basis"]["snps_from_list"])
+                    gwas_snp_list.extend(preprocess.select_snps_from_list(settings["selection_basis"]["snps_from_list"]))
                 else:
                     gwas_snp_list.extend(preprocess.select_snps_from_list(settings["gwas_experiments"][gwas_file]["snp_list_file"]))
 

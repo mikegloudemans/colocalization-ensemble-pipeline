@@ -127,52 +127,58 @@ def main():
 	g = os.path.basename(settings["selection_basis"]["overlap_loci"]).split('.')
 	g = '.'.join(g[0:len(g)-1]).replace('.','_')
 	
+	def initialize_file(file, header):
+	    if os.path.isfile(file):
+	        raise Exception("Output file already exists: {}".format(file))
+	    else: 
+                with open(file, "w") as w:
+                    w.write(header)
+	
 	# Single output file for all loci
-	# Write header of output file for FINEMAP
+	# Write headers
         if "finemap" in settings["methods"]:
-            with open("{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
-
-        # Write COLOC results to the desired file.
+	    out = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+		
         if "coloc" in settings["methods"]:
-            with open("{0}/{1}_coloc_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
+	    out = "{0}/{1}_coloc_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
 
         if "ecaviar" in settings["methods"]:
-            with open("{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+	    out = "{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "rtc" in settings["methods"]:
-            with open("{0}/{1}_rtc_score_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
+	    out = "{0}/{1}_rtc_score_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
 
         if "caviarbf" in settings["methods"]:
-            with open("{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+	    out = "{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "twas" in settings["methods"]:
-            with open("{0}/{1}_twas_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
+	    out = "{0}/{1}_twas_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
         
         if "smr" in settings["methods"]:
-            with open("{0}/{1}_smr_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
+	    out = "{0}/{1}_smr_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
 
         if "gsmr" in settings["methods"]:
-            with open("{0}/{1}_gsmr_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
+	    out = "{0}/{1}_gsmr_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
 
         if "metaxcan" in settings["methods"]:
-            with open("{0}/{1}_metaxcan_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
+	    out = "{0}/{1}_metaxcan_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
 
         if "baseline" in settings["methods"]:
-            with open("{0}/{1}_baseline_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
+	    out = "{0}/{1}_baseline_status.txt".format(base_output_dir, g)
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
 
         if "ensemble" in settings["methods"]:
-            with open("{0}/{1}_ensemble_status.txt".format(base_output_dir, g), "w") as w:
-                w.write("ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
+	    out = "{0}/{1}_ensemble_status.txt".format(base_output_dir, g)
+	    intialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
 	
 	# get total number of tests (wc of file)
         with open(settings["selection_basis"]["overlap_loci"], 'r') as f:

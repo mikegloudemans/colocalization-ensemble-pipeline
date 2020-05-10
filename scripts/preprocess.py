@@ -205,28 +205,34 @@ def get_eqtl_data(eqtl_file, snp, settings):
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
     raw_eqtls += subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(eqtl_file, \
             snp.chrom, snp.pos - window, snp.pos + window), shell=True)
-    eqtls = pd.read_csv(StringIO(header + raw_eqtls), sep="\t", index_col=False)
+    eqtl_table = pd.read_csv(StringIO(header + raw_eqtls), sep="\t", index_col=False)
 
-    if eqtls.shape[0] == 0:
+    if eqtl_table.shape[0] == 0:
         return "Gene desert."
 
+    # NOTE: Maybe remove the next four lines and just require consistent formatting.
+    # This is encouraging inconsistency and bugs down the line
     if "ref_allele_header" in settings['eqtl_experiments'][eqtl_file]:
-        eqtls['ref'] = eqtls[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
+        eqtl_table['ref'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
     if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:
-        eqtls['alt'] = eqtls[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
+        eqtl_table['alt'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
+
+    if "effect_allele" in list(eqtl_table.columns.values):
+        eqtl_table['alt'] = eqtl_table["effect_allele"].str.upper()
+        eqtl_table['ref'] = eqtl_table["non_effect_allele"].str.upper()
 
     # NOTE: We're not worrying about direction here right now, but might want to later
-    if "maf" in eqtls.columns.values:
-        eqtls['effect_af_eqtl'] = eqtls['maf']
+    if "maf" in eqtl_table.columns.values:
+        eqtl_table['effect_af_eqtl'] = eqtl_table['maf']
 
-    if "effect_af" in eqtls.columns.values:
-        eqtls = eqtls.rename(index=str, columns={"effect_af": "effect_af_eqtl"})
+    if "effect_af" in eqtl_table.columns.values:
+        eqtl_table = eqtl_table.rename(index=str, columns={"effect_af": "effect_af_eqtl"})
 
-    if "ref" in eqtls.columns.values:
-        eqtls['ref'] = eqtls['ref'].apply(lambda x: x.upper())
-        eqtls['alt'] = eqtls['alt'].apply(lambda x: x.upper())
+    if "ref" in eqtl_table.columns.values:
+        eqtl_table['ref'] = eqtl_table['ref'].apply(lambda x: x.upper())
+        eqtl_table['alt'] = eqtl_table['alt'].apply(lambda x: x.upper())
 
-    eqtls['snp_pos'] = eqtls['snp_pos'].astype(int)#
+    eqtl_table['snp_pos'] = eqtl_table['snp_pos'].astype(int)#
 
     #
     # 'eqtl_format' must be specified, to make sure the users know what they're doing.
@@ -238,40 +244,40 @@ def get_eqtl_data(eqtl_file, snp, settings):
     #
 
     if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'tstat':
-        assert 't-stat' or "tstat" in eqtls
-        if "tstat" in eqtls:
-            eqtls['t-stat'] = eqtls["tstat"]
-        eqtls['ZSCORE'] = eqtls['t-stat']
+        assert 't-stat' or "tstat" in eqtl_table
+        if "tstat" in eqtl_table:
+            eqtl_table['t-stat'] = eqtl_table["tstat"]
+        eqtl_table['ZSCORE'] = eqtl_table['t-stat']
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'effect_size':
-        assert 'beta' in eqtls
-        eqtls['ZSCORE'] = eqtls['beta'] / eqtls['se']
-        eqtls['pvalue'] = stats.norm.sf(abs(eqtls['beta'] / eqtls['se']))*2
+        assert 'beta' in eqtl_table
+        eqtl_table['ZSCORE'] = eqtl_table['beta'] / eqtl_table['se']
+        eqtl_table['pvalue'] = stats.norm.sf(abs(eqtl_table['beta'] / eqtl_table['se']))*2
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'chisq':
-        assert "chisq" in eqtls
+        assert "chisq" in eqtl_table
         # Here we're dealing with RASQUAL data
         # where effect size is given by allelic imbalance percentage pi.
         # Use max function to protect against underflow in chi2 computation
-        eqtls['pvalue'] = stats.chi2.sf(eqtls["chisq"],1)
-        eqtls['ZSCORE'] = stats.norm.isf(eqtls['pvalue']/2) * (2 * (eqtls["pi"] > 0.5) - 1)
+        eqtl_table['pvalue'] = stats.chi2.sf(eqtl_table["chisq"],1)
+        eqtl_table['ZSCORE'] = stats.norm.isf(eqtl_table['pvalue']/2) * (2 * (eqtl_table["pi"] > 0.5) - 1)
     elif settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'pval_only':
-        assert 'pvalue' in eqtls and ("effect_direction" in eqtls or "beta" in eqtls)
+        assert 'pvalue' in eqtl_table and ("effect_direction" in eqtl_table or "beta" in eqtl_table)
         # Need to cap it at z-score of 40 for outrageous p-values (like with AMD / RPE stuff)
-        if "effect_direction" in eqtls:
-            eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["effect_direction"] == "+")-1)
+        if "effect_direction" in eqtl_table:
+            eqtl_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtl_table["pvalue"] / 2)], index=eqtl_table.index) * (2*(eqtl_table["effect_direction"] == "+")-1)
         else:
-            eqtls['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtls["pvalue"] / 2)], index=eqtls.index) * (2*(eqtls["beta"] > 0)-1)
+            eqtl_table['ZSCORE'] = pd.Series([min(x, 40) for x in stats.norm.isf(eqtl_table["pvalue"] / 2)], index=eqtl_table.index) * (2*(eqtl_table["beta"] > 0)-1)
     else:
         return "Improper eQTL format specification"
-    eqtls = eqtls[~eqtls["pvalue"].isna()]
-    eqtls = eqtls[~eqtls["ZSCORE"].isna()]
+    eqtl_table = eqtl_table[~eqtl_table["pvalue"].isna()]
+    eqtl_table = eqtl_table[~eqtl_table["ZSCORE"].isna()]
 
-    if "beta" in eqtls:
-        eqtls = eqtls.rename(index=str, columns={"beta": "beta_eqtl"})
-        eqtls = eqtls.fillna({'beta': 0})
-    if "se" in eqtls:
-        eqtls = eqtls.rename(index=str, columns={"se": "se_eqtl"})
+    if "beta" in eqtl_table:
+        eqtl_table = eqtl_table.rename(index=str, columns={"beta": "beta_eqtl"})
+        eqtl_table = eqtl_table.fillna({'beta': 0})
+    if "se" in eqtl_table:
+        eqtl_table = eqtl_table.rename(index=str, columns={"se": "se_eqtl"})
 
-    return eqtls
+    return eqtl_table
 
 # Input: GWAS pandas dataframe, eQTL pandas dataframe, gene name as a string,
 #   GWAS SNP as a tuple.

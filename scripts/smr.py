@@ -1,5 +1,5 @@
-# Author: Mike Gloudemans
 # Author: Abhiram Rao
+# Author: Mike Gloudemans
 
 import subprocess
 from scipy import stats
@@ -26,13 +26,16 @@ def run_smr(locus, window=1000000):
         raise Exception("Need beta and SE for GWAS in order to run SMR.")
 
     # Get rsids
-    # TODO later: Move this to an earlier point so it doesn't have to be repeated
+    # TODO later: Move this to an earlier point (outside of individual coloc
+    # methods) so it doesn't have to be repeated
     # for plotting or anything
     
     # If both GWAS and eQTL have rsids, they'll have been renamed
     if "rsid_eqtl" in list(dat.columns.values):
         dat['rsid'] = dat['rsid_eqtl']
 
+    # If the files don't have rsids, we'll pull them out from a reference
+    # file based on the genomic coordinates
     if "rsid" not in list(dat.columns.values):
         if "rsid_index_file" in locus.settings:
 
@@ -53,6 +56,9 @@ def run_smr(locus, window=1000000):
     if "effect_af_gwas" not in dat.columns.values or "effect_af_eqtl" not in dat.columns.values:
         # Code for this is currently in the COLOC script
         import coloc
+        # TODO: Check on this, it seems backward
+        # should be alt_af, right? Not sure if that column exists though,
+        # could also use 1-ref_af
         dat = coloc.get_mafs(locus, dat, window)
         if "effect_af_eqtl" not in dat:
             dat["effect_af_eqtl"] = dat["ref_af"]

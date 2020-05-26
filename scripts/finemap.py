@@ -174,6 +174,7 @@ def launch_finemap(locus, window, top_hits):
     # Write header of output file for FINEMAP
     trait_suffix = locus.trait.split("/")[-1].replace(".", "_")
 
+    # TODO: Make this an option to include, because if not wanted it can create a lot of junk files
     #if finemap_clpp_mod > 0.3 or ("save_all_finemap" in locus.settings["methods"]["finemap"] and locus.settings["methods"]["finemap"]["save_all_finemap"] == "True"):
     if finemap_clpp_mod > 0:
         copyfile("{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}.finemap.gwas.snp".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir), "{0}/finemap/{1}_{2}_{3}_{4}_{5}_{6}_finemap_gwas.snp".format(locus.basedir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level))

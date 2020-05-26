@@ -134,11 +134,6 @@ def get_gwas_data(gwas_file, snp, settings, trait):
 
     gwas_table['snp_pos'] = gwas_table['snp_pos'].astype(int)
 
-    if "ref_allele_header" in settings['gwas_experiments'][gwas_file]:
-        gwas_table['ref'] = gwas_table[settings['gwas_experiments'][gwas_file]['ref_allele_header']].str.upper()
-    if "alt_allele_header" in settings['gwas_experiments'][gwas_file]:
-        gwas_table['alt'] = gwas_table[settings['gwas_experiments'][gwas_file]['alt_allele_header']].str.upper()
-
     if "effect_allele" in list(gwas_table.columns.values):
         gwas_table['alt'] = gwas_table["effect_allele"].str.upper()
         gwas_table['ref'] = gwas_table["non_effect_allele"].str.upper()
@@ -157,6 +152,9 @@ def get_gwas_data(gwas_file, snp, settings, trait):
     #   - effect_size
     #   - pval_only (requires effect direction)
     #
+    
+    if 'zscore' in gwas_table.columns.values:
+        gwas_table = gwas_table.rename(index=str, columns={"zscore": "ZSCORE"})
 
     if settings['gwas_experiments'][gwas_file]['gwas_format'] == 'case_control':
         assert 'log_or' in gwas_table and 'se' in gwas_table
@@ -184,6 +182,12 @@ def get_gwas_data(gwas_file, snp, settings, trait):
             pass
     else:
         return "Improper GWAS format specification"
+    
+    if 'ZSCORE' in gwas_table.columns.values:
+        # Derive beta and se from zscore if needed
+        if 'se' not in gwas_table.columns.values or 'beta' not in gwas_table.columns.values:
+            gwas_table['beta'] = gwas_table['ZSCORE']
+            gwas_table['se'] = 1
 
     if "beta" in gwas_table:
         gwas_table = gwas_table.rename(index=str, columns={"beta": "beta_gwas"})
@@ -210,13 +214,6 @@ def get_eqtl_data(eqtl_file, snp, settings):
     if eqtl_table.shape[0] == 0:
         return "Gene desert."
 
-    # NOTE: Maybe remove the next four lines and just require consistent formatting.
-    # This is encouraging inconsistency and bugs down the line
-    if "ref_allele_header" in settings['eqtl_experiments'][eqtl_file]:
-        eqtl_table['ref'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['ref_allele_header']]
-    if "alt_allele_header" in settings['eqtl_experiments'][eqtl_file]:
-        eqtl_table['alt'] = eqtl_table[settings['eqtl_experiments'][eqtl_file]['alt_allele_header']]
-
     if "effect_allele" in list(eqtl_table.columns.values):
         eqtl_table['alt'] = eqtl_table["effect_allele"].str.upper()
         eqtl_table['ref'] = eqtl_table["non_effect_allele"].str.upper()
@@ -242,6 +239,9 @@ def get_eqtl_data(eqtl_file, snp, settings):
     #   - effect_size
     #   - chisq
     #
+
+    if 'zscore' in eqtl_table.columns.values:
+        eqtl_table = eqtl_table.rename(index=str, columns={"zscore": "ZSCORE"})
 
     if settings['eqtl_experiments'][eqtl_file]['eqtl_format'] == 'tstat':
         assert 't-stat' or "tstat" in eqtl_table
@@ -271,12 +271,18 @@ def get_eqtl_data(eqtl_file, snp, settings):
     eqtl_table = eqtl_table[~eqtl_table["pvalue"].isna()]
     eqtl_table = eqtl_table[~eqtl_table["ZSCORE"].isna()]
 
+    if 'ZSCORE' in eqtl_table.columns.values:
+        # Derive beta and se from zscore if needed
+        if 'se' not in eqtl_table.columns.values or 'beta' not in eqtl_table.columns.values:
+            eqtl_table['beta'] = eqtl_table['ZSCORE']
+            eqtl_table['se'] = 1
+
     if "beta" in eqtl_table:
         eqtl_table = eqtl_table.rename(index=str, columns={"beta": "beta_eqtl"})
         eqtl_table = eqtl_table.fillna({'beta': 0})
     if "se" in eqtl_table:
         eqtl_table = eqtl_table.rename(index=str, columns={"se": "se_eqtl"})
-
+    
     return eqtl_table
 
 # Input: GWAS pandas dataframe, eQTL pandas dataframe, gene name as a string,

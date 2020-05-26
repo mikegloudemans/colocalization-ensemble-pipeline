@@ -60,7 +60,11 @@ def run_twas(locus, window=500000):
             #    assert gwas['variant_id'].iloc[i].startswith(vcf['ID'].iloc[i])
             #vcf['ID'] = gwas['rsid']
 
-            vcf['ID'] = combined['rsid_gwas']
+            print combined.head(3)
+            if 'rsid' in combined.columns.values:
+                vcf['ID'] = combined['rsid']
+            else:
+                vcf['ID'] = combined['rsid_gwas']
             vcf = vcf.drop(columns="dup_counts")
 
             # We also need to clean out all the variants that don't appear in

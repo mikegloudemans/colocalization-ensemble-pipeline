@@ -77,7 +77,8 @@ def run_gsmr(locus, window=1000000):
 
     # TODO: Display more precise error messages indicating why failed
     # tests have failed (probably due to not enough significant SNPs)
-    pval = float(subprocess.check_output("Rscript run_gsmr.R {0}/gsmr/{1}/{2}_{3}/{4}/{5}_level{6} 2> /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level), shell=True))
+    print "Rscript {7}/run_gsmr.R {0}/gsmr/{1}/{2}_{3}/{4}/{5}_level{6} 2> /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.settings["software_master_dir"])
+    pval = float(subprocess.check_output("Rscript {7}/run_gsmr.R {0}/gsmr/{1}/{2}_{3}/{4}/{5}_level{6} 2> /dev/null".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.settings["software_master_dir"]), shell=True))
 
     # Write results to the output file
     with open("{0}/{1}_gsmr_status.txt".format(locus.basedir, locus.gwas_suffix.replace(".", "_")), "a") as a:

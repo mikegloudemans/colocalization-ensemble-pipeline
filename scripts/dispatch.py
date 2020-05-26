@@ -43,10 +43,9 @@ def main():
     if not config_file.startswith("/"):
        config_file = os.getcwd() + "/" + config_file
 
-    # Change to directory of script
-    os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
     settings = config.load_config(config_file)
+    settings["software_master_dir"] = os.path.abspath(os.path.dirname(sys.argv[0]))
 	
     logging.info('Verify that input files exist...')
     if not "overlap_loci" in settings["selection_basis"]:
@@ -72,17 +71,17 @@ def main():
 	    
 	    check_columns = ['chr' in header,
 			     'snp_pos' in header,
-			     'gwas_pvalue' in header,
-			     'eqtl_pvalue' in header,
-			     'feature' in header,
-			     'gwas_file' in header,
-			     'eqtl_file' in header]
-	
+			     'source_pvalue' in header,
+			     'lookup_pvalue' in header,
+			     'lookup_trait' in header,
+			     'source_file' in header,
+			     'lookup_file' in header]
+
 	    if not all(check_columns):
 		raise Exception("Error: A required column in {} is missing. Please see 'README.txt.'.".format(settings["selection_basis"]["overlap_loci"]))
 	
-	    gwas_index = header.index("gwas_file")
-	    eqtl_index = header.index("eqtl_file")
+	    gwas_index = header.index("source_file")
+	    eqtl_index = header.index("lookup_file")
 	    for line in f:
 		gwas_files.add(line.strip().split("\t")[gwas_index])
 		eqtl_files.add(line.strip().split("\t")[eqtl_index])
@@ -192,7 +191,7 @@ def main():
 
         if "ensemble" in settings["methods"]:
 	    out = "{0}/{1}_ensemble_status.txt".format(base_output_dir, g)
-	    intialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
+	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
 	
 	# get total number of tests (wc of file)
         with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
@@ -214,15 +213,15 @@ def main():
 	# iterate over loci
 	with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
 	    header = f.readline().strip().split("\t")
-	    gwas_index = header.index("gwas_file")
-	    eqtl_index = header.index("eqtl_file")
+	    gwas_index = header.index("source_file")
+	    eqtl_index = header.index("lookup_file")
 	    chrom_index = header.index("chr")
 	    snp_pos_index = header.index("snp_pos")
-	    feature_index = header.index("feature")
+	    feature_index = header.index("lookup_trait")
 	    if "trait" in header:
 	        trait_index = header.index("trait")
 	    else:
-		trait_index = header.index("gwas_file")
+		trait_index = header.index("source_file")
 
 	    for line in f:
 		eqtl_file = line.strip().split("\t")[eqtl_index]
@@ -451,7 +450,10 @@ def analyze_snp_wrapper(gwas_file, eqtl_file, snp, settings, base_output_dir, ba
         error = error + "\t" + traceback.format_exc().replace("\n", "NEWLINE").replace("\t", "TAB")
         with open("{0}/ERROR_variants.txt".format(base_output_dir),"a") as a:
             a.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\tgeneral_error\n".format(gwas_file, eqtl_file, snp.chrom, snp.pos, restrict_gene, trait, error))
-        raise Exception("Failed colocalization run.")
+        # NOTE: We don't really need to raise an exception here because
+        # it's already logged in the file, and if we do then the progress bar won't update.
+        # And if we want to track the number of failed runs that's something else entirely.
+        # raise Exception("Failed colocalization run.")
 
 def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_dir, trait, feature, restrict_gene=-1):
 
@@ -491,7 +493,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
     # Get all genes whose eQTLs we're testing at this locus
     if isinstance(restrict_gene, basestring) and len(restrict_gene) > 100:
         restrict_gene = restrict_gene[:100] + "_trimmed"
-    if restrict_gene == -1:
+    if str(restrict_gene) == "-1":
         genes = set(eqtl_data['gene'])
     else:
         restrict_gene_mod = restrict_gene.replace(":", ".")
@@ -501,6 +503,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
 
     # if "feature" is specified, only test this gene 
     if feature is not None:
+        feature = feature.replace(":", ".")
 	genes = [feature]
 
     # Loop through all genes now

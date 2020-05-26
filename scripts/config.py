@@ -57,6 +57,7 @@ def load_config(filename):
         config["debug"] = False
 
     config = expand_glob_eqtl_files(config)
+    config = expand_glob_gwas_files(config)
 
     for ee in config['eqtl_experiments']:
         if "selection_subset" in config['eqtl_experiments'][ee]:
@@ -70,6 +71,18 @@ def get_selection_subset(filename):
         for line in f:
             selection_subset.add(line.strip().replace(":", "."))
     return selection_subset
+
+def expand_glob_gwas_files(config):
+
+    new_config = copy.deepcopy(config)
+
+    for ee in config['gwas_experiments']:
+        all_experiments = glob.glob(ee)
+        del new_config['gwas_experiments'][ee]
+
+        for ae in all_experiments:
+            new_config['gwas_experiments'][ae] = copy.deepcopy(config['gwas_experiments'][ee])
+    return new_config
 
 def expand_glob_eqtl_files(config):
 

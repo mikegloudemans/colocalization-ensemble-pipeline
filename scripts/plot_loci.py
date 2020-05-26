@@ -95,8 +95,8 @@ def locus_compare(locus):
     plot_data = data_copy[~data_copy["rsid"].isna()]
  
     subprocess.call("mkdir -p {0}/plots/{4}/{5}/{1}_{2}/{3}".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, trait), shell=True)
-    gwas_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_gwas_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
-    eqtl_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_locuscompare.png".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
+    gwas_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_gwas_locuscompare.pdf".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
+    eqtl_out_file = "{0}/plots/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_locuscompare.pdf".format(locus.basedir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
 
     # Assume that SNP rsid is already present, has been fetched earlier in program while
     # loading the GWAS
@@ -105,7 +105,7 @@ def locus_compare(locus):
     eqtl_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
  
     # Subset down to the region of interest, save this region
-    vcf_file = "/mnt/lab_data/montgomery/shared/1KG/ALL.chr{0}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz".format(locus.chrom)
+    vcf_file = "/mnt/lab_data/montgomery/shared/1KG/hg38/ALL.chr{0}_GRCh38.genotypes.20170504.vcf.gz".format(locus.chrom)
     vcf_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_vcf_tmp.vcf".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
     with gzip.open(vcf_file) as f:
         line = f.readline()
@@ -125,10 +125,12 @@ def locus_compare(locus):
 
     gwas_lead = list(gwas_data["rsid"])[np.argmin(np.array(gwas_data["pvalue_gwas"]))]
     eqtl_lead = list(eqtl_data["rsid"])[np.argmin(np.array(eqtl_data["pvalue_eqtl"]))]
+    gwas_lead = "rs7599054"
+    eqtl_lead = "rs7599054"
 
     # Call it once for top SNP in study 1, once for top SNP in study 2,
     # as reference SNP.
     # For now we'll just assume 1000 Genomes is the reference population
-    subprocess.check_call(["Rscript", "./locuscompare.R", gwas_tmp, eqtl_tmp, gwas_out_file, title_gwas, title_eqtl, vcf_tmp, gwas_lead, pop])
-    subprocess.check_call(["Rscript", "./locuscompare.R", gwas_tmp, eqtl_tmp, eqtl_out_file, title_gwas, title_eqtl, vcf_tmp, eqtl_lead, pop])
+    subprocess.check_call(["Rscript", "{0}/locuscompare.R".format(locus.settings["software_master_dir"]), gwas_tmp, eqtl_tmp, gwas_out_file, title_gwas, title_eqtl, vcf_tmp, gwas_lead, pop])
+    subprocess.check_call(["Rscript", "{0}/locuscompare.R".format(locus.settings["software_master_dir"]), gwas_tmp, eqtl_tmp, eqtl_out_file, title_gwas, title_eqtl, vcf_tmp, eqtl_lead, pop])
 

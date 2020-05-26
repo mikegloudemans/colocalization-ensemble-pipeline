@@ -79,11 +79,12 @@ def launch_coloc(locus, window):
         raise
 
     # Launch an R script to run the coloc package.
-    coloc_prob = subprocess.check_output("Rscript ./run_coloc.R {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv {7} {8} {9} {10}".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, \
+    coloc_prob = subprocess.check_output("Rscript {11}/run_coloc.R {0}/coloc/{1}/{2}_{3}/{4}/{5}_level{6}.csv {7} {8} {9} {10}".format(locus.tmpdir, locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, \
         N_gwas, \
         locus.settings["gwas_experiments"][locus.gwas_file]["s"], \
         T, \
-        N_eqtl), shell=True)
+        N_eqtl,
+        locus.settings["software_master_dir"]), shell=True)
     # ^ Format of command line arguments: (N-gwas s-gwas type-gwas N-eqtl)
 
     coloc_prob_h0, coloc_prob_h1, coloc_prob_h2, coloc_prob_h3, coloc_prob_h4 = [float(x) for x in coloc_prob.strip().split()]

@@ -22,8 +22,6 @@ tmp_base = args[1]
 combined_data = read_csv(paste0(tmp_base, ".csv"))
 
 # options required - config?
-eqtl_data = '/users/mgloud/projects/coloc_comparisons/output/simulations/2018-07-27_15-23-15/hg19/eqtl'
-gwas_data = '/users/mgloud/projects/coloc_comparisons/output/simulations/2018-07-27_15-23-15/hg19/gwas'
 ld_reference = '/users/raoa/coloc_comparison/ld_reference'
 gsmr_result_location = '/users/raoa/coloc_comparison/gsmr_results'
 
@@ -57,8 +55,10 @@ colnames(gwas) = c("SNP", "bzy", "bzy_se", "bzy_pval", "bzy_n")
 gsmr_df = merge(eqtl, gwas, by="SNP")
 if (dim(gsmr_df)[1] == 0) {stop("No variants shared between eQTL/GWAS")}
 
+stopifnot(FALSE)
 # calculate LD correlation matrix using GCTA
 write.table(gsmr_df[,c(1,2)], sprintf(paste0(tmp_base, ".allele")), col.names=F, row.names=F, quote=F)
+# TODO: this is where it's crashing right now because alleles don't match up
 system(sprintf("%s --bfile %s/EUR1KG_chr%s_hg19_rsid --extract %s.allele --update-ref-allele %s.allele --recode --out %s.ld_mat > /dev/null", gcta_location, ld_reference, chrom, tmp_base, tmp_base, tmp_base))
 
 snp_coeff_id = scan(sprintf("%s.ld_mat.xmat.gz", tmp_base), what="", nlines=1)

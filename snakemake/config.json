@@ -2,9 +2,6 @@
 	"outdir" : "/full/path/to/outdir",
 	"tmpdir" : "/full/path/to/tmpdir",
 
-	"summary_stat_meta" : "study_meta.txt",
-
-
 	"loci_selection_settings" : 
 	{
 		"selection_basis": "gwas",

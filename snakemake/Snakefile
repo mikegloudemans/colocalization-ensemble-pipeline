@@ -1,0 +1,103 @@
+#!/bin/python3
+
+import sys
+
+methods = config['colocalization_methods']
+
+def get_trait_set(set_number):
+	trait_set = set()
+	for trait in config['studies']:
+		if 'trait_set' not in config['studies'][trait]:
+			continue
+		if config['studies'][trait]['trait_set'] == set_number:
+			trait_set.add(trait)
+	return(trait_set)
+
+# assume there are two sets of traits for now
+# all studies in trait_set_1 are tested against all studies in trait_set_2
+# we should probably also add the option to provide a two-column input of all desired trait comparisons
+trait_set_1 = get_trait_set(1)
+trait_set_2 = get_trait_set(2)
+if len(trait_set_1) == 0 or len(trait_set_2) == 0:
+	sys.exit('Two sets of traits were not defined in the config file. (more detail...)')
+
+
+# here we define colocalization methods and trait combinations 
+rule all:
+	input:
+		expand('{method}/{trait1}.{trait2}.results.txt', 
+			trait1 = trait_set_1, 
+			trait2 = trait_set_2,
+			method = methods)
+
+rule preprocess:
+	input:
+		config['studies']['{study}']['file']
+	output:
+		'summary_stats/{study}.formatted.summary_stats.txt.gz'
+	shell:
+		'''
+		'''
+
+rule overlap:
+	input:
+		trait1 = 'summary_stats/{trait1}.formatted.summary_stats.txt.gz',
+		trait2 = 'summary_stats/{trait2}.formatted.summary_stats.txt.gz'
+	output:
+		'overlap/{trait1}.{trait2}.loci_to_test.txt'
+	shell:
+		'''
+		'''
+
+def get_line_count(infile, header=True):
+    with open(infile) as f:
+        for i, l in enumerate(f):
+            pass
+    if not header:
+    	i+=1
+    return i
+
+rule split_loci:
+	input:
+		'overlap/{trait1}.{trait2}.loci_to_test.txt'
+	output:
+		temp(expand('overlap/{{trait1}}.{{trait2}}.{n}.txt', n = get_line_count('{input}')))
+	shell:
+		'''
+		# split each line of loci_to_test.txt into a different file 
+		'''
+
+rule coloc:
+	input:
+		'overlap/{trait1}.{trait2}.{n}.txt'
+	output:
+		temp('coloc/{trait1}.{trait2}.{n}.results.txt')
+	shell:
+		'''
+		# run coloc for the locus 
+		'''
+
+rule finemap:
+	input:
+		'overlap/{trait1}.{trait2}.{n}.txt'
+	output:
+		temp('finemap/{trait1}.{trait2}.{n}.results.txt')
+	shell:
+		'''
+		# run finemap for the locus 
+		'''
+
+# add rules for all other colocalization methods here 
+
+rule merge_results:
+	input:
+		expand('{{method}}/{{trait1}}.{{trait2}}.{n}.txt', 
+			n = get_line_count('overlap/{trait1}.{trait2}.loci_to_test.txt'))
+	output:
+		'{method}/{trait1}.{trait2}.results.txt.gz'
+	shell:
+		'''
+		cat {input} > {method}/{trait1}.{trait2}.results.txt
+		gzip {method}/{trait1}.{trait2}.results.txt
+		'''
+

@@ -72,6 +72,8 @@ rule coloc:
 		'overlap/{trait1}.{trait2}.{n}.txt'
 	output:
 		temp('coloc/{trait1}.{trait2}.{n}.results.txt')
+	group:
+		'coloc'
 	shell:
 		'''
 		# run coloc for the locus 
@@ -82,6 +84,8 @@ rule finemap:
 		'overlap/{trait1}.{trait2}.{n}.txt'
 	output:
 		temp('finemap/{trait1}.{trait2}.{n}.results.txt')
+	group:
+		'finemap'
 	shell:
 		'''
 		# run finemap for the locus 

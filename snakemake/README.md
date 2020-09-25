@@ -11,12 +11,13 @@ Execute the pipeline with:
 ```bash
 conda activate coloc_wrapper
 snakemake -j 999 --snakefile Snakefile \
-					--cluster-config ds.slurm \
+					--cluster-config slurm.config \
 					--latency-wait 90 \
-					--configfile config/${tissue}.config \
-          --group-components coloc=1000 finemap=1000 \
+					--configfile config.json \
+					--group-components coloc=1000 finemap=1000 \
 					--cluster \
 					"sbatch --account={cluster.account} \
+						--partition={cluster.partition} \
 						--time={cluster.time} \
 						--mem={cluster.mem} \
 						--cpus-per-task={cluster.nCPUs} \

@@ -2,6 +2,7 @@ name: coloc_wrapper
 dependencies:
   - plink2=1.90b3.35
   - tabix=0.2.6
+  - snakemake=5.24.2
 
   - r-base=4.0.2
   - r-coloc
@@ -9,16 +10,17 @@ dependencies:
   - r-dplyr
   - r-ggplot2
   - r-ggrepel
-  - r-locuscomparer
   - r-tidyverse
-  - r-gsmr
   - r-survey
   - r-data.table
   - r-glmnet
   - r-reshape2
-  - r-methods
   - r-RSQLite
+  - r-devtools
+  - bioconductor-qvalue
 
   - python=3.6
   - progress
   - pandas
+  - scipy
+  - scikit-learn

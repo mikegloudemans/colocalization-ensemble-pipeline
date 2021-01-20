@@ -74,9 +74,15 @@ rule coloc:
 		temp('coloc/{trait1}.{trait2}.{n}.results.txt')
 	group:
 		'coloc'
+	param:
+		trait1_cc = config['studies']['{trait1}']['cc'],
+		trait2_cc = config['studies']['{trait2}']['cc'],
+		trait1_N = config['studies']['{trait1}']['N'],
+		trait2_N = config['studies']['{trait2}']['N']
 	shell:
 		'''
 		# run coloc for the locus 
+		python coloc.py {input} {param.trait1_cc} {param.trait1_N} ...
 		'''
 
 rule finemap:

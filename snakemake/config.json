@@ -28,7 +28,7 @@
 	"studies": {
 		"Whole_Blood.global" :
 		{
-			"file" : "/mnt/lab_data/montgomery/nicolerg/local-eqtl/admixed/annotation/coloc/allpairs_difflead/Whole_Blood.filtered.global.allpairs.sorted.tsv.gz",
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/allpairs_difflead/Whole_Blood.filtered.global.allpairs.sorted.tsv.gz",
 			"study_type" : "qtl",
 			"N" : 95,
 			"selection_format" : "effect_size",
@@ -36,7 +36,7 @@
 			"trait_set" : 1
 		},
 		"Whole_Blood.local" : {
-			"file" : "/mnt/lab_data/montgomery/nicolerg/local-eqtl/admixed/annotation/coloc/allpairs_difflead/Whole_Blood.filtered.local.allpairs.sorted.tsv.gz",
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/allpairs_difflead/Whole_Blood.filtered.local.allpairs.sorted.tsv.gz",
 			"study_type" : "qtl",
 			"N" : 95,
 			"selection_format" : "effect_size",
@@ -45,7 +45,7 @@
 		},
 		"imputed_ICBP_DiastolicPressure" :
 		{
-			"file" : "/mnt/lab_data/montgomery/nicolerg/local-eqtl/admixed/annotation/coloc/gtex_gwas/coloc_input/imputed_ICBP_DiastolicPressure.formatted.txt.gz",
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/gwas/imputed_ICBP_DiastolicPressure.formatted.txt.gz",
 			"study_type" : "gwas",
 			"N": 203056,
 			"trait_type" : "quant",
@@ -55,7 +55,7 @@
 		},
 		"imputed_BCAC_ER_negative_BreastCancer_EUR" :
 		{
-			"file" : "/mnt/lab_data/montgomery/nicolerg/local-eqtl/admixed/annotation/coloc/gtex_gwas/coloc_input/imputed_BCAC_ER_negative_BreastCancer_EUR.formatted.txt.gz",
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/gwas/imputed_BCAC_ER_negative_BreastCancer_EUR.formatted.txt.gz",
 			"study_type" : "gwas",
 			"N": 120000,
 			"trait_type" : "cc", 
@@ -69,7 +69,7 @@
 	"ref_genomes" : {
 		"117AX" : 
 		{
-			"file" : "/mnt/lab_data/montgomery/nicolerg/local-eqtl/admixed/geno/hg38/gtex.admixed.MAC10.phased.hg38.recode.sorted.vcf.gz",
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/geno/gtex.admixed.MAC10.phased.hg38.recode.sorted.vcf.gz",
 			"N" : 117,
 			"af_attribute" : "AF"
 		},

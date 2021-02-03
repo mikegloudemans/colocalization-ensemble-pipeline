@@ -1,4 +1,4 @@
-name: coloc_wrapper
+name: colocalization-ensemble
 dependencies:
   - plink2=1.90b3.35
   - tabix=0.2.6

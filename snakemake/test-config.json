@@ -1,0 +1,85 @@
+{
+	"outdir" : "/full/path/to/outdir",
+	"tmpdir" : "/full/path/to/tmpdir",
+
+	"loci_selection_settings" : 
+	{
+		"selection_basis": "gwas",
+
+		"selection_thresholds":
+		{
+			"eqtl": 1e-4,
+			"gwas": 1e-5
+		},
+
+		"screening_thresholds":
+		{
+		}
+	},
+
+
+	"colocalization_methods":
+	{
+		"coloc": {},
+		"finemap": {}
+	},
+
+
+	"studies": {
+		"Whole_Blood.global" :
+		{
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/allpairs_difflead/Whole_Blood.filtered.global.allpairs.sorted.tsv.gz",
+			"study_type" : "qtl",
+			"N" : 95,
+			"selection_format" : "effect_size",
+			"ref_genome" : "117AX",
+			"trait_set" : 1
+		},
+		"Whole_Blood.local" : {
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/allpairs_difflead/Whole_Blood.filtered.local.allpairs.sorted.tsv.gz",
+			"study_type" : "qtl",
+			"N" : 95,
+			"selection_format" : "effect_size",
+			"ref_genome" : "117AX",
+			"trait_set" : 1
+		},
+		"imputed_ICBP_DiastolicPressure" :
+		{
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/gwas/imputed_ICBP_DiastolicPressure.formatted.txt.gz",
+			"study_type" : "gwas",
+			"N": 203056,
+			"trait_type" : "quant",
+			"selection_format": "pval_only",
+			"ref_genome": "tg",
+			"trait_set" : 2
+		},
+		"imputed_BCAC_ER_negative_BreastCancer_EUR" :
+		{
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/gwas/imputed_BCAC_ER_negative_BreastCancer_EUR.formatted.txt.gz",
+			"study_type" : "gwas",
+			"N": 120000,
+			"trait_type" : "cc", 
+			"case_fraction" : 0.258333333,
+			"selection_format": "pval_only",
+			"ref_genome": "tg",
+			"trait_set" : 2
+		}
+	},
+
+	"ref_genomes" : {
+		"117AX" : 
+		{
+			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/geno/gtex.admixed.MAC10.phased.hg38.recode.sorted.vcf.gz",
+			"N" : 117,
+			"af_attribute" : "AF"
+		},
+		"tg" :
+		{
+			"file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{0}_GRCh38.genotypes.20170504.vcf.gz",
+			"N": 2504,
+			"af_attribute": "AF"
+		}
+	},
+
+	"plot_none": "True"
+}

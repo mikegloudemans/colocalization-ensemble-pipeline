@@ -4,9 +4,10 @@ import sys
 import os
 import glob
 
+
 ## for test #############################################################
 #srcdir = '/oak/stanford/groups/smontgom/nicolerg/src/brain_gwas'
-base = '/oak/stanford/groups/smontgom/nicolerg/coloc-wrapper'
+base = '/oak/stanford/groups/smontgom/mgloud/projects/snakemake_coloc_pipeline/brain_gwas'
 tmpdir = '/tmp/coloc-wrapper'
 os.chdir(base)
 
@@ -14,6 +15,8 @@ trait_set_1 = ['WojcikG_PMID_ckd_analysis']
 trait_set_2 = ['Lung_global']
 #########################################################################
 
+configfile:
+	"snakemake/config.json"
 
 # methods = config['colocalization_methods']
 #
@@ -51,16 +54,29 @@ trait_set_2 = ['Lung_global']
 # 	shell:
 # 		'''
 # 		'''
-# 
-# rule overlap:
-# 	input:
-# 		trait1 = 'summary_stats/{trait1}.formatted.summary_stats.txt.gz',
-# 		trait2 = 'summary_stats/{trait2}.formatted.summary_stats.txt.gz'
-# 	output:
-# 		'overlap/{trait1}.{trait2}.loci_to_test.txt'
-# 	shell:
-# 		'''
-# 		'''
+#
+
+rule get_gwas_hits:
+	input:
+		'output/summary_stats/{trait1}.formatted.summary_stats.txt.gz'
+	output:
+		'output/gwas_top_hits/{trait1}.hits.txt'
+	params:
+		pvalue_threshold = config["loci_selection_settings"]["selection_thresholds"]["gwas"],
+		window = config["loci_selection_settings"]["selection_independence_window"]
+
+	shell:
+		'python scripts/overlap/get_gwas_hits.py {input} {output} {params.pvalue_threshold} {params.window}'
+ 
+rule overlap:
+	input:
+		trait1 = 'summary_stats/{trait1}.formatted.summary_stats.txt.gz',
+		trait2 = 'summary_stats/{trait2}.formatted.summary_stats.txt.gz'
+	output:
+		'output/overlap/{trait1}.{trait2}.loci_to_test.txt'
+	shell:
+		'''
+		'''
 
 rule all: 
 	input:

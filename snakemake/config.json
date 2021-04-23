@@ -8,13 +8,18 @@
 
 		"selection_thresholds":
 		{
-			"eqtl": 1e-4,
+			"eqtl": 1e-5,
 			"gwas": 1e-5
 		},
 
 		"screening_thresholds":
 		{
-		}
+		},
+
+		"selection_independence_window": 500000,
+		"lookup_window": 10000
+		
+
 	},
 
 

@@ -70,13 +70,16 @@ rule get_gwas_hits:
  
 rule overlap:
 	input:
-		trait1 = 'summary_stats/{trait1}.formatted.summary_stats.txt.gz',
-		trait2 = 'summary_stats/{trait2}.formatted.summary_stats.txt.gz'
+		trait1 = 'output/gwas_top_hits/{trait1}.hits.txt',
+		trait2 = 'output/summary_stats/{trait2}.formatted.summary_stats.txt.gz'
 	output:
 		'output/overlap/{trait1}.{trait2}.loci_to_test.txt'
+	params:
+		pvalue_threshold = config["loci_selection_settings"]["selection_thresholds"]["eqtl"],	
+		window = config["loci_selection_settings"]["lookup_window"]
+
 	shell:
-		'''
-		'''
+		'python scripts/overlap/list_snps_to_test.py {input.trait1} {input.trait2} {output} {params.pvalue_threshold} {params.window}'
 
 rule all: 
 	input:

@@ -7,13 +7,15 @@ import glob
 ## for test #############################################################
 #srcdir = '/oak/stanford/groups/smontgom/nicolerg/src/brain_gwas'
 base = '/oak/stanford/groups/smontgom/nicolerg/coloc-wrapper'
-tmpdir = '/tmp/coloc-wrapper'
+tmpdir = '/oak/stanford/groups/smontgom/nicolerg/tmp/coloc-wrapper'
 os.chdir(base)
+# make some directories 
+subprocess.call('mkdir -p log/cluster', shell=True)
+subprocess.call('mkdir -p {}'.format(tmpdir), shell=True)
 
 trait_set_1 = ['WojcikG_PMID_ckd_analysis']
 trait_set_2 = ['Lung_global']
 #########################################################################
-
 
 # methods = config['colocalization_methods']
 #
@@ -62,6 +64,9 @@ trait_set_2 = ['Lung_global']
 # 		'''
 # 		'''
 
+# rules that can be run on the login node
+localrules: all,merge_results
+
 rule all: 
 	input:
 		expand('merged/{trait1}.{trait2}.results.txt.gz', 
@@ -71,61 +76,80 @@ rule all:
 
 checkpoint split_loci:
 	input:
-		'overlap/{trait1}.{trait2}.loci_to_test.txt'
+		'overlap/{trait1}.{trait2}.1000loci_to_test.txt'
 	output:
-		directory('{}/overlap/split_loci/{{trait1}}.{{trait2}}'.format(tmpdir))
+		directory('{}/split_loci/{{trait1}}.{{trait2}}'.format(tmpdir))
 	run:
 		os.mkdir(output[0])
 		# read in header first
 		with open(input[0]) as f:
 			header = f.readline()
 
-		# write out one file per 100 lines
-		current_lines = []
-		n=1
+		# write out one file per line
+		n=0
 		with open(input[0], 'r') as f:
 			next(f) # skip header
 			for line in f:
-				if len(current_lines) == 100:
-					with open('{}/overlap/split_loci/{}.{}/chunk{}.txt'.format(tmpdir, wildcards.trait1, wildcards.trait2, n), 'w') as o:
-						o.write(header)
-						o.writelines(current_lines)
-					n+=1
-					current_lines = []
-				# read next line
-				current_lines.append(line)
-				
-		# write remaining lines
-		if len(current_lines)>0:
-			with open('{}/overlap/split_loci/{}.{}/chunk{}.txt'.format(tmpdir, wildcards.trait1, wildcards.trait2, n), 'w') as o:
-				o.write(header)
-				o.writelines(current_lines)
-
+				with open('{}/split_loci/{}.{}/chunk{}.txt'.format(tmpdir, wildcards.trait1, wildcards.trait2, n), 'w') as o:
+					o.write(header)
+					o.write(line)
+				n+=1
 
 ## do stuff (colocalization) with the splits
 
+rule test_group_execution:
+	input: 
+		'{}/split_loci/{{trait1}}.{{trait2}}/chunk{{n}}.txt'.format(tmpdir) 
+	output:
+		'{}/processed_loci/{{trait1}}.{{trait2}}/chunk{{n}}.txt'.format(tmpdir) 
+	group: 
+		'coloc'
+	shell:
+		'''
+		for i in {{1..60}}; do 
+			echo ${{i}} >> {output} 
+			sleep 1
+		done
+		'''
 
+# def collect_splits(wildcards):
+# 	checkpoint_output = checkpoints.split_loci.get(**wildcards).output[0]
+# 	print(checkpoint_output)
+# 	# /tmp/coloc-wrapper/split_loci/WojcikG_PMID_ckd_analysis.Lung_global
+# 	print(glob.glob('{}/chunk*txt'.format(checkpoint_output)))
+# 	# /tmp/coloc-wrapper/split_loci/WojcikG_PMID_ckd_analysis.Lung_global/chunk2715.txt
+# 	return glob.glob('{}/chunk*txt'.format(checkpoint_output))
 
-def collect_splits(wildcards):
+def collect_processed_splits(wildcards):
 	checkpoint_output = checkpoints.split_loci.get(**wildcards).output[0]
-	print(checkpoint_output)
-	print(glob.glob('{}/chunk*txt'.format(checkpoint_output)))
-	return glob.glob('{}/chunk*txt'.format(checkpoint_output))
+	all_chunks = glob.glob('{}/chunk*txt'.format(checkpoint_output))
+	processed = [x.replace('split_loci', 'processed_loci') for x in all_chunks]
+	return processed
 
 rule merge_results:
 	input:
-		collect_splits
+		collect_processed_splits
 	output:
 		'merged/{trait1}.{trait2}.results.txt.gz'
 	shell:
 		'''
-		cat {input} > merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt
-		# remove all but first header
-		head -1 merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt > merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
-		grep -v "^chr	" merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt >> merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
-		rm merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt
-		gzip merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
+		cat {input} > {output}
 		'''
+
+# rule merge_results:
+# 	input:
+# 		collect_splits
+# 	output:
+# 		'merged/{trait1}.{trait2}.results.txt.gz'
+# 	shell:
+# 		'''
+# 		cat {input} > merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt
+# 		# remove all but first header
+# 		head -1 merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt > merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
+# 		grep -v "^chr	" merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt >> merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
+# 		rm merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt
+# 		gzip merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
+# 		'''
 
 
 

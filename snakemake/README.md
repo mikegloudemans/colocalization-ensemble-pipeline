@@ -11,7 +11,18 @@ conda env create -f environment.yml
 ```
 
 ### 1.2 Install `FINEMAP v1.4`
-Follow the instructions [here](http://www.christianbenner.com/).  
+
+Run the following command to download and extract the FINEMAP executable:
+
+```
+mkdir -p bin/finemap/
+cd bin/finemap/
+wget http://www.christianbenner.com/finemap_v1.4_x86_64.tgz
+tar -xvf finemap_v1.4_x86_64.tgz
+cd ../.. 
+```
+
+Or follow the instructions [here] (http://www.christianbenner.com/) for v1.4.  
 
 ### 1.3 Install...(other dependencies)
 #TODO

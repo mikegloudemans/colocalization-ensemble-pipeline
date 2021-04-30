@@ -1,10 +1,10 @@
 {
-	"outdir" : "/full/path/to/outdir",
-	"tmpdir" : "/full/path/to/tmpdir",
+	"outdir" : "/oak/stanford/groups/smontgom/nicolerg/coloc-wrapper",
+	"tmpdir" : "/oak/stanford/groups/smontgom/nicolerg/tmp/coloc-wrapper",
 
-	"loci_selection_settings" : 
+	"overlap_settings" : 
 	{
-		"selection_basis": "gwas",
+		"selection_basis": 1,
 
 		"selection_thresholds":
 		{
@@ -26,7 +26,7 @@
 
 
 	"studies": {
-		"Whole_Blood.global" :
+		"Whole_Blood_global" :
 		{
 			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/allpairs_difflead/Whole_Blood.filtered.global.allpairs.sorted.tsv.gz",
 			"study_type" : "qtl",
@@ -35,7 +35,7 @@
 			"ref_genome" : "117AX",
 			"trait_set" : 1
 		},
-		"Whole_Blood.local" : {
+		"Whole_Blood_local" : {
 			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/allpairs_difflead/Whole_Blood.filtered.local.allpairs.sorted.tsv.gz",
 			"study_type" : "qtl",
 			"N" : 95,
@@ -43,7 +43,7 @@
 			"ref_genome" : "117AX",
 			"trait_set" : 1
 		},
-		"imputed_ICBP_DiastolicPressure" :
+		"ICBP_DiastolicPressure" :
 		{
 			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/gwas/imputed_ICBP_DiastolicPressure.formatted.txt.gz",
 			"study_type" : "gwas",
@@ -53,7 +53,7 @@
 			"ref_genome": "tg",
 			"trait_set" : 2
 		},
-		"imputed_BCAC_ER_negative_BreastCancer_EUR" :
+		"BCAC_ER_negative_BreastCancer_EUR" :
 		{
 			"file" : "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/gwas/imputed_BCAC_ER_negative_BreastCancer_EUR.formatted.txt.gz",
 			"study_type" : "gwas",

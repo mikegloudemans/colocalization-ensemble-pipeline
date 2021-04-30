@@ -6,25 +6,27 @@
         "mem"       : "6G",
         "account"   : "default",
         "partition" : "interactive",
-        "mail"      : "FAIL"
+        "mail"      : "FAIL",
+        "output"    : "log/cluster/{rule}.{wildcards.trait1}.{wildcards.trait2}.log"
     },
     "preprocess"    :
     {
+        "output"    : "log/cluster/{rule}.{wildcards.study}.log"
     },
     "overlap"       :
     {
     },
-    "split_loci"    :
+    "process_loci"  :
     {
     },
-    "COLOC"         :
+    "coloc"         :
     {
         "nCPUs"     : "1",
-        "mem"       : "8G"
+        "mem"       : "1G"
     },
-    "FINEMAP"       :
+    "finemap"       :
     {
         "nCPUs"     : "1",
-        "mem"       : "8G"
+        "mem"       : "1G"
     }
 }

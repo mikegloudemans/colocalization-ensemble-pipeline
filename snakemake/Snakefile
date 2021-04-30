@@ -4,184 +4,150 @@ import sys
 import os
 import glob
 
-## for test #############################################################
-#srcdir = '/oak/stanford/groups/smontgom/nicolerg/src/brain_gwas'
-base = '/oak/stanford/groups/smontgom/nicolerg/coloc-wrapper'
-tmpdir = '/oak/stanford/groups/smontgom/nicolerg/tmp/coloc-wrapper'
-os.chdir(base)
-# make some directories 
+# change working directory
+os.chdir(config['outdir'])
+# make outdir and tmpdir 
 subprocess.call('mkdir -p log/cluster', shell=True)
-subprocess.call('mkdir -p {}'.format(tmpdir), shell=True)
+subprocess.call('mkdir -p {}'.format(config['tmpdir']), shell=True)
 
-trait_set_1 = ['WojcikG_PMID_ckd_analysis']
-trait_set_2 = ['Lung_global']
-#########################################################################
+# define colocalization methods
+methods = [k for k in config['colocalization_methods']]
 
-# methods = config['colocalization_methods']
-#
-# def get_trait_set(set_number):
-# 	trait_set = set()
-# 	for trait in config['studies']:
-# 		if 'trait_set' not in config['studies'][trait]:
-# 			continue
-# 		if config['studies'][trait]['trait_set'] == set_number:
-# 			trait_set.add(trait)
-# 	return(trait_set)
-#
-# # assume there are two sets of traits for now
-# # all studies in trait_set_1 are tested against all studies in trait_set_2
-# # we should probably also add the option to provide a two-column input of all desired trait comparisons
-# trait_set_1 = get_trait_set(1)
-# trait_set_2 = get_trait_set(2)
-# if len(trait_set_1) == 0 or len(trait_set_2) == 0:
-# 	sys.exit('Two sets of traits were not defined in the config file. (more detail...)')
-# 
-# 
-# # here we define colocalization methods and trait combinations 
-# rule all:
-# 	input:
-# 		expand('{method}/{trait1}.{trait2}.results.txt', 
-# 			trait1 = trait_set_1, 
-# 			trait2 = trait_set_2,
-# 			method = methods)
-#
-# rule preprocess:
-# 	input:
-# 		config['studies']['{study}']['file']
-# 	output:
-# 		'summary_stats/{study}.formatted.summary_stats.txt.gz'
-# 	shell:
-# 		'''
-# 		'''
-# 
-# rule overlap:
-# 	input:
-# 		trait1 = 'summary_stats/{trait1}.formatted.summary_stats.txt.gz',
-# 		trait2 = 'summary_stats/{trait2}.formatted.summary_stats.txt.gz'
-# 	output:
-# 		'overlap/{trait1}.{trait2}.loci_to_test.txt'
-# 	shell:
-# 		'''
-# 		'''
+def get_trait_set(set_number):
+	trait_set = set()
+	for trait in config['studies']:
+		if 'trait_set' not in config['studies'][trait]:
+			continue
+		if config['studies'][trait]['trait_set'] == set_number:
+			trait_set.add(trait)
+	return(trait_set)
+
+# assume there are two sets of traits for now
+# all studies in trait_set_1 are tested against all studies in trait_set_2
+# we should probably also add the option to provide a two-column input of all desired trait comparisons
+trait_set_1 = get_trait_set(1)
+trait_set_2 = get_trait_set(2)
+# trait_set_1 = ['imputed_ICBP_DiastolicPressure']
+# trait_set_2 = ['Whole_Blood_local']
+studies = list(chain(*[list(trait_set_1), list(trait_set_2)]))
+
+
+# don't let wildcards contain directory
+wildcard_constraints:
+    study="[^/]*",
+    trait1="[^/]*",
+    trait2="[^/]*",
+    method="[^/]*"
+
+
+# make dictionary of all traits to file paths 
+trait_to_raw_file = {}
+for trait in studies:
+	trait_to_raw_file[trait] = config['studies'][trait]['file']
+
+if len(trait_set_1) == 0 or len(trait_set_2) == 0:
+	sys.exit('Two sets of traits were not defined in the config file. (more detail...)')
+
 
 # rules that can be run on the login node
-localrules: all,merge_results
+localrules: all,stage
 
-rule all: 
+
+# here we define colocalization methods and trait combinations 
+rule all:
 	input:
-		expand('merged/{trait1}.{trait2}.results.txt.gz', 
+		expand('results/{method}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt', 
 			trait1 = trait_set_1, 
-			trait2 = trait_set_2)
+			trait2 = trait_set_2,
+			method = methods),
+		expand('preprocess/{study}.formatted.summary_stats.txt.gz',
+			study = studies)
 
 
-checkpoint split_loci:
+rule stage:
 	input:
-		'overlap/{trait1}.{trait2}.1000loci_to_test.txt'
+		lambda wildcards: trait_to_raw_file[wildcards.study]
 	output:
-		directory('{}/split_loci/{{trait1}}.{{trait2}}'.format(tmpdir))
-	run:
-		os.mkdir(output[0])
-		# read in header first
-		with open(input[0]) as f:
-			header = f.readline()
-
-		# write out one file per line
-		n=0
-		with open(input[0], 'r') as f:
-			next(f) # skip header
-			for line in f:
-				with open('{}/split_loci/{}.{}/chunk{}.txt'.format(tmpdir, wildcards.trait1, wildcards.trait2, n), 'w') as o:
-					o.write(header)
-					o.write(line)
-				n+=1
-
-## do stuff (colocalization) with the splits
-
-rule test_group_execution:
-	input: 
-		'{}/split_loci/{{trait1}}.{{trait2}}/chunk{{n}}.txt'.format(tmpdir) 
-	output:
-		'{}/processed_loci/{{trait1}}.{{trait2}}/chunk{{n}}.txt'.format(tmpdir) 
-	group: 
-		'coloc'
+		'summary_stats/{study}.raw.summary_stats.txt.gz'
 	shell:
 		'''
-		for i in {{1..60}}; do 
-			echo ${{i}} >> {output} 
-			sleep 1
+		ln -s {input} {output}
+		'''
+
+
+rule preprocess:
+	input:
+		'summary_stats/{study}.raw.summary_stats.txt.gz'
+	output:
+		'preprocess/{study}.formatted.summary_stats.txt.gz'
+	shell:
+		'''
+		touch {output}
+		'''
+
+
+rule overlap:
+	input:
+		trait1 = 'preprocess/{trait1}.formatted.summary_stats.txt.gz',
+		trait2 = 'preprocess/{trait2}.formatted.summary_stats.txt.gz'
+	output:
+		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
+	shell:
+		'''
+		rand=$((1 + $RANDOM % 100)) # random number 1-100
+		for i in $(seq 1 $rand); do 
+			echo ${{i}} >> {output}
+		done
+ 		'''
+
+rule process_loci:
+	input:
+		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
+	output:
+		'processed_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+	shell:
+		'''
+		# preprocess each locus and output merged data to file with predictable name
+		# we aren't actually going to tell snakemake about this directory 
+		mkdir -p processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}
+
+		while read i; do
+			# for this dummy case, each line is a number
+			# for the real case, each file in this directory should be the merged summary stats for a locus
+			touch processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt 
+		done < {input}
+
+		# when done:
+		echo '{wildcards.trait1} {wildcards.trait2}' > {output}
+		'''
+
+
+rule coloc:
+	input:
+		'processed_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+	output:
+		'results/coloc/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+	params: 
+	shell:
+		'''
+		# do something for each file in processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/
+		for locus in $(ls processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/); do
+			echo ${{locus}} >> {output}
 		done
 		'''
 
-# def collect_splits(wildcards):
-# 	checkpoint_output = checkpoints.split_loci.get(**wildcards).output[0]
-# 	print(checkpoint_output)
-# 	# /tmp/coloc-wrapper/split_loci/WojcikG_PMID_ckd_analysis.Lung_global
-# 	print(glob.glob('{}/chunk*txt'.format(checkpoint_output)))
-# 	# /tmp/coloc-wrapper/split_loci/WojcikG_PMID_ckd_analysis.Lung_global/chunk2715.txt
-# 	return glob.glob('{}/chunk*txt'.format(checkpoint_output))
 
-def collect_processed_splits(wildcards):
-	checkpoint_output = checkpoints.split_loci.get(**wildcards).output[0]
-	all_chunks = glob.glob('{}/chunk*txt'.format(checkpoint_output))
-	processed = [x.replace('split_loci', 'processed_loci') for x in all_chunks]
-	return processed
-
-rule merge_results:
+rule finemap:
 	input:
-		collect_processed_splits
+		'processed_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
 	output:
-		'merged/{trait1}.{trait2}.results.txt.gz'
+		'results/finemap/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+	params: 
 	shell:
 		'''
-		cat {input} > {output}
+		# do something for each file in processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/
+		for locus in $(ls processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/); do
+			echo ${{locus}} >> {output}
+		done
 		'''
 
-# rule merge_results:
-# 	input:
-# 		collect_splits
-# 	output:
-# 		'merged/{trait1}.{trait2}.results.txt.gz'
-# 	shell:
-# 		'''
-# 		cat {input} > merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt
-# 		# remove all but first header
-# 		head -1 merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt > merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
-# 		grep -v "^chr	" merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt >> merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
-# 		rm merged/{wildcards.trait1}.{wildcards.trait2}.results.tmp.txt
-# 		gzip merged/{wildcards.trait1}.{wildcards.trait2}.results.txt
-# 		'''
-
-
-
-
-## NOT USED YET
-# 
-# rule coloc:
-# 	input:
-# 		'overlap/{trait1}.{trait2}.{n}.txt'
-# 	output:
-# 		temp('coloc/{trait1}.{trait2}.{n}.results.txt')
-# 	group:
-# 		'coloc'
-# 	params:
-# 		trait1_cc = config['studies']['{trait1}']['cc'],
-# 		trait2_cc = config['studies']['{trait2}']['cc'],
-# 		trait1_N = config['studies']['{trait1}']['N'],
-# 		trait2_N = config['studies']['{trait2}']['N']
-# 	shell:
-# 		'''
-# 		# run coloc for the locus 
-# 		python coloc.py {input} {param.trait1_cc} {param.trait1_N} ...
-# 		'''
-#
-# rule finemap:
-# 	input:
-# 		'overlap/{trait1}.{trait2}.{n}.txt'
-# 	output:
-# 		temp('finemap/{trait1}.{trait2}.{n}.results.txt')
-# 	group:
-# 		'finemap'
-# 	shell:
-# 		'''
-# 		# run finemap for the locus 
-# 		'''

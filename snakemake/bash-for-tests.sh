@@ -1,0 +1,13 @@
+snakemake -j 999 --snakefile skeleton.snakefile \
+					--cluster-config test.config \
+					--latency-wait 90 \
+					--configfile config.json \
+					--group-components coloc=500 finemap=500 \
+					--cluster \
+					"sbatch --account={cluster.account} \
+						--partition={cluster.partition} \
+						--time={cluster.time} \
+						--mem={cluster.mem} \
+						--cpus-per-task={cluster.nCPUs} \
+						--output={cluster.output} \
+						--mail-type={cluster.mail}"

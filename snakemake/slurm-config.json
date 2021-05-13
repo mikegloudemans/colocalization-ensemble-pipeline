@@ -1,0 +1,32 @@
+{
+    "__default__"   :
+    {
+        "nCPUs"     : "1",
+        "time"      : "1:00:00",
+        "mem"       : "6G",
+        "account"   : "default",
+        "partition" : "interactive",
+        "mail"      : "FAIL",
+        "output"    : "log/cluster/{rule}.{wildcards.trait1}.{wildcards.trait2}.log"
+    },
+    "preprocess"    :
+    {
+        "output"    : "log/cluster/{rule}.{wildcards.study}.log"
+    },
+    "overlap"       :
+    {
+    },
+    "process_loci"  :
+    {
+    },
+    "coloc"         :
+    {
+        "nCPUs"     : "1",
+        "mem"       : "1G"
+    },
+    "finemap"       :
+    {
+        "nCPUs"     : "1",
+        "mem"       : "1G"
+    }
+}

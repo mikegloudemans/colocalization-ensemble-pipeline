@@ -5,7 +5,8 @@ import os
 import glob
 
 configfile:
-	"colocalization-config.json"
+	#"colocalization-config.json"
+	"whr-test-config.json"
 
 # change working directory
 os.chdir(config['outdir'])
@@ -65,33 +66,6 @@ rule all:
 		expand('preprocess/{study}.formatted.summary_stats.txt.gz',
 			study = studies)
 
-'''
-rule get_gwas_hits:
-	input:
-		'output/summary_stats/{trait1}.formatted.summary_stats.txt.gz'
-	output:
-		'output/gwas_top_hits/{trait1}.hits.txt'
-	params:
-		pvalue_threshold = config["loci_selection_settings"]["selection_thresholds"]["gwas"],
-		window = config["loci_selection_settings"]["selection_independence_window"]
-
-	shell:
-		'python scripts/overlap/get_gwas_hits.py {input} {output} {params.pvalue_threshold} {params.window}'
- 
-rule overlap:
-	input:
-		trait1 = 'output/gwas_top_hits/{trait1}.hits.txt',
-		trait2 = 'output/summary_stats/{trait2}.formatted.summary_stats.txt.gz'
-	output:
-		'output/overlap/{trait1}.{trait2}.loci_to_test.txt'
-	params:
-		pvalue_threshold = config["loci_selection_settings"]["selection_thresholds"]["eqtl"],	
-		window = config["loci_selection_settings"]["lookup_window"]
-
-	shell:
-		'python scripts/overlap/list_snps_to_test.py {input.trait1} {input.trait2} {output} {params.pvalue_threshold} {params.window}'
-'''
-
 rule stage:
 	input:
 		lambda wildcards: trait_to_raw_file[wildcards.study]
@@ -100,6 +74,7 @@ rule stage:
 	shell:
 		'''
 		ln -s {input} {output}
+		ln -s {input}.tbi {output}.tbi
 		'''
 
 rule preprocess:
@@ -109,22 +84,52 @@ rule preprocess:
 		'preprocess/{study}.formatted.summary_stats.txt.gz'
 	shell:
 		'''
-		touch {output}
+		# Dummy code until we actually write the preprocess rule;
+		# Right now I'm just using stuff that's already been preprocessed.
+		ln -s ../summary_stats/{wildcards.study}.raw.summary_stats.txt.gz preprocess/{wildcards.study}.formatted.summary_stats.txt.gz
+		ln -s ../summary_stats/{wildcards.study}.raw.summary_stats.txt.gz.tbi preprocess/{wildcards.study}.formatted.summary_stats.txt.gz.tbi
 		'''
+
+rule get_gwas_hits:
+	input:
+		'preprocess/{trait1}.formatted.summary_stats.txt.gz'
+	output:
+		'gwas_top_hits/{trait1}.hits.txt'
+	params:
+		pvalue_threshold = config["overlap_settings"]["selection_thresholds"]["gwas"],
+		window = config["overlap_settings"]["selection_separation_window"]
+
+	shell:
+		'python ../scripts/overlap/get_gwas_hits.py {input} {output} {params.pvalue_threshold} {params.window}'
 
 rule overlap:
 	input:
-		trait1 = 'preprocess/{trait1}.formatted.summary_stats.txt.gz',
+		trait1 = 'gwas_top_hits/{trait1}.hits.txt',
 		trait2 = 'preprocess/{trait2}.formatted.summary_stats.txt.gz'
 	output:
 		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
+	params:
+		pvalue_threshold = config["overlap_settings"]["selection_thresholds"]["eqtl"],	
+		window = config["overlap_settings"]["lookup_window"]
+
 	shell:
-		'''
-		rand=$((1 + $RANDOM % 100)) # random number 1-100
-		for i in $(seq 1 $rand); do 
-			echo ${{i}} >> {output}
-		done
- 		'''
+		'python ../scripts/overlap/list_snps_to_test.py {input.trait1} {input.trait2} {output} {params.pvalue_threshold} {params.window}'
+
+#
+#rule overlap:
+#	input:
+#		trait1 = 'preprocess/{trait1}.formatted.summary_stats.txt.gz',
+#		trait2 = 'preprocess/{trait2}.formatted.summary_stats.txt.gz'
+#	output:
+#		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
+#	shell:
+#		'''
+#		rand=$((1 + $RANDOM % 100)) # random number 1-100
+#		for i in $(seq 1 $rand); do 
+#			echo ${{i}} >> {output}
+#		done
+# 		'''
+#
 
 rule process_loci:
 	input:
@@ -137,9 +142,11 @@ rule process_loci:
 		# we aren't actually going to tell snakemake about this directory 
 		mkdir -p processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}
 
-		while read i; do
-			# for this dummy case, each line is a number
-			# for the real case, each file in this directory should be the merged summary stats for a locus
+		i=0
+		while read f; do
+			let i=i+1
+			# each file in this directory should be the merged summary stats for a locus
+			# here we just touch a dummy file
 			touch processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt 
 		done < {input}
 

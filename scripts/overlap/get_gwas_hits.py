@@ -36,7 +36,7 @@ def get_gwas_hits(gwas_file, gwas_threshold, gwas_window):
 	with gzip.open(gwas_file) as f:
 
 		header = f.readline().strip().split()
-		header = [str(h.decode("utf-8").lower()) for h in header]
+		header = [str(h.decode().lower()) for h in header]
 
 
 		if "trait" in header:

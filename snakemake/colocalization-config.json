@@ -16,7 +16,7 @@
 		{
 		},
 
-		"selection_independence_window": 500000,
+		"selection_separation_window": 500000,
 		"lookup_window": 10000
 
 	},

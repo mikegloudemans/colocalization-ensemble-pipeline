@@ -1,7 +1,6 @@
 # cluster execution
 snakemake -j 100 --cluster-config slurm-config.json \
 					--latency-wait 90 \
-					--configfile colocalization-config.json \
 					--cluster \
 					"sbatch --account={cluster.account} \
 						--partition={cluster.partition} \

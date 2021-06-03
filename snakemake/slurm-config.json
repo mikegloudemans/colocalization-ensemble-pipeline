@@ -9,9 +9,17 @@
         "mail"      : "FAIL",
         "output"    : "log/cluster/{rule}.{wildcards.trait1}.{wildcards.trait2}.log"
     },
+    "stage"    :
+    {
+        "output"    : "log/cluster/{rule}.{wildcards.study}.log"
+    },
     "preprocess"    :
     {
         "output"    : "log/cluster/{rule}.{wildcards.study}.log"
+    },
+    "get_gwas_hits"    :
+    {
+        "output"    : "log/cluster/{rule}.{wildcards.trait1}.log"
     },
     "overlap"       :
     {

@@ -8,7 +8,7 @@
 
 		"selection_thresholds":
 		{
-			"eqtl": 1e-5,
+			"eqtl": 1e-3,
 			"gwas": 1e-5
 		},
 
@@ -21,6 +21,10 @@
 
 	},
 
+	"colocalization_settings":
+	{
+		"window": 500000
+	},
 
 	"colocalization_methods":
 	{

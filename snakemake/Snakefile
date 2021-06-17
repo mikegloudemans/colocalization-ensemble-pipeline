@@ -123,7 +123,8 @@ rule process_loci:
 	params:
 		source_file = lambda x: config["studies"][x.trait1]["file"],
 		lookup_file = lambda x: config["studies"][x.trait2]["file"],
-		window = config["colocalization_settings"]["window"]
+		window = config["colocalization_settings"]["window"],
+		maf_ref_file = lambda x: config["ref_genomes"][config["studies"][x.trait1]["ref_genome"]]["file"].replace("{chrom}", "${chrom}")
 	shell:
 		'''
 		# preprocess each locus and output merged data to file with predictable name
@@ -135,8 +136,9 @@ rule process_loci:
 			let i=i+1
 			# each file in this directory should be the merged summary stats for a locus
 			# here we just touch a dummy file
-		
-			python ../scripts/process_loci/preprocess.py process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt {params.window} {params.source_file} {params.lookup_file} ${{chrom}} ${{pos}} ${{source_trait}} ${{lookup_trait}}
+
+			echo ../scripts/process_loci/preprocess.py process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt {params.window} {params.source_file} {params.lookup_file} ${{chrom}} ${{pos}} ${{source_trait}} ${{lookup_trait}} {params.maf_ref_file}
+			python ../scripts/process_loci/preprocess.py process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt {params.window} {params.source_file} {params.lookup_file} ${{chrom}} ${{pos}} ${{source_trait}} ${{lookup_trait}} {params.maf_ref_file}
 	
 		done 
 		#< {input}

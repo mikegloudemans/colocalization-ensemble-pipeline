@@ -83,7 +83,7 @@
 		},
 		"tg" :
 		{
-			"file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{0}_GRCh38.genotypes.20170504.vcf.gz",
+			"file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{chrom}_GRCh38.genotypes.20170504.vcf.gz",
 			"N": 2504,
 			"af_attribute": "AF"
 		}

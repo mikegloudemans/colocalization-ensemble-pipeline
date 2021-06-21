@@ -36,6 +36,14 @@ trait_set_1 = get_trait_set(1)
 trait_set_2 = get_trait_set(2)
 studies = list(chain(*[list(trait_set_1), list(trait_set_2)]))
 
+# What do we assume N to be if the value is not specified? Set to None to
+# require N specified no matter what
+default_N = 1000
+
+# What do we assume s (case fraction) to be if the value is not specified? Set to None to
+# require s specified no matter what
+default_case_fraction = 0.5
+
 # don't let wildcards contain directory
 wildcard_constraints:
     study="[^/]*",
@@ -59,7 +67,7 @@ localrules: all,stage
 # here we define colocalization methods and trait combinations 
 rule all:
 	input:
-		expand('results/{method}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt', 
+		expand('{method}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt', 
 			trait1 = trait_set_1, 
 			trait2 = trait_set_2,
 			method = methods),
@@ -152,13 +160,28 @@ rule coloc:
 	input:
 		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
 	output:
-		'results/coloc/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+		'coloc/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
 	params: 
+		type_source = lambda x: 
+			config["studies"][x.trait1]["trait_type"] if "trait_type" in config["studies"][x.trait1] else "quant",
+		type_lookup = lambda x:
+			config["studies"][x.trait2]["trait_type"] if "trait_type" in config["studies"][x.trait2] else "quant",
+		N_source =  lambda x:
+			config["studies"][x.trait1]["N"] if "N" in config["studies"][x.trait1] else default_N,
+		N_lookup = lambda x:
+			config["studies"][x.trait2]["N"] if "N" in config["studies"][x.trait2] else default_N,
+		s_source = lambda x:
+			config["case_fraction"][x.trait1]["N"] if "N" in config["studies"][x.trait1] else default_case_fraction,
+		s_lookup = lambda x:
+			config["case_fraction"][x.trait2]["N"] if "N" in config["studies"][x.trait2] else default_case_fraction
 	shell:
 		'''
+		echo "chr\tpos\tfile_source\tfile_lookup\tpvalue_source\tpvalue_lookup\tfeature\tCOLOC_h0\tCOLOC_h1\tCOLOC_h2\tCOLOC_h3\tCOLOC_h4" > {output}
+
 		# do something for each file in processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/
-		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/); do
-			echo ${{locus}} >> {output}
+		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
+			python ../scripts/coloc/coloc.py ${{locus}} {params.N_source} {params.s_source} {params.type_source} {params.N_lookup} {params.s_lookup} {params.type_lookup} {output}
+			#echo ${{locus}} >> {output}
 		done
 		'''
 
@@ -167,7 +190,7 @@ rule finemap:
 	input:
 		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
 	output:
-		'results/finemap/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+		'finemap/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
 	params: 
 	shell:
 		'''

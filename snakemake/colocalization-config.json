@@ -8,8 +8,8 @@
 
 		"selection_thresholds":
 		{
-			"eqtl": 1e-3,
-			"gwas": 1e-5
+			"eqtl": 1e-5,
+			"gwas": 1e-50
 		},
 
 		"screening_thresholds":

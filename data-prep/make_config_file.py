@@ -19,6 +19,10 @@ for ts1 in trait_set_1[:1]:
 	config["studies"][trait]["file"] = ts1
 	config["studies"][trait]["ref_genome"] = "tg"
 	config["studies"][trait]["trait_set"] = 1
+	if "N" in config["studies"][trait]:
+		del config["studies"][trait]["N"]
+	if "trait_type" in config["studies"][trait]:
+		del config["studies"][trait]["trait_type"]
 
 for ts2 in trait_set_2[:1]:
 	trait = ts2.split("/")[-1].replace(".txt.gz", "")
@@ -26,6 +30,10 @@ for ts2 in trait_set_2[:1]:
 	config["studies"][trait]["file"] = ts2
 	config["studies"][trait]["ref_genome"] = "tg"
 	config["studies"][trait]["trait_set"] = 2
+	if "N" in config["studies"][trait]:
+		del config["studies"][trait]["N"]
+	if "trait_type" in config["studies"][trait]:
+		del config["studies"][trait]["trait_type"]
 
 print(config)
 

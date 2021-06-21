@@ -45,6 +45,8 @@ def main():
 
 	merge_data = get_mafs(merge_data, maf_ref_file)
 
+	merge_data["seed_pos"] = pos 
+
 	merge_data.to_csv(out_file, sep="\t", index=False, header=True)
 
 def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
@@ -81,6 +83,10 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 	if "ref" in list(table.columns.values):
 		table['non_effect_allele'] = table['ref']		
 		table['effect_allele'] = table['alt']		
+		
+		table = table.drop(columns=['ref'])
+		table = table.drop(columns=['alt'])
+		
 
 	if "effect_allele" in list(table.columns.values):
 		table['effect_allele'] = table["effect_allele"].str.upper()
@@ -124,6 +130,8 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 	if pos > max(table['snp_pos']) - 50000 or pos < min(table['snp_pos']) + 50000:
 		return "Sumstats interval too small."
 	
+	# We'll want to know the original "seed" position when logging results
+
 	return table
 
 def combine_sumstats(source_data, lookup_data):
@@ -209,12 +217,11 @@ def get_mafs(dataframe, maf_ref_file):
 		chr_text = chrom
 
 	# Standard header is as follows, but let's make sure
-	header = ["chrom_vcf", "pos_vcf", "rsid_vcf", "ref_vcf", "alt_vcf", "info_vcf"]
+	header = ["pos_vcf", "rsid_vcf", "ref_vcf", "alt_vcf", "info_vcf"]
 	with gzip.open(maf_ref_file, 'rb') as f:
 		for line in f:
 			if line.decode('utf-8').startswith("#CHROM"):
 				data = line.decode('utf-8').strip().split()
-				chrom_index = 0
 				pos_index = data.index('POS')
 				rsid_index = data.index('ID')
 				ref_index = data.index('REF')
@@ -222,7 +229,7 @@ def get_mafs(dataframe, maf_ref_file):
 				info_index = data.index('INFO')
 				break
 
-	stream = StringIO(subprocess.run(f"tabix {maf_ref_file} {chr_text}:{pos-window}-{pos+window} | cut -f{chrom_index+1},{pos_index+1},{rsid_index+1},{ref_index+1},{alt_index+1},{info_index+1}", capture_output=True, shell=True).stdout.decode('utf-8'))
+	stream = StringIO(subprocess.run(f"tabix {maf_ref_file} {chr_text}:{pos-window}-{pos+window} | cut -f{pos_index+1},{rsid_index+1},{ref_index+1},{alt_index+1},{info_index+1}", capture_output=True, shell=True).stdout.decode('utf-8'))
 		
 	# For readability, load the header too
 	# Load with pandas
@@ -277,12 +284,14 @@ def get_mafs(dataframe, maf_ref_file):
 
 	# Remove variants where alt/ref don't match between GWAS/eQTL and VCF
 	# Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
-
+	
+	# Only need to pay attention to the "source" file since they will have already been harmonized by now for "lookup" file
 	keep_indices = \
 		(((merged['non_effect_allele_source'] == merged['ref_vcf']) & (merged['effect_allele_source'] == merged['alt_vcf'])) | \
-		((merged['effect_allele_source'] == merged['ref_vcf']) & (merged['non_effect_allele_source'] == merged['alt_vcf']))) & \
-		(((merged['non_effect_allele_lookup'] == merged['ref_vcf']) & (merged['effect_allele_lookup'] == merged['alt_vcf'])) | \
-		((merged['effect_allele_lookup'] == merged['ref_vcf']) & (merged['non_effect_allele_lookup'] == merged['alt_vcf'])))
+		((merged['effect_allele_source'] == merged['ref_vcf']) & (merged['non_effect_allele_source'] == merged['alt_vcf']))) 
+		#& \
+		#(((merged['non_effect_allele_lookup'] == merged['ref_vcf']) & (merged['effect_allele_lookup'] == merged['alt_vcf'])) | \
+		#((merged['effect_allele_lookup'] == merged['ref_vcf']) & (merged['non_effect_allele_lookup'] == merged['alt_vcf'])))
 
 	merged = merged.drop(columns=['pos_vcf', 'rsid_vcf', 'alt_vcf', 'info_vcf'])
 

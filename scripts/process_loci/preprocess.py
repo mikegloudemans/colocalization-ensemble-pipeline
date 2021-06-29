@@ -20,7 +20,8 @@ chrom = sys.argv[5]
 pos = int(sys.argv[6])
 source_trait = sys.argv[7]
 lookup_trait = sys.argv[8]
-maf_ref_file = sys.argv[9]
+vcf_ref_file1 = sys.argv[9]
+vcf_ref_file2 = sys.argv[10]
 
 def main():
 
@@ -43,7 +44,9 @@ def main():
 		"non_effect_allele_source" in list(merge_data.columns.values) and "non_effect_allele_lookup" in list(merge_data.columns.values):
 		merge_data = harmonize_alleles(merge_data)
 
-	merge_data = get_mafs(merge_data, maf_ref_file)
+	merge_data = get_ref_vcf(merge_data, vcf_ref_file1, "_vcf1")
+	if vcf_ref_file1 != vcf_ref_file2:
+		merge_data = get_ref_vcf(merge_data, vcf_ref_file2, "_vcf2")
 
 	merge_data["seed_pos"] = pos 
 
@@ -167,7 +170,7 @@ def harmonize_alleles(merge_data):
 	data = merge_data.copy().reset_index(drop=True)
 
 	match_index = pd.Series([True]*data.shape[0])
-	for i in data.index:
+	for i in range(data.shape[0]):
 		if (data['effect_allele_source'][i] == data['effect_allele_lookup'][i] and
 			data['non_effect_allele_source'][i] == data['non_effect_allele_lookup'][i]):
 			# Everything agrees already
@@ -205,66 +208,69 @@ def harmonize_alleles(merge_data):
 	data = data.drop(columns=['non_effect_allele_lookup', 'effect_allele_lookup'])	# Now they are the same as source anyway
 	return data
 
-# Load MAFs from a reference VCF, for every SNP in "data". For now, the direction
+# Load MAFs and alleles from a reference VCF, for every SNP in "data". For now, the direction
 # is not important ; i.e. MAF = n and MAF = (1-n) are treated equivalently by
 # COLOC.
-def get_mafs(dataframe, maf_ref_file):
+def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 
-	chr_prefix = has_chr_prefix(maf_ref_file)
+	chr_prefix = has_chr_prefix(vcf_ref_file)
 	if chr_prefix:
 		chr_text = f"chr{chrom}"
 	else:
 		chr_text = chrom
 
-	# Standard header is as follows, but let's make sure
-	header = ["pos_vcf", "rsid_vcf", "ref_vcf", "alt_vcf", "info_vcf"]
-	with gzip.open(maf_ref_file, 'rb') as f:
+	# Get header
+
+	with gzip.open(vcf_ref_file, 'rb') as f:
 		for line in f:
 			if line.decode('utf-8').startswith("#CHROM"):
-				data = line.decode('utf-8').strip().split()
-				pos_index = data.index('POS')
-				rsid_index = data.index('ID')
-				ref_index = data.index('REF')
-				alt_index = data.index('ALT')
-				info_index = data.index('INFO')
+				header = line.decode('utf-8').strip().split()
+				header[header.index('POS')] = "pos"
+				header[header.index('ID')] = "rsid"
+				header[header.index('REF')] = "ref"
+				header[header.index('ALT')] = "alt"
+				header[header.index('INFO')] = "info"
+
+				header = [h + suffix for h in header]
 				break
 
-	stream = StringIO(subprocess.run(f"tabix {maf_ref_file} {chr_text}:{pos-window}-{pos+window} | cut -f{pos_index+1},{rsid_index+1},{ref_index+1},{alt_index+1},{info_index+1}", capture_output=True, shell=True).stdout.decode('utf-8'))
-		
+
+	stream = StringIO(subprocess.run(f"tabix {vcf_ref_file} {chr_text}:{pos-window}-{pos+window}".split(), capture_output=True).stdout.decode('utf-8'))	
+
 	# For readability, load the header too
 	# Load with pandas
 	vcf = pd.read_csv(stream, sep="\t", names=header)
 
 	# Remove variants not in the GWAS table
-	vcf["pos_vcf"] = vcf["pos_vcf"].astype(int)
+	vcf["pos{suffix}"] = vcf["pos{suffix}"].astype(int)
 
-	vcf = vcf[vcf["pos_vcf"].isin(list(dataframe["snp_pos"]))]
+	vcf = vcf[vcf["pos{suffix}"].isin(list(dataframe["snp_pos"]))]
 
 	# Remove variants with position appearing multiple times
 	dup_counts = {}
-	for v in vcf["pos_vcf"]:
+	for v in vcf["pos{suffix}"]:
 		dup_counts[v] = dup_counts.get(pos, 0) + 1
-	vcf["dup_counts"] = [dup_counts[v] for v in vcf['pos_vcf']]
+	vcf["dup_counts"] = [dup_counts[v] for v in vcf['pos{suffix}']]
 	vcf = vcf[vcf["dup_counts"] == 1]
 	vcf = vcf.drop(columns=['dup_counts'])
 
 	# Remove multiallelic variants with only one entry in VCF
 	l = lambda x: "," not in x
-	vcf = vcf[vcf["ref_vcf"].apply(l) & vcf["alt_vcf"].apply(l)]
+	vcf = vcf[vcf["ref{suffix}"].apply(l) & vcf["alt{suffix}"].apply(l)]
 
 	# Remove monoallelic variants.
 	
 	# Allele frequency might be input as counts or as percentages,
 	# so handle this.
 	min_af = 0.01
-	example_info = list(vcf["info_vcf"])[0]
+	example_info = list(vcf["info{suffix}"])[0]
 	if "AF" in example_info:
 		def fn(x):
 			info = [s for s in x.split(";") if s.startswith("AF=")][0]
 			af = float(info.split("=")[1])
 			return af
-		vcf['ref_af'] = vcf["info_vcf"].apply(fn)
-		vcf = vcf[(vcf['ref_af'] > min_af) & (1-vcf['ref_af'] > min_af)]
+		vcf['ref_af{suffix}'] = vcf["info{suffix}"].apply(fn)
+		vcf = vcf[(vcf['ref_af{suffix}'] > min_af) & (1-vcf['ref_af{suffix}'] > min_af)]
 	elif "AC" in example_info and "N" in example_info:
 		# Get allele count for minor allele, divided total number of alleles measured in population
 		def fn(x):
@@ -276,25 +282,27 @@ def get_mafs(dataframe, maf_ref_file):
 
 			af = ac*1.0/n
 			return af
-		vcf['ref_af'] = vcf["info_vcf"].apply(fn)
-		vcf = vcf[(vcf['ref_af'] > 0.01) & (1-vcf['ref_af'] > 0.01)]
+		vcf['ref_af{suffix}'] = vcf["info{suffix}"].apply(fn)
+		vcf = vcf[(vcf['ref_af{suffix}'] > 0.01) & (1-vcf['ref_af{suffix}'] > 0.01)]
 
 	# Merge ref genome and MAFs with the sumstats dataframe frame
-	merged = pd.merge(dataframe, vcf, left_on="snp_pos", right_on="pos_vcf")
+	merged = pd.merge(dataframe, vcf, left_on="snp_pos", right_on="pos{suffix}")
 
 	# Remove variants where alt/ref don't match between GWAS/eQTL and VCF
 	# Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
 	
 	# Only need to pay attention to the "source" file since they will have already been harmonized by now for "lookup" file
 	keep_indices = \
-		(((merged['non_effect_allele_source'] == merged['ref_vcf']) & (merged['effect_allele_source'] == merged['alt_vcf'])) | \
-		((merged['effect_allele_source'] == merged['ref_vcf']) & (merged['non_effect_allele_source'] == merged['alt_vcf']))) 
-		#& \
-		#(((merged['non_effect_allele_lookup'] == merged['ref_vcf']) & (merged['effect_allele_lookup'] == merged['alt_vcf'])) | \
-		#((merged['effect_allele_lookup'] == merged['ref_vcf']) & (merged['non_effect_allele_lookup'] == merged['alt_vcf'])))
+		(((merged['non_effect_allele_source'] == merged['ref{suffix}']) & (merged['effect_allele_source'] == merged['alt{suffix}'])) | \
+		((merged['effect_allele_source'] == merged['ref{suffix}']) & (merged['non_effect_allele_source'] == merged['alt{suffix}']))) 
 
-	merged = merged.drop(columns=['pos_vcf', 'rsid_vcf', 'alt_vcf', 'info_vcf'])
+	# ^ Probably need to harmonize these too for FINEMAP, but we haven't gotten there quite yet
 
+	# Some of these columns are redundant; drop them
+	merged = merged.drop(columns=['pos{suffix}', 'rsid{suffix}', 'info{suffix}'])
+
+	# NOTE: Might be useful to write out a "short" version of this table for steps like COLOC that don't
+	# need all the genotype data, along with a "long" version for those like FINEMAP that do need it
 	merged = merged.reset_index(drop=True)
 	merged = merged[keep_indices]
 
@@ -302,31 +310,17 @@ def get_mafs(dataframe, maf_ref_file):
 
 # Helper function:
 # Returns true if "chr" prefix in VCF
-def has_chr_prefix(maf_ref_file):
-	if maf_ref_file.endswith(".gz"):
-		with gzip.open(maf_ref_file, 'rb') as vcf:
-			for line in vcf:
-				if line.decode('utf-8').startswith("#"):
-					continue
-				if line.decode('utf-8').startswith("chr"):
-					chr_prefix = True
-					break
-				else:
-					chr_prefix = False
-					break
-	else:
-		with open(maf_ref_file, 'rb') as vcf:
-			for line in vcf:
-				if line.startswith("#"):
-					continue
-				if line.startswith("chr"):
-					chr_prefix = True
-					break
-				else:
-					chr_prefix = False
-					break
-
-
+def has_chr_prefix(ref_file):
+	with gzip.open(ref_file, 'rb') as vcf:
+		for line in vcf:
+			if line.decode('utf-8').startswith("#"):
+				continue
+			if line.decode('utf-8').startswith("chr"):
+				chr_prefix = True
+				break
+			else:
+				chr_prefix = False
+				break
 
 if __name__ == "__main__":
 	main()

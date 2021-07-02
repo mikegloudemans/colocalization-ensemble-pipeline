@@ -1,6 +1,6 @@
 name: colocalization-ensemble
 dependencies:
-  - plink2=2.00a2.3
+  - plink
   - snakemake=6.0.0
   - tabix=0.2.6
 

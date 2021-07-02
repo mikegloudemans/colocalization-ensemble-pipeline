@@ -66,7 +66,7 @@ def main():
 					wide_matches = [numerize_pval(d) for d in wide_matches]
 				except:
 					print("Formatting error: could not convert p-value to float")
-					return
+					continue
 				wide_matches = sorted(wide_matches, key=operator.itemgetter(pval_index))
 
 				matched = set([])	 # Don't print repeats if there are multiple matches				

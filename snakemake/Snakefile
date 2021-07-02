@@ -222,7 +222,7 @@ rule finemap:
 		echo "chr\tpos\tfile_source\tfile_lookup\tpvalue_source\tpvalue_lookup\tfeature\tfinemap_clpp\tfinemap_clpp_mod" > {output}
 
 		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmp_dir} {params.source_vcf} {params.lookup_vcf} {params.window} {params.N_source} {params.N_lookup} {params.max_causal} {params.verbose} {params.save_finemap_threshold}
+			python ../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmpdir} {params.source_vcf} {params.lookup_vcf} {params.window} {params.N_source} {params.N_lookup} {params.max_causal} {params.verbose} {params.save_finemap_threshold}
 		done
 
 		# Then remove tmp files for all of them?

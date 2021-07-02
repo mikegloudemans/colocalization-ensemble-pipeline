@@ -15,11 +15,9 @@ out_file = sys.argv[8]
 def main():
 
 	# Run COLOC with R helper script and get results
-	coloc_status = subprocess.run(f"Rscript ../scripts/coloc/run_coloc.R {in_file} {N_source} {s_source} {type_source} {N_lookup} {s_lookup} {type_lookup}".split(), capture_output=True)
-	print(coloc_status.stderr.decode("utf-8"))
+	coloc_status = subprocess.run(f"Rscript ../scripts/methods/coloc/run_coloc.R {in_file} {N_source} {s_source} {type_source} {N_lookup} {s_lookup} {type_lookup}".split(), capture_output=True)
 	coloc_status = coloc_status.stdout.decode("utf-8")
 
-	print(coloc_status)
 	with open(out_file, "a") as a:
 		a.write(coloc_status + "\n")
 

@@ -1,4 +1,5 @@
 suppressWarnings(suppressMessages(require(coloc)))
+suppressWarnings(suppressMessages(require(readr)))
 
 # Get input and output locations as command-line arguments
 args <- commandArgs(TRUE)
@@ -11,7 +12,8 @@ s_lookup = as.numeric(args[6])
 type_lookup = args[7]
 
 # Run coloc
-data = read.table(infile, header=TRUE, sep='\t', fill=TRUE)
+#data = read.table(infile, header=TRUE, sep='\t', fill=TRUE)
+data = suppressWarnings(suppressMessages(as.data.frame(read_delim(infile, delim='\t'))))
 
 # remove incomplete cases
 data = data[complete.cases(data),]

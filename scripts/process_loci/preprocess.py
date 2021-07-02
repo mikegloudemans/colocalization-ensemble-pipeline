@@ -28,6 +28,8 @@ def main():
 	source_data = get_sumstats(source_file, chrom, pos, "_source", source_trait)
 	lookup_data = get_sumstats(lookup_file, chrom, pos, "_lookup", lookup_trait)
 
+	print(f"Processing {source_file} {source_trait} {lookup_file} {lookup_trait} {chrom} {pos}")
+
 	if isinstance(source_data, str) or source_data.shape[0] == 0:
 		print(f"No overlapping data for {source_file} {lookup_file} {chrom} {pos} {source_trait} {lookup_trait}")
 		return
@@ -121,6 +123,7 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 	if "beta" in table:
 		table = table.rename(index=str, columns={"beta": "beta" + suffix})
 	if "se" in table:
+		table = table[~pd.isna(table["se"])] # Thanks GTEx for making me have to do this
 		table = table.rename(index=str, columns={"se": "se" + suffix})
 
 	table['snp_pos'] = table['snp_pos'].astype(int)
@@ -225,11 +228,6 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 		for line in f:
 			if line.decode('utf-8').startswith("#CHROM"):
 				header = line.decode('utf-8').strip().split()
-				header[header.index('POS')] = "pos"
-				header[header.index('ID')] = "rsid"
-				header[header.index('REF')] = "ref"
-				header[header.index('ALT')] = "alt"
-				header[header.index('INFO')] = "info"
 
 				header = [h + suffix for h in header]
 				break
@@ -242,35 +240,35 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 	vcf = pd.read_csv(stream, sep="\t", names=header)
 
 	# Remove variants not in the GWAS table
-	vcf["pos{suffix}"] = vcf["pos{suffix}"].astype(int)
+	vcf[f"POS{suffix}"] = vcf[f"POS{suffix}"].astype(int)
 
-	vcf = vcf[vcf["pos{suffix}"].isin(list(dataframe["snp_pos"]))]
+	vcf = vcf[vcf[f"POS{suffix}"].isin(list(dataframe["snp_pos"]))]
 
 	# Remove variants with position appearing multiple times
 	dup_counts = {}
-	for v in vcf["pos{suffix}"]:
+	for v in vcf[f"POS{suffix}"]:
 		dup_counts[v] = dup_counts.get(pos, 0) + 1
-	vcf["dup_counts"] = [dup_counts[v] for v in vcf['pos{suffix}']]
+	vcf["dup_counts"] = [dup_counts[v] for v in vcf[f'POS{suffix}']]
 	vcf = vcf[vcf["dup_counts"] == 1]
 	vcf = vcf.drop(columns=['dup_counts'])
 
 	# Remove multiallelic variants with only one entry in VCF
 	l = lambda x: "," not in x
-	vcf = vcf[vcf["ref{suffix}"].apply(l) & vcf["alt{suffix}"].apply(l)]
+	vcf = vcf[vcf[f"REF{suffix}"].apply(l) & vcf[f"ALT{suffix}"].apply(l)]
 
 	# Remove monoallelic variants.
 	
 	# Allele frequency might be input as counts or as percentages,
 	# so handle this.
 	min_af = 0.01
-	example_info = list(vcf["info{suffix}"])[0]
+	example_info = list(vcf[f"INFO{suffix}"])[0]
 	if "AF" in example_info:
 		def fn(x):
 			info = [s for s in x.split(";") if s.startswith("AF=")][0]
 			af = float(info.split("=")[1])
 			return af
-		vcf['ref_af{suffix}'] = vcf["info{suffix}"].apply(fn)
-		vcf = vcf[(vcf['ref_af{suffix}'] > min_af) & (1-vcf['ref_af{suffix}'] > min_af)]
+		vcf[f'ref_af{suffix}'] = vcf[f"INFO{suffix}"].apply(fn)
+		vcf = vcf[(vcf[f'ref_af{suffix}'] > min_af) & (1-vcf[f'ref_af{suffix}'] > min_af)]
 	elif "AC" in example_info and "N" in example_info:
 		# Get allele count for minor allele, divided total number of alleles measured in population
 		def fn(x):
@@ -282,24 +280,22 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 
 			af = ac*1.0/n
 			return af
-		vcf['ref_af{suffix}'] = vcf["info{suffix}"].apply(fn)
-		vcf = vcf[(vcf['ref_af{suffix}'] > 0.01) & (1-vcf['ref_af{suffix}'] > 0.01)]
+		vcf[f'ref_af{suffix}'] = vcf[f"INFO{suffix}"].apply(fn)
 
+		vcf = vcf[(vcf[f'ref_af{suffix}'] > min_af) & (1-vcf[f'ref_af{suffix}'] > min_af)]
+	
 	# Merge ref genome and MAFs with the sumstats dataframe frame
-	merged = pd.merge(dataframe, vcf, left_on="snp_pos", right_on="pos{suffix}")
+	merged = pd.merge(dataframe, vcf, left_on="snp_pos", right_on=f"POS{suffix}")
 
 	# Remove variants where alt/ref don't match between GWAS/eQTL and VCF
 	# Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
 	
 	# Only need to pay attention to the "source" file since they will have already been harmonized by now for "lookup" file
 	keep_indices = \
-		(((merged['non_effect_allele_source'] == merged['ref{suffix}']) & (merged['effect_allele_source'] == merged['alt{suffix}'])) | \
-		((merged['effect_allele_source'] == merged['ref{suffix}']) & (merged['non_effect_allele_source'] == merged['alt{suffix}']))) 
+		(((merged['non_effect_allele_source'] == merged[f'REF{suffix}']) & (merged['effect_allele_source'] == merged[f'ALT{suffix}'])) | \
+		((merged['effect_allele_source'] == merged[f'REF{suffix}']) & (merged['non_effect_allele_source'] == merged[f'ALT{suffix}']))) 
 
 	# ^ Probably need to harmonize these too for FINEMAP, but we haven't gotten there quite yet
-
-	# Some of these columns are redundant; drop them
-	merged = merged.drop(columns=['pos{suffix}', 'rsid{suffix}', 'info{suffix}'])
 
 	# NOTE: Might be useful to write out a "short" version of this table for steps like COLOC that don't
 	# need all the genotype data, along with a "long" version for those like FINEMAP that do need it

@@ -14,36 +14,36 @@ from scipy import stats
 
 out_file = sys.argv[1]
 window = int(sys.argv[2])
-source_file = sys.argv[3]
-lookup_file = sys.argv[4]
+trait1_file = sys.argv[3]
+trait2_file = sys.argv[4]
 chrom = sys.argv[5]
 pos = int(sys.argv[6])
-source_trait = sys.argv[7]
-lookup_trait = sys.argv[8]
+feature1 = sys.argv[7]
+feature2 = sys.argv[8]
 vcf_ref_file1 = sys.argv[9]
 vcf_ref_file2 = sys.argv[10]
 
 def main():
 
-	source_data = get_sumstats(source_file, chrom, pos, "_source", source_trait)
-	lookup_data = get_sumstats(lookup_file, chrom, pos, "_lookup", lookup_trait)
+	trait1_data = get_sumstats(trait1_file, chrom, pos, "_trait1", feature1)
+	trait2_data = get_sumstats(trait2_file, chrom, pos, "_trait2", feature2)
 
-	print(f"Processing {source_file} {source_trait} {lookup_file} {lookup_trait} {chrom} {pos}")
+	print(f"Processing {trait1_file} {feature1} {trait2_file} {feature2} {chrom} {pos}")
 
-	if isinstance(source_data, str) or source_data.shape[0] == 0:
-		print(f"No overlapping data for {source_file} {lookup_file} {chrom} {pos} {source_trait} {lookup_trait}")
+	if isinstance(trait1_data, str) or trait1_data.shape[0] == 0:
+		print(f"No overlapping data for {trait1_file} {trait2_file} {chrom} {pos} {feature1} {feature2}")
 		return
-	if isinstance(lookup_data, str) or lookup_data.shape[0] == 0:
-		print(f"No overlapping data for {source_file} {lookup_file} {chrom} {pos} {source_trait} {lookup_trait}")
+	if isinstance(trait2_data, str) or trait2_data.shape[0] == 0:
+		print(f"No overlapping data for {trait1_file} {trait2_file} {chrom} {pos} {feature1} {feature2}")
 		return
 
-	merge_data = combine_sumstats(source_data, lookup_data)
+	merge_data = combine_sumstats(trait1_data, trait2_data)
 	if isinstance(merge_data, str) or merge_data.shape[0] == 0:
-		print(f"No overlapping data for {source_file} {lookup_file} {chrom} {pos} {source_trait} {lookup_trait}")
+		print(f"No overlapping data for {trait1_file} {trait2_file} {chrom} {pos} {feature1} {feature2}")
 		return
 
-	if "effect_allele_source" in list(merge_data.columns.values) and "effect_allele_lookup" in list(merge_data.columns.values) and \
-		"non_effect_allele_source" in list(merge_data.columns.values) and "non_effect_allele_lookup" in list(merge_data.columns.values):
+	if "effect_allele_trait1" in list(merge_data.columns.values) and "effect_allele_trait2" in list(merge_data.columns.values) and \
+		"non_effect_allele_trait1" in list(merge_data.columns.values) and "non_effect_allele_trait2" in list(merge_data.columns.values):
 		merge_data = harmonize_alleles(merge_data)
 
 	merge_data = get_ref_vcf(merge_data, vcf_ref_file1, "_vcf1")
@@ -73,12 +73,16 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 	if trait != "none":
 		if "trait" in list(table.columns.values):
 			table = table[table['trait'] == trait].copy()
+			table = table.rename(index=str, columns={"trait": "feature"})
 		elif "feature" in list(table.columns.values):
 			table = table[table['feature'] == trait].copy()
 		elif "gene" in list(table.columns.values):
 			table = table[table['gene'] == trait].copy()
+			table = table.rename(index=str, columns={"gene": "feature"})
 		else:
 			return("No trait column specified; trait filtering is impossible")
+	else:
+		table['feature'] = "none"
 		
 	if table.shape[0] == 0:
 		return "No summary statistics found at this locus."
@@ -86,13 +90,12 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 	table['pvalue'] = table['pvalue'].astype(float)
 
 	if "ref" in list(table.columns.values):
-		table['non_effect_allele'] = table['ref']		
-		table['effect_allele'] = table['alt']		
-		
-		table = table.drop(columns=['ref'])
-		table = table.drop(columns=['alt'])
-		
+		table = table.rename(index=str, columns={"ref": "non_effect_allele"})
+		table = table.rename(index=str, columns={"alt": "effect_allele"})
 
+	if "effect_direction" in list(table.columns.values):
+		table = table.rename(index=str, columns={"effect_direction": "direction"})
+				
 	if "effect_allele" in list(table.columns.values):
 		table['effect_allele'] = table["effect_allele"].str.upper()
 		table['non_effect_allele'] = table["non_effect_allele"].str.upper()
@@ -126,6 +129,8 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 		table = table[~pd.isna(table["se"])] # Thanks GTEx for making me have to do this
 		table = table.rename(index=str, columns={"se": "se" + suffix})
 
+	print(table.head(10))
+
 	table['snp_pos'] = table['snp_pos'].astype(int)
 	
 	if min(table['pvalue']) < 1e-150:
@@ -140,9 +145,9 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 
 	return table
 
-def combine_sumstats(source_data, lookup_data):
+def combine_sumstats(trait1_data, trait2_data):
 
-	combined = pd.merge(source_data, lookup_data, on="snp_pos", suffixes=("_source", "_lookup"))
+	combined = pd.merge(trait1_data, trait2_data, on="snp_pos", suffixes=("_trait1", "_trait2"))
    
 	# Remove all positions that appear multiple times in the GWAS table.
 	dup_counts = {}
@@ -165,7 +170,7 @@ def combine_sumstats(source_data, lookup_data):
 
 	return combined
 
-# Re-align the allele directions of the source and lookup files so that the effect
+# Re-align the allele directions of the trait1 and trait2 files so that the effect
 # and non-effect alleles are consistent. Also, delete any entries for which the 
 # alleles simply don't match.
 def harmonize_alleles(merge_data):
@@ -174,28 +179,28 @@ def harmonize_alleles(merge_data):
 
 	match_index = pd.Series([True]*data.shape[0])
 	for i in range(data.shape[0]):
-		if (data['effect_allele_source'][i] == data['effect_allele_lookup'][i] and
-			data['non_effect_allele_source'][i] == data['non_effect_allele_lookup'][i]):
+		if (data['effect_allele_trait1'][i] == data['effect_allele_trait2'][i] and
+			data['non_effect_allele_trait1'][i] == data['non_effect_allele_trait2'][i]):
 			# Everything agrees already
 			pass
 
-		elif (data['effect_allele_source'][i] == data['non_effect_allele_lookup'][i] and
-						data['non_effect_allele_source'][i] == data['effect_allele_lookup'][i]):
+		elif (data['effect_allele_trait1'][i] == data['non_effect_allele_trait2'][i] and
+						data['non_effect_allele_trait1'][i] == data['effect_allele_trait2'][i]):
 			# Alleles are matching, but backwards
 
-			tmp = data.at[i, 'effect_allele_source']
-			data.at[i, 'effect_allele_source'] = data.at[i, 'non_effect_allele_source']
-			data.at[i, 'non_effect_allele_source'] = tmp
+			tmp = data.at[i, 'effect_allele_trait1']
+			data.at[i, 'effect_allele_trait1'] = data.at[i, 'non_effect_allele_trait1']
+			data.at[i, 'non_effect_allele_trait1'] = tmp
 	
 			# Change OR, beta, and direction columns if needed
-			if "beta_source" in list(data.columns.values):
-				data.at[i, 'beta_source'] *= -1
-			if "ZSCORE_source" in list(data.columns.values):
-				data.at[i, 'ZSCORE_source'] *= -1
-			if "tstat_source" in list(data.columns.values):
-				data.at[i, 'tstat_source'] *= -1
-			if "or_source" in list(data.columns.values):
-				data.at[i, 'or_source'] = 1 / data.at[i, 'or_source']
+			if "beta_trait1" in list(data.columns.values):
+				data.at[i, 'beta_trait1'] *= -1
+			if "ZSCORE_trait1" in list(data.columns.values):
+				data.at[i, 'ZSCORE_trait1'] *= -1
+			if "tstat_trait1" in list(data.columns.values):
+				data.at[i, 'tstat_trait1'] *= -1
+			if "or_trait1" in list(data.columns.values):
+				data.at[i, 'or_trait1'] = 1 / data.at[i, 'or_trait1']
 			if "direction" in list(data.columns.values):
 				def flip(x):
 					if x == "-":
@@ -208,7 +213,7 @@ def harmonize_alleles(merge_data):
 			# Not actually the same SNP; we will discard this position
 			match_index.update(pd.Series([False], index=[i]))
 	data = data[match_index]	
-	data = data.drop(columns=['non_effect_allele_lookup', 'effect_allele_lookup'])	# Now they are the same as source anyway
+	data = data.drop(columns=['non_effect_allele_trait2', 'effect_allele_trait2'])	# Now they are the same as trait1 anyway
 	return data
 
 # Load MAFs and alleles from a reference VCF, for every SNP in "data". For now, the direction
@@ -290,10 +295,10 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 	# Remove variants where alt/ref don't match between GWAS/eQTL and VCF
 	# Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
 	
-	# Only need to pay attention to the "source" file since they will have already been harmonized by now for "lookup" file
+	# Only need to pay attention to the "trait1" file since they will have already been harmonized by now for "trait2" file
 	keep_indices = \
-		(((merged['non_effect_allele_source'] == merged[f'REF{suffix}']) & (merged['effect_allele_source'] == merged[f'ALT{suffix}'])) | \
-		((merged['effect_allele_source'] == merged[f'REF{suffix}']) & (merged['non_effect_allele_source'] == merged[f'ALT{suffix}']))) 
+		(((merged['non_effect_allele_trait1'] == merged[f'REF{suffix}']) & (merged['effect_allele_trait1'] == merged[f'ALT{suffix}'])) | \
+		((merged['effect_allele_trait1'] == merged[f'REF{suffix}']) & (merged['non_effect_allele_trait1'] == merged[f'ALT{suffix}']))) 
 
 	# ^ Probably need to harmonize these too for FINEMAP, but we haven't gotten there quite yet
 

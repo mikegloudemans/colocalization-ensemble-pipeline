@@ -8,11 +8,11 @@ import os
 	out_dir,
 	out_file,
 	tmp_raw,
-	source_vcf,
-	lookup_vcf,
+	trait1_vcf,
+	trait2_vcf,
 	window,
-	source_N,
-	lookup_N,
+	trait1_N,
+	trait2_N,
 	max_causal,
 	verbose,
 	save_finemap_threshold) = sys.argv[1:]
@@ -33,6 +33,8 @@ def main():
 	# Load data
 	data = pd.read_csv(in_file, sep="\t")
 
+	N_snps = data.shape[0]
+
 	# Prep files for running finemap
 	data = prep_finemap(data)
 
@@ -43,12 +45,13 @@ def main():
 
 	launch_finemap()
 
-	min_pvalue_source = min(list(data["pvalue_source"]))
-	min_pvalue_lookup = min(list(data["pvalue_lookup"]))
-	feature = data["feature"].iloc[0]
-	chrom = data["chr_source"].iloc[0]
-	snp_pos = data["snp_pos"].iloc[0]
-	process_finemap_results(min_pvalue_source, min_pvalue_lookup, feature, chrom, snp_pos)
+	min_pvalue_trait1 = min(list(data["pvalue_trait1"]))
+	min_pvalue_trait2 = min(list(data["pvalue_trait2"]))
+	feature1 = data["feature_trait1"].iloc[0]
+	feature2 = data["feature_trait2"].iloc[0]
+	chrom = data["chr_trait1"].iloc[0]
+	snp_pos = data["seed_pos"].iloc[0]
+	process_finemap_results(min_pvalue_trait1, min_pvalue_trait2, feature1, feature2, chrom, snp_pos, N_snps)
 
 # Separates the preparation of data for finemap from the actual 
 # launching of finemap. This is done to avoid duplicating code,
@@ -70,7 +73,7 @@ def prep_finemap(data):
 	# Do we have one ref genome or two?
 	two_refs = len([v for v in list(combined.columns.values) if "_vcf2" in v]) > 0
 
-	# Two different cases depending on whether source and lookup
+	# Two different cases depending on whether trait1 and trait2
 	# are using same reference genome.
 	if not two_refs:
 
@@ -120,10 +123,10 @@ def prep_finemap(data):
 	# Reverse Z-scores for SNPs that are opposite of the VCF ref / alt designations
 	
 	flip_vcf1_indices = \
-		(combined['effect_allele_source'] == combined['REF_vcf1']) & (combined['non_effect_allele_source'] == combined['ALT_vcf1'])
+		(combined['effect_allele_trait1'] == combined['REF_vcf1']) & (combined['non_effect_allele_trait1'] == combined['ALT_vcf1'])
 	if "REF_vcf2" in list(combined.columns.values):
 		flip_vcf2_indices = \
-			(combined['effect_allele_source'] == combined['REF_vcf2']) & (combined['non_effect_allele_source'] == combined['ALT_vcf2'])
+			(combined['effect_allele_trait1'] == combined['REF_vcf2']) & (combined['non_effect_allele_trait1'] == combined['ALT_vcf2'])
 	else:
 		flip_vcf2_indices = flip_vcf1_indices
 
@@ -151,11 +154,11 @@ def prep_finemap(data):
 		# NOTE: Don't really need to realign the effect / non_effect
 		# column for FINEMAP v1.4 -- see note below
 
-		if combined['effect_allele_source'][i] == combined['REF_vcf1'][i]:
-			combined.at[i, 'beta_source'] *= -1
+		if combined['effect_allele_trait1'][i] == combined['REF_vcf1'][i]:
+			combined.at[i, 'beta_trait1'] *= -1
 	
-		if combined['effect_allele_source'][i] == combined[ref_vcf2][i]:
-			combined.at[i, 'beta_lookup'] *= -1
+		if combined['effect_allele_trait1'][i] == combined[ref_vcf2][i]:
+			combined.at[i, 'beta_trait2'] *= -1
 		
 	# From the FINEMAP documentation for v1.4:
 	# Columns beta and se are required for fine-mapping. Column maf is needed to output posterior 
@@ -172,11 +175,11 @@ def prep_finemap(data):
 		ref_af_vcf2 = "ref_af_vcf1"
 
 	# Then write Z-scores to file for FINEMAP
-	with open(f"{tmp_dir}/ecaviar/source.z", "w") as w:
-		snps = combined[['rsid', 'chr_source', 'snp_pos', 'effect_allele_source', 'non_effect_allele_source', 'ref_af_vcf1', 'beta_source', 'se_source']]
+	with open(f"{tmp_dir}/ecaviar/trait1.z", "w") as w:
+		snps = combined[['rsid', 'chr_trait1', 'snp_pos', 'effect_allele_trait1', 'non_effect_allele_trait1', 'ref_af_vcf1', 'beta_trait1', 'se_trait1']]
 		snps.to_csv(w, index=False, header=['rsid', 'chromosome', 'position', 'allele1', 'allele2', 'maf', 'beta', 'se'], sep=" ")
-	with open(f"{tmp_dir}/ecaviar/lookup.z", "w") as w:
-		snps = combined[['rsid', 'chr_lookup', 'snp_pos', 'effect_allele_source', 'non_effect_allele_source', ref_af_vcf2, 'beta_lookup', 'se_lookup']]
+	with open(f"{tmp_dir}/ecaviar/trait2.z", "w") as w:
+		snps = combined[['rsid', 'chr_trait2', 'snp_pos', 'effect_allele_trait1', 'non_effect_allele_trait1', ref_af_vcf2, 'beta_trait2', 'se_trait2']]
 		snps.to_csv(w, index=False, header=['rsid', 'chromosome', 'position', 'allele1', 'allele2', 'maf', 'beta', 'se'], sep=" ")
 	return(combined)
 
@@ -189,10 +192,10 @@ def launch_finemap():
 		subprocess.run(f'echo z;ld;snp;config;cred;log;n_samples'.split(), stdout=w)
 
 	with open(f'{tmp_dir}/ecaviar/finemap.in', "a") as a:
-		subprocess.run(f'echo {tmp_dir}/ecaviar/source.z;{tmp_dir}/ecaviar/data_vcf1.fixed.ld;{tmp_dir}/ecaviar/finemap.source.snp;{tmp_dir}/ecaviar/finemap.source.config;{tmp_dir}/ecaviar/finemap.source.cred;{tmp_dir}/ecaviar/finemap.source.log;{source_N}'.split(), stdout=a)
+		subprocess.run(f'echo {tmp_dir}/ecaviar/trait1.z;{tmp_dir}/ecaviar/data_vcf1.fixed.ld;{tmp_dir}/ecaviar/finemap.trait1.snp;{tmp_dir}/ecaviar/finemap.trait1.config;{tmp_dir}/ecaviar/finemap.trait1.cred;{tmp_dir}/ecaviar/finemap.trait1.log;{trait1_N}'.split(), stdout=a)
 
 	with open(f'{tmp_dir}/ecaviar/finemap.in', "a") as a:
-		subprocess.run(f'echo {tmp_dir}/ecaviar/lookup.z;{tmp_dir}/ecaviar/data_vcf2.fixed.ld;{tmp_dir}/ecaviar/finemap.lookup.snp;{tmp_dir}/ecaviar/finemap.lookup.config;{tmp_dir}/ecaviar/finemap.lookup.cred;{tmp_dir}/ecaviar/finemap.lookup.log;{lookup_N}'.split(), stdout=a)
+		subprocess.run(f'echo {tmp_dir}/ecaviar/trait2.z;{tmp_dir}/ecaviar/data_vcf2.fixed.ld;{tmp_dir}/ecaviar/finemap.trait2.snp;{tmp_dir}/ecaviar/finemap.trait2.config;{tmp_dir}/ecaviar/finemap.trait2.cred;{tmp_dir}/ecaviar/finemap.trait2.log;{trait2_N}'.split(), stdout=a)
 
 	# Run FINEMAP
 	if verbose == True:
@@ -200,39 +203,39 @@ def launch_finemap():
 	else:
 		subprocess.check_call(f'../bin/finemap/finemap_v1.4_x86_64/finemap_v1.4_x86_64 --sss --in-files {tmp_dir}/ecaviar/finemap.in --n-causal-snps {max_causal} --n-iter 1000000 --n-conv-sss 1000'.split(), stdout=subprocess.DEVNULL)	
    
-def process_finemap_results(min_pvalue_source, min_pvalue_lookup, feature, chrom, snp_pos):
+def process_finemap_results(min_pvalue_trait1, min_pvalue_trait2, feature1, feature2, chrom, snp_pos, N_snps):
 	# Parse FINEMAP results to compute CLPP score
-	source_probs = []
-	lookup_probs = []
-	with open(f"{tmp_dir}/ecaviar/finemap.source.snp") as f:
+	trait1_probs = []
+	trait2_probs = []
+	with open(f"{tmp_dir}/ecaviar/finemap.trait1.snp") as f:
 		f.readline()
 		for line in f:
 			data = line.strip().split()
-			source_probs.append((int(data[0]), float(data[10])))
-	with open(f"{tmp_dir}/ecaviar/finemap.lookup.snp") as f:
+			trait1_probs.append((int(data[0]), float(data[10])))
+	with open(f"{tmp_dir}/ecaviar/finemap.trait2.snp") as f:
 		f.readline()
 		for line in f:
 			data = line.strip().split()
-			lookup_probs.append((int(data[0]), float(data[10])))
+			trait2_probs.append((int(data[0]), float(data[10])))
 	
-	source_probs = sorted(source_probs)
-	lookup_probs = sorted(lookup_probs)
+	trait1_probs = sorted(trait1_probs)
+	trait2_probs = sorted(trait2_probs)
 
 	# Make sure the SNPs have been paired up correctly
-	assert len(source_probs) == len(lookup_probs)
-	for i in range(len(source_probs)):
-			assert source_probs[i][0] == lookup_probs[i][0]
+	assert len(trait1_probs) == len(trait2_probs)
+	for i in range(len(trait1_probs)):
+			assert trait1_probs[i][0] == trait2_probs[i][0]
 
-	clpp = sum([source_probs[i][1]*lookup_probs[i][1] for i in range(len(source_probs))])
+	clpp = sum([trait1_probs[i][1]*trait2_probs[i][1] for i in range(len(trait1_probs))])
 	# TODO: For multiple variants, it'll be something like this but it's not quite right...I think
 	# the issue is that the individual variants are not mutually independent; one being causal affects the prob
 	# of the others being causal.
-	# clpp = 1 - reduce(mul, [1-(source_probs[i][1]*lookup_probs[i][1]) for i in range(len(source_probs))])
+	# clpp = 1 - reduce(mul, [1-(trait1_probs[i][1]*trait2_probs[i][1]) for i in range(len(trait1_probs))])
 
-	# Note: LD for CLPP-mod score is being calculated only from the source VCF;
-	# may want to change this eventually to include the lookup VCF too
+	# Note: LD for CLPP-mod score is being calculated only from the trait1 VCF;
+	# may want to change this eventually to include the trait2 VCF too
 	ld_file = f"{tmp_dir}/ecaviar/data_vcf1.fixed.ld"
-	clpp_mod = get_clpp_mod(source_probs, lookup_probs, ld_file)
+	clpp_mod = get_clpp_mod(trait1_probs, trait2_probs, ld_file)
 
 	# TODO: Figure the actual way to arrange the output files...
 	if save_finemap_threshold != -1:
@@ -240,13 +243,13 @@ def process_finemap_results(min_pvalue_source, min_pvalue_lookup, feature, chrom
 		if clpp_mod > save_finemap_threshold:
 			os.makedirs(f"{out_dir}/finemap/finemap_probs/", exist_ok=True)
 
-			copyfile(f"{tmp_dir}/ecaviar/finemap.source.snp", f"{out_dir}/finemap/finemap_probs/finemap.source.{locus}.snp")
+			copyfile(f"{tmp_dir}/ecaviar/finemap.trait1.snp", f"{out_dir}/finemap/finemap_probs/finemap.trait1.{locus}.snp")
 
-			copyfile(f"{tmp_dir}/ecaviar/finemap.lookup.snp", f"{out_dir}/finemap/finemap_probs/finemap.lookup.{locus}.snp")
+			copyfile(f"{tmp_dir}/ecaviar/finemap.trait2.snp", f"{out_dir}/finemap/finemap_probs/finemap.trait2.{locus}.snp")
 
 	# Write FINEMAP results to the desired file
 	with open(out_file, "a") as a:
-		a.write(f"{chrom}\t{snp_pos}\t{trait1}\t{trait2}\t{min_pvalue_source}\t{min_pvalue_lookup}\t{feature}\t{clpp}\t{clpp_mod}\n")
+		a.write(f"{chrom}\t{snp_pos}\t{trait1}\t{trait2}\t{min_pvalue_trait1}\t{min_pvalue_trait2}\t{feature1}\t{feature2}\t{N_snps}\t{clpp}\t{clpp_mod}\n")
 
 # Run PLINK on the locus of interest
 def compute_ld(in_data, suffix):
@@ -280,13 +283,13 @@ def compute_ld(in_data, suffix):
 			break
 
 		# Save IDs of items being removed
-		removal_list.extend(list(vcf.iloc[lines][f'rsid{source}']))
+		removal_list.extend(list(vcf.iloc[lines][f'rsid{trait1}']))
 		
 		# Remove desired rows (variants)
 		vcf = vcf.drop(vcf.index[lines])
 
 	# Get indices of items to remove in original list
-	removal_list = [list(input_vcf[f'rsid{source}']).index(id) for id in removal_list]
+	removal_list = [list(input_vcf[f'rsid{trait1}']).index(id) for id in removal_list]
 
 	# Replace tabs with spaces because FINEMAP requires this.
 	with open(f"{tmp_dir}/ecaviar/data{suffix}.fixed.ld", "w") as w:
@@ -297,9 +300,9 @@ def compute_ld(in_data, suffix):
 
 # Compute LD-modified CLPP score.
 # 
-# The i_th variant of source_probs in this function must be the
-# same as the i_th variant of lookup_probs.
-def get_clpp_mod(source_probs, lookup_probs, ld_file):
+# The i_th variant of trait1_probs in this function must be the
+# same as the i_th variant of trait2_probs.
+def get_clpp_mod(trait1_probs, trait2_probs, ld_file):
 	
 	ld = []
 	with open(ld_file) as f:
@@ -308,10 +311,10 @@ def get_clpp_mod(source_probs, lookup_probs, ld_file):
 
 	# Get modified CLPP score
 	clpp_mod = 0
-	for i in range(len(source_probs)):
-		for j in range(len(lookup_probs)):
+	for i in range(len(trait1_probs)):
+		for j in range(len(trait2_probs)):
 			snp_ld = ld[i][j]**2
-			clpp_mod += source_probs[i][1] * lookup_probs[j][1] * snp_ld
+			clpp_mod += trait1_probs[i][1] * trait2_probs[j][1] * snp_ld
 	
 	return clpp_mod
 

@@ -6,7 +6,8 @@ import glob
 
 configfile:
 	#"colocalization-config.json"
-	"whr-test-config.json"
+	#"whr-test-config.json"
+	"ir.json"
 
 # change working directory
 os.chdir(config['outdir'])
@@ -126,7 +127,7 @@ rule overlap:
 		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
 	params:
 		pvalue_threshold = config["overlap_settings"]["selection_thresholds"]["eqtl"],	
-		window = config["overlap_settings"]["lookup_window"]
+		window = config["overlap_settings"]["overlap_window"]
 
 	shell:
 		'python ../scripts/overlap/list_snps_to_test.py {input.trait1} {input.trait2} {output} {params.pvalue_threshold} {params.window}'
@@ -137,8 +138,8 @@ rule process_loci:
 	output:
 		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
 	params:
-		source_file = lambda x: config["studies"][x.trait1]["file"],
-		lookup_file = lambda x: config["studies"][x.trait2]["file"],
+		trait1_file = lambda x: config["studies"][x.trait1]["file"],
+		trait2_file = lambda x: config["studies"][x.trait2]["file"],
 		window = config["colocalization_settings"]["window"],
 		ref_file_1 = lambda x: config["ref_genomes"][config["studies"][x.trait1]["ref_genome"]]["file"].replace("{chrom}", "${chrom}"),
 		ref_file_2 = lambda x: config["ref_genomes"][config["studies"][x.trait2]["ref_genome"]]["file"].replace("{chrom}", "${chrom}")
@@ -149,12 +150,12 @@ rule process_loci:
 		mkdir -p process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}
 
 		i=0
-		tail -n +2 {input} | while read chrom pos source_pvalue source_trait lookup_pvalue lookup_trait; do
+		tail -n +2 {input} | while read chrom pos trait1_pvalue feature1 trait2_pvalue feature2; do
 			let i=i+1
 			# each file in this directory should be the merged summary stats for a locus
 			# here we just touch a dummy file
 
-			python ../scripts/process_loci/preprocess.py process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt {params.window} {params.source_file} {params.lookup_file} ${{chrom}} ${{pos}} ${{source_trait}} ${{lookup_trait}} {params.ref_file_1} {params.ref_file_2}
+			python ../scripts/process_loci/preprocess.py process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt {params.window} {params.trait1_file} {params.trait2_file} ${{chrom}} ${{pos}} ${{feature1}} ${{feature2}} {params.ref_file_1} {params.ref_file_2}
 		done 
 
 		# when done:
@@ -168,25 +169,25 @@ rule coloc:
 	output:
 		'coloc/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
 	params: 
-		type_source = lambda x: 
+		type_trait1 = lambda x: 
 			config["studies"][x.trait1]["trait_type"] if "trait_type" in config["studies"][x.trait1] else "quant",
-		type_lookup = lambda x:
+		type_trait2 = lambda x:
 			config["studies"][x.trait2]["trait_type"] if "trait_type" in config["studies"][x.trait2] else "quant",
-		N_source =  lambda x:
+		N_trait1 =  lambda x:
 			config["studies"][x.trait1]["N"] if "N" in config["studies"][x.trait1] else default_N,
-		N_lookup = lambda x:
+		N_trait2 = lambda x:
 			config["studies"][x.trait2]["N"] if "N" in config["studies"][x.trait2] else default_N,
-		s_source = lambda x:
+		s_trait1 = lambda x:
 			config["case_fraction"][x.trait1]["N"] if "N" in config["studies"][x.trait1] else default_case_fraction,
-		s_lookup = lambda x:
+		s_trait2 = lambda x:
 			config["case_fraction"][x.trait2]["N"] if "N" in config["studies"][x.trait2] else default_case_fraction
 	shell:
 		'''
-		echo "chr\tpos\tfile_source\tfile_lookup\tpvalue_source\tpvalue_lookup\tfeature\tCOLOC_h0\tCOLOC_h1\tCOLOC_h2\tCOLOC_h3\tCOLOC_h4" > {output}
+		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tCOLOC_h0\tCOLOC_h1\tCOLOC_h2\tCOLOC_h3\tCOLOC_h4" > {output}
 
 		# do something for each file in processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/
 		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/coloc/coloc.py ${{locus}} {params.N_source} {params.s_source} {params.type_source} {params.N_lookup} {params.s_lookup} {params.type_lookup} {output}
+			python ../scripts/methods/coloc/coloc.py ${{locus}} {params.N_trait1} {params.s_trait1} {params.type_trait1} {params.N_trait2} {params.s_trait2} {params.type_trait2} {output}
 		done
 		'''
 
@@ -197,17 +198,17 @@ rule finemap:
 	output:
 		'finemap/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
 	params:
-		source_vcf = lambda x:
+		trait1_vcf = lambda x:
 			config["ref_genomes"][config["studies"][x.trait1]["ref_genome"]]["file"],
-		lookup_vcf = lambda x:
+		trait2_vcf = lambda x:
 			config["ref_genomes"][config["studies"][x.trait2]["ref_genome"]]["file"],
 		outdir = lambda x:
 			f'{config["outdir"]}/t1-{x.trait1}/t2-{x.trait2}',
 		tmpdir = lambda x:
 			f'{config["tmpdir"]}/t1-{x.trait1}/t2-{x.trait2}',
-		N_source =  lambda x:
+		N_trait1 =  lambda x:
 			config["studies"][x.trait1]["N"] if "N" in config["studies"][x.trait1] else default_N,
-		N_lookup = lambda x:
+		N_trait2 = lambda x:
 			config["studies"][x.trait2]["N"] if "N" in config["studies"][x.trait2] else default_N,
 		window = config["colocalization_settings"]["window"],
 		verbose = lambda x: 
@@ -219,13 +220,29 @@ rule finemap:
 	shell:
 		'''
 		# Write header
-		echo "chr\tpos\tfile_source\tfile_lookup\tpvalue_source\tpvalue_lookup\tfeature\tfinemap_clpp\tfinemap_clpp_mod" > {output}
+		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tfinemap_clpp\tfinemap_clpp_mod" > {output}
 
 		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmpdir} {params.source_vcf} {params.lookup_vcf} {params.window} {params.N_source} {params.N_lookup} {params.max_causal} {params.verbose} {params.save_finemap_threshold}
+			python ../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmpdir} {params.trait1_vcf} {params.trait2_vcf} {params.window} {params.N_trait1} {params.N_trait2} {params.max_causal} {params.verbose} {params.save_finemap_threshold}
 		done
 
 		# Then remove tmp files for all of them?
 		rm -rf {params.tmpdir}
 		'''
+
+rule baseline:
+	input:
+		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+	output:
+		'baseline/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+	shell:
+		'''
+		# Write header
+		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tbaseline1\tbaseline2\tbaseline3\tbaseline4\n" > {output}
+
+		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
+			python ../scripts/methods/baseline/baseline.py ${{locus}} {output} 
+		done
+		'''
+
 

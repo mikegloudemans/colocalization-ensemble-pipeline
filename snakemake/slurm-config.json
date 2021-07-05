@@ -35,6 +35,6 @@
     "finemap"       :
     {
         "nCPUs"     : "1",
-        "mem"       : "1G"
+        "mem"       : "4G"
     }
 }

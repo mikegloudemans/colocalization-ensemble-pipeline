@@ -6,8 +6,8 @@ import glob
 
 configfile:
 	#"colocalization-config.json"
-	#"whr-test-config.json"
-	"ir.json"
+	"whr-test-config.json"
+	#"ir.json"
 
 # change working directory
 os.chdir(config['outdir'])
@@ -226,9 +226,36 @@ rule finemap:
 			python ../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmpdir} {params.trait1_vcf} {params.trait2_vcf} {params.window} {params.N_trait1} {params.N_trait2} {params.max_causal} {params.verbose} {params.save_finemap_threshold}
 		done
 
-		# Then remove tmp files for all of them?
+		# Then remove tmp files for all of them
 		rm -rf {params.tmpdir}
 		'''
+
+rule smr:
+	input:
+		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+	output:
+		'smr/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+	params:
+		trait1_vcf = lambda x:
+			config["ref_genomes"][config["studies"][x.trait1]["ref_genome"]]["file"],
+		tmpdir = lambda x:
+			f'{config["tmpdir"]}/t1-{x.trait1}/t2-{x.trait2}',
+		window = config["colocalization_settings"]["window"],
+		verbose = lambda x: 
+			config["colocalization_settings"]["verbose"] if "verbose" in config["colocalization_settings"] else False
+	shell:
+		'''
+		# Write header
+		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tsmr_pval\tsmr_heidi_pval" > {output}
+
+		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
+			python ../scripts/methods/smr/smr.py ${{locus}} {output} {params.tmpdir} {params.trait1_vcf} {params.window} {params.verbose}
+		done
+
+		# Then remove tmp files for all of them
+		#rm -rf {params.tmpdir}
+		'''
+
 
 rule baseline:
 	input:

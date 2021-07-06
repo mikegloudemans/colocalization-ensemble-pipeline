@@ -17,7 +17,7 @@ conda env create -f environment.yml
 
 ### 1.2 Install `FINEMAP v1.4`
 
-Run the following command to download and extract the FINEMAP executable:
+Run the following command from the project home directory to download and extract the FINEMAP executable:
 
 ```
 mkdir -p bin/finemap/
@@ -29,7 +29,17 @@ cd ../..
 
 Or follow the instructions [here] (http://www.christianbenner.com/) for v1.4.  
 
-### 1.3 Install...(other dependencies)
+### 1.3 Install SMR v1.03
+
+```
+mkdir -p bin/smr/
+cd bin/smr/
+wget https://cnsgenomics.com/software/smr/download/smr_Linux.zip
+unzip smr_Linux.zip
+cd ../..
+```
+
+### 1.4 Install...(other dependencies)
 #TODO
 
 

@@ -257,6 +257,8 @@ def compute_ld(in_data, suffix):
 	# We don't want to modify the input VCF within this function
 	vcf = in_data.copy()
 
+	vcf = vcf.drop(columns = [f"ref_af{suffix}"])
+
 	# Repeatedly compute LD until we've eliminated all NaNs.
 	removal_list = []
 	while True:

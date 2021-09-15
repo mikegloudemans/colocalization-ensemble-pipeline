@@ -1,5 +1,7 @@
 # cluster execution
 snakemake -j 100 --cluster-config slurm-config.json \
+					--keep-going \
+					--stats stats.txt \
 					--latency-wait 90 \
 					--cluster \
 					"sbatch --account={cluster.account} \
@@ -8,7 +10,7 @@ snakemake -j 100 --cluster-config slurm-config.json \
 						--mem={cluster.mem} \
 						--cpus-per-task={cluster.nCPUs} \
 						--mail-type={cluster.mail} \
-						--output={cluster.output}" 
+						--output={cluster.output}"
 
 # dry run
 snakemake -n --configfile colocalization-config.json

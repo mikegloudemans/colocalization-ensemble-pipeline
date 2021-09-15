@@ -15,7 +15,8 @@ import os
 	trait2_N,
 	max_causal,
 	verbose,
-	save_finemap_threshold) = sys.argv[1:]
+	save_finemap_threshold,
+	snakefile) = sys.argv[1:]
 
 save_finemap_threshold = float(save_finemap_threshold)
 
@@ -199,9 +200,9 @@ def launch_finemap():
 
 	# Run FINEMAP
 	if verbose == True:
-		subprocess.run(f'../bin/finemap/finemap_v1.4_x86_64/finemap_v1.4_x86_64 --sss --in-files {tmp_dir}/ecaviar/finemap.in --n-causal-snps {max_causal} --n-iter 1000000 --n-conv-sss 1000'.split())
+		subprocess.run(f'{snakefile}/../bin/finemap/finemap_v1.4_x86_64/finemap_v1.4_x86_64 --sss --in-files {tmp_dir}/ecaviar/finemap.in --n-causal-snps {max_causal} --n-iter 1000000 --n-conv-sss 1000'.split())
 	else:
-		subprocess.check_call(f'../bin/finemap/finemap_v1.4_x86_64/finemap_v1.4_x86_64 --sss --in-files {tmp_dir}/ecaviar/finemap.in --n-causal-snps {max_causal} --n-iter 1000000 --n-conv-sss 1000'.split(), stdout=subprocess.DEVNULL)	
+		subprocess.check_call(f'{snakefile}/../bin/finemap/finemap_v1.4_x86_64/finemap_v1.4_x86_64 --sss --in-files {tmp_dir}/ecaviar/finemap.in --n-causal-snps {max_causal} --n-iter 1000000 --n-conv-sss 1000'.split(), stdout=subprocess.DEVNULL)	
    
 def process_finemap_results(min_pvalue_trait1, min_pvalue_trait2, feature1, feature2, chrom, snp_pos, N_snps):
 	# Parse FINEMAP results to compute CLPP score

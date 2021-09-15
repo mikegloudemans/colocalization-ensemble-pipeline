@@ -13,6 +13,7 @@ lookup_file = sys.argv[2]
 output_file = sys.argv[3]
 lookup_threshold = float(sys.argv[4])
 lookup_window = int(sys.argv[5])
+fixed_chrom = int(sys.argv[6])
 
 def main():
 
@@ -44,7 +45,10 @@ def main():
 			for line in f:
 				chrom, pos, source_pvalue, source_trait = line.strip().split()
 
-				min_pos = int(pos)-lookup_window
+				if chrom != str(fixed_chrom):
+					continue
+
+				min_pos = max(1, int(pos)-lookup_window)
 				max_pos = int(pos)+lookup_window
 
 				wide_matches = subprocess.run(f"tabix {lookup_file} chr{chrom}:{min_pos}-{max_pos}".split(), capture_output=True).stdout.decode('utf-8')

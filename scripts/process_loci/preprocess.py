@@ -46,9 +46,11 @@ def main():
 		"non_effect_allele_trait1" in list(merge_data.columns.values) and "non_effect_allele_trait2" in list(merge_data.columns.values):
 		merge_data = harmonize_alleles(merge_data)
 
+	
 	merge_data = get_ref_vcf(merge_data, vcf_ref_file1, "_vcf1")
 	if vcf_ref_file1 != vcf_ref_file2:
 		merge_data = get_ref_vcf(merge_data, vcf_ref_file2, "_vcf2")
+	print(merge_data.shape)
 
 	merge_data["seed_pos"] = pos 
 
@@ -61,7 +63,7 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 	with gzip.open(trait_file, 'rb') as f:
 		header = f.readline().decode('utf-8')
 
-	min_pos = pos-window
+	min_pos = max(1, pos-window)
 	max_pos = pos+window
 
 	data = subprocess.run(f"tabix {trait_file} chr{chrom}:{min_pos}-{max_pos}".split(), capture_output=True).stdout.decode('utf-8') + \
@@ -129,7 +131,6 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 		table = table[~pd.isna(table["se"])] # Thanks GTEx for making me have to do this
 		table = table.rename(index=str, columns={"se": "se" + suffix})
 
-	print(table.head(10))
 
 	table['snp_pos'] = table['snp_pos'].astype(int)
 	
@@ -167,6 +168,12 @@ def combine_sumstats(trait1_data, trait2_data):
 	#if "screening_thresholds" in settings and "gwas" in settings["screening_thresholds"]:
 	#	if min(combined['pvalue_gwas']) > settings["screening_thresholds"]["gwas"]:
 	#		return "No significant GWAS SNPs are in eQTL dataset (too rare)"
+
+	# We only need one rsid column
+	if "rsid_trait1" in combined.columns.values:
+		combined = combined.rename(index=str, columns={"rsid_trait1": "rsid"})
+		combined = combined.drop(columns=["rsid_trait2"])	
+		 
 
 	return combined
 
@@ -228,7 +235,6 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 		chr_text = chrom
 
 	# Get header
-
 	with gzip.open(vcf_ref_file, 'rb') as f:
 		for line in f:
 			if line.decode('utf-8').startswith("#CHROM"):
@@ -238,7 +244,7 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 				break
 
 
-	stream = StringIO(subprocess.run(f"tabix {vcf_ref_file} {chr_text}:{pos-window}-{pos+window}".split(), capture_output=True).stdout.decode('utf-8'))	
+	stream = StringIO(subprocess.run(f"tabix {vcf_ref_file} {chr_text}:{max(1, pos-window)}-{pos+window}".split(), capture_output=True).stdout.decode('utf-8'))	
 
 	# For readability, load the header too
 	# Load with pandas
@@ -252,9 +258,10 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 	# Remove variants with position appearing multiple times
 	dup_counts = {}
 	for v in vcf[f"POS{suffix}"]:
-		dup_counts[v] = dup_counts.get(pos, 0) + 1
+		dup_counts[v] = dup_counts.get(v, 0) + 1
 	vcf["dup_counts"] = [dup_counts[v] for v in vcf[f'POS{suffix}']]
 	vcf = vcf[vcf["dup_counts"] == 1]
+
 	vcf = vcf.drop(columns=['dup_counts'])
 
 	# Remove multiallelic variants with only one entry in VCF
@@ -290,6 +297,7 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 		vcf = vcf[(vcf[f'ref_af{suffix}'] > min_af) & (1-vcf[f'ref_af{suffix}'] > min_af)]
 	
 	# Merge ref genome and MAFs with the sumstats dataframe frame
+
 	merged = pd.merge(dataframe, vcf, left_on="snp_pos", right_on=f"POS{suffix}")
 
 	# Remove variants where alt/ref don't match between GWAS/eQTL and VCF

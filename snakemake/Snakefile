@@ -4,10 +4,10 @@ import sys
 import os
 import glob
 
-configfile:
+#configfile:
 	#"colocalization-config.json"
-	"whr-test-config.json"
-	#"ir.json"
+	#"whr-test-config.json"
+#	"ir-config.json"
 
 # change working directory
 os.chdir(config['outdir'])
@@ -16,6 +16,8 @@ subprocess.call('mkdir -p log/cluster', shell=True)
 subprocess.call('mkdir -p {}'.format(config['tmpdir']), shell=True)
 
 #########################################################################
+
+snakefile = srcdir(".")
 
 # define colocalization methods
 methods = [k for k in config['colocalization_methods']]
@@ -68,15 +70,16 @@ localrules: all,stage
 # here we define colocalization methods and trait combinations 
 rule all:
 	input:
-		expand('{method}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt', 
+		expand('{method}/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.CHR-{chrom}.results.txt', 
 			trait1 = trait_set_1, 
 			trait2 = trait_set_2,
-			method = methods),
+			method = methods,
+			chrom = range(1,23)),
 		expand('preprocess/{study}.formatted.summary_stats.txt.gz',
 			study = studies)
 rule all_overlap:
 	input:
-		expand('overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt', 
+		expand('overlap/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt', 
 			trait1 = trait_set_1, 
 			trait2 = trait_set_2),
 		expand('preprocess/{study}.formatted.summary_stats.txt.gz',
@@ -114,30 +117,33 @@ rule get_gwas_hits:
 		'gwas_top_hits/{trait1}.hits.txt'
 	params:
 		pvalue_threshold = config["overlap_settings"]["selection_thresholds"]["gwas"],
-		window = config["overlap_settings"]["selection_separation_window"]
+		window = config["overlap_settings"]["selection_separation_window"],
+		snakefile = snakefile
 
 	shell:
-		'python ../scripts/overlap/get_gwas_hits.py {input} {output} {params.pvalue_threshold} {params.window}'
+		'python {params.snakefile}/../scripts/overlap/get_gwas_hits.py {input} {output} {params.pvalue_threshold} {params.window}'
 
 rule overlap:
 	input:
 		trait1 = 'gwas_top_hits/{trait1}.hits.txt',
 		trait2 = 'preprocess/{trait2}.formatted.summary_stats.txt.gz'
 	output:
-		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
+		'overlap/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.overlap.txt'
 	params:
+		snakefile = snakefile,
 		pvalue_threshold = config["overlap_settings"]["selection_thresholds"]["eqtl"],	
 		window = config["overlap_settings"]["overlap_window"]
 
 	shell:
-		'python ../scripts/overlap/list_snps_to_test.py {input.trait1} {input.trait2} {output} {params.pvalue_threshold} {params.window}'
+		'python {params.snakefile}/../scripts/overlap/list_snps_to_test.py {input.trait1} {input.trait2} {output} {params.pvalue_threshold} {params.window} {wildcards.chrom}'
 
 rule process_loci:
 	input:
-		'overlap/TRAIT1-{trait1}.TRAIT2-{trait2}.overlap.txt'
+		'overlap/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.overlap.txt'
 	output:
-		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+		'process_loci/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.checkpoint.txt'
 	params:
+		snakefile = snakefile,
 		trait1_file = lambda x: config["studies"][x.trait1]["file"],
 		trait2_file = lambda x: config["studies"][x.trait2]["file"],
 		window = config["colocalization_settings"]["window"],
@@ -147,7 +153,7 @@ rule process_loci:
 		'''
 		# preprocess each locus and output merged data to file with predictable name
 		# we aren't actually going to tell snakemake about this directory 
-		mkdir -p process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}
+		mkdir -p process_loci/{wildcards.trait1}/{wildcards.trait2}/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}.CHR-{wildcards.chrom}
 
 		i=0
 		tail -n +2 {input} | while read chrom pos trait1_pvalue feature1 trait2_pvalue feature2; do
@@ -155,7 +161,7 @@ rule process_loci:
 			# each file in this directory should be the merged summary stats for a locus
 			# here we just touch a dummy file
 
-			python ../scripts/process_loci/preprocess.py process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/locus.${{i}}.txt {params.window} {params.trait1_file} {params.trait2_file} ${{chrom}} ${{pos}} ${{feature1}} ${{feature2}} {params.ref_file_1} {params.ref_file_2}
+			python {params.snakefile}/../scripts/process_loci/preprocess.py process_loci/{wildcards.trait1}/{wildcards.trait2}/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}.CHR-{wildcards.chrom}/locus.${{i}}.txt {params.window} {params.trait1_file} {params.trait2_file} ${{chrom}} ${{pos}} ${{feature1}} ${{feature2}} {params.ref_file_1} {params.ref_file_2}
 		done 
 
 		# when done:
@@ -165,10 +171,11 @@ rule process_loci:
 
 rule coloc:
 	input:
-		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+		'process_loci/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.checkpoint.txt'
 	output:
-		'coloc/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+		'coloc/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.CHR-{chrom}.results.txt'
 	params: 
+		snakefile = snakefile,
 		type_trait1 = lambda x: 
 			config["studies"][x.trait1]["trait_type"] if "trait_type" in config["studies"][x.trait1] else "quant",
 		type_trait2 = lambda x:
@@ -186,26 +193,27 @@ rule coloc:
 		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tCOLOC_h0\tCOLOC_h1\tCOLOC_h2\tCOLOC_h3\tCOLOC_h4" > {output}
 
 		# do something for each file in processed_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/
-		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/coloc/coloc.py ${{locus}} {params.N_trait1} {params.s_trait1} {params.type_trait1} {params.N_trait2} {params.s_trait2} {params.type_trait2} {output}
+		for locus in $(ls process_loci/{wildcards.trait1}/{wildcards.trait2}/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}.CHR-{wildcards.chrom}/*); do
+			python {params.snakefile}/../scripts/methods/coloc/coloc.py ${{locus}} {params.N_trait1} {params.s_trait1} {params.type_trait1} {params.N_trait2} {params.s_trait2} {params.type_trait2} {output} {params.snakefile}
 		done
 		'''
 
 
 rule finemap:
 	input:
-		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+		'process_loci/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.checkpoint.txt'
 	output:
-		'finemap/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+		'finemap/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.CHR-{chrom}.results.txt'
 	params:
+		snakefile = snakefile,
 		trait1_vcf = lambda x:
 			config["ref_genomes"][config["studies"][x.trait1]["ref_genome"]]["file"],
 		trait2_vcf = lambda x:
 			config["ref_genomes"][config["studies"][x.trait2]["ref_genome"]]["file"],
 		outdir = lambda x:
-			f'{config["outdir"]}/t1-{x.trait1}/t2-{x.trait2}',
+			f'finemap/{x.trait1}/{x.trait2}',
 		tmpdir = lambda x:
-			f'{config["tmpdir"]}/t1-{x.trait1}/t2-{x.trait2}',
+			f'{config["tmpdir"]}/{x.trait1}/{x.trait2}',
 		N_trait1 =  lambda x:
 			config["studies"][x.trait1]["N"] if "N" in config["studies"][x.trait1] else default_N,
 		N_trait2 = lambda x:
@@ -222,8 +230,8 @@ rule finemap:
 		# Write header
 		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tfinemap_clpp\tfinemap_clpp_mod" > {output}
 
-		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmpdir} {params.trait1_vcf} {params.trait2_vcf} {params.window} {params.N_trait1} {params.N_trait2} {params.max_causal} {params.verbose} {params.save_finemap_threshold}
+		for locus in $(ls process_loci/{wildcards.trait1}/{wildcards.trait2}/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}.CHR-{wildcards.chrom}/*); do
+			python {params.snakefile}/../scripts/methods/finemap/finemap.py ${{locus}} {params.outdir} {output} {params.tmpdir} {params.trait1_vcf} {params.trait2_vcf} {params.window} {params.N_trait1} {params.N_trait2} {params.max_causal} {params.verbose} {params.save_finemap_threshold} {params.snakefile}
 		done
 
 		# Then remove tmp files for all of them
@@ -232,14 +240,15 @@ rule finemap:
 
 rule smr:
 	input:
-		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+		'process_loci/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.checkpoint.txt'
 	output:
-		'smr/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+		'smr/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.CHR-{chrom}.results.txt'
 	params:
+		snakefile = snakefile,
 		trait1_vcf = lambda x:
 			config["ref_genomes"][config["studies"][x.trait1]["ref_genome"]]["file"],
 		tmpdir = lambda x:
-			f'{config["tmpdir"]}/t1-{x.trait1}/t2-{x.trait2}',
+			f'{config["tmpdir"]}/{x.trait1}/{x.trait2}/chr-{x.chrom}',
 		window = config["colocalization_settings"]["window"],
 		verbose = lambda x: 
 			config["colocalization_settings"]["verbose"] if "verbose" in config["colocalization_settings"] else False
@@ -248,8 +257,8 @@ rule smr:
 		# Write header
 		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tsmr_pval\tsmr_heidi_pval" > {output}
 
-		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/smr/smr.py ${{locus}} {output} {params.tmpdir} {params.trait1_vcf} {params.window} {params.verbose}
+		for locus in $(ls process_loci/{wildcards.trait1}/{wildcards.trait2}/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}.CHR-{wildcards.chrom}/*); do
+			python {params.snakefile}/../scripts/methods/smr/smr.py ${{locus}} {output} {params.tmpdir} {params.trait1_vcf} {params.window} {params.verbose}
 		done
 
 		# Then remove tmp files for all of them
@@ -259,16 +268,18 @@ rule smr:
 
 rule baseline:
 	input:
-		'process_loci/TRAIT1-{trait1}.TRAIT2-{trait2}.checkpoint.txt'
+		'process_loci/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.CHR-{chrom}.checkpoint.txt'
 	output:
-		'baseline/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.results.txt'
+		'baseline/{trait1}/{trait2}/TRAIT1-{trait1}.TRAIT2-{trait2}.METHOD-{method}.CHR-{chrom}.results.txt'
+	params:
+		snakefile = snakefile
 	shell:
 		'''
 		# Write header
 		echo "chr\tpos\tfile_trait1\tfile_trait2\tpvalue_trait1\tpvalue_trait2\tfeature1\tfeature2\tN_snps\tbaseline1\tbaseline2\tbaseline3\tbaseline4\n" > {output}
 
-		for locus in $(ls process_loci/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}/*); do
-			python ../scripts/methods/baseline/baseline.py ${{locus}} {output} 
+		for locus in $(ls process_loci/{wildcards.trait1}/{wildcards.trait2}/TRAIT1-{wildcards.trait1}.TRAIT2-{wildcards.trait2}.CHR-{wildcards.chrom}/*); do
+			python {params.snakefile}/../scripts/methods/baseline/baseline.py ${{locus}} {output} 
 		done
 		'''
 

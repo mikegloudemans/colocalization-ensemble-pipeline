@@ -9,7 +9,7 @@
 		"selection_thresholds":
 		{
 			"eqtl": 1e-5,
-			"gwas": 1e-50
+			"gwas": 5e-8
 		},
 
 		"screening_thresholds":
@@ -17,7 +17,7 @@
 		},
 
 		"selection_separation_window": 500000,
-		"lookup_window": 10000
+		"overlap_window": 10000
 
 	},
 
@@ -28,8 +28,7 @@
 
 	"colocalization_methods":
 	{
-		"coloc": {},
-		"finemap": {}
+		"coloc": {}
 	},
 
 
@@ -83,7 +82,7 @@
 		},
 		"tg" :
 		{
-			"file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{chrom}_GRCh38.genotypes.20170504.vcf.gz",
+			"file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/maf_filtered/ALL.chr{chrom}_GRCh38.genotypes.20170504.vcf.gz",
 			"N": 2504,
 			"af_attribute": "AF"
 		}

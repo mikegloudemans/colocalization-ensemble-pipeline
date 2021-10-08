@@ -1,1 +1,441 @@
-{"outdir": "/oak/stanford/groups/smontgom/mgloud/projects/snakemake_coloc_pipeline/brain_gwas/output", "tmpdir": "/oak/stanford/groups/smontgom/mgloud/projects/snakemake_coloc_pipeline/brain_gwas/tmp", "overlap_settings": {"selection_basis": 1, "selection_thresholds": {"eqtl": 1e-05, "gwas": 5e-8}, "screening_thresholds": {}, "selection_separation_window": 500000, "lookup_window": 10000}, "colocalization_settings": {"window": 500000}, "colocalization_methods": {"coloc": {}, "finemap": {}}, "studies": {"BMI-All": {"file": "/oak/stanford/groups/smontgom/mgloud/projects/gwas-download/gwas-download/munge/munged/2021-complete-compendium/hg38/BMI_Pulit_2018/BMI-All.txt.gz", "study_type": "qtl", "selection_format": "effect_size", "ref_genome": "tg", "trait_set": 1}, "Brain_Substantia_nigra.allpairs.eQTLs": {"file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Brain_Substantia_nigra.allpairs.txt.gz.eQTLs.txt.gz", "study_type": "qtl", "selection_format": "effect_size", "ref_genome": "tg", "trait_set": 2}}, "ref_genomes": {"117AX": {"file": "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/geno/gtex.admixed.MAC10.phased.hg38.recode.sorted.vcf.gz", "N": 117, "af_attribute": "AF"}, "tg": {"file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{chrom}_GRCh38.genotypes.20170504.vcf.gz", "N": 2504, "af_attribute": "AF"}}, "plot_none": "True"}
+{
+    "outdir": "/oak/stanford/groups/smontgom/mgloud/projects/snakemake_coloc_pipeline/brain_gwas/output",
+    "tmpdir": "/oak/stanford/groups/smontgom/mgloud/projects/snakemake_coloc_pipeline/brain_gwas/tmp",
+    "overlap_settings": {
+        "selection_basis": 1,
+        "selection_thresholds": {
+            "eqtl": 1e-05,
+            "gwas": 5e-08
+        },
+        "screening_thresholds": {},
+        "selection_separation_window": 500000,
+        "overlap_window": 10000
+    },
+    "colocalization_settings": {
+        "window": 500000
+    },
+    "colocalization_methods": {
+        "coloc": {}
+    },
+    "studies": {
+        "LDL_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/LDL_Mixed/LDL_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "TG_GLGC_Expanded": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/TG_GLGC_Expanded/TG_GLGC_Expanded.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "BMI-Males_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/BMI-Males_GIANT_2018/BMI-Males_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Insulin-African-Americans-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_MAGIC_2021/Fasting-Insulin-African-Americans-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Insulin-Europeans-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_MAGIC_2021/Fasting-Insulin-Europeans-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Insulin-South-Asian-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_MAGIC_2021/Fasting-Insulin-South-Asian-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Insulin-Hispanics-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_MAGIC_2021/Fasting-Insulin-Hispanics-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Insulin-East-Asians-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_MAGIC_2021/Fasting-Insulin-East-Asians-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "FastInsu_MAGIC_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_MAGIC_Europeans/FastInsu_MAGIC_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes_Xue_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/Type-2-Diabetes_Xue_2018/Type-2-Diabetes_Xue_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR-adj-BMI_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR-adj-BMI_GIANT_2018/WHR-adj-BMI_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "HDL_Teslovich_2010": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/HDL_Teslovich_2010/HDL_Teslovich_2010.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR-Males_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR-Males_GIANT_2018/WHR-Males_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "MI_adjBMI_European": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/MI_adjBMI_European/MI_adjBMI_European.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "CHD_CARDIoGRAMplusC4D_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/CHD_CARDIoGRAMplusC4D_Mixed/CHD_CARDIoGRAMplusC4D_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "T2D_Mahajan_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/T2D_Mahajan_Europeans/T2D_Mahajan_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "BMI_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/BMI_GIANT_2018/BMI_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Glucose-Hispanics-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastGlu_MAGIC_2021/Fasting-Glucose-Hispanics-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Glucose-African-Americans-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastGlu_MAGIC_2021/Fasting-Glucose-African-Americans-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Glucose-South-Asian-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastGlu_MAGIC_2021/Fasting-Glucose-South-Asian-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Glucose-Europeans-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastGlu_MAGIC_2021/Fasting-Glucose-Europeans-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Fasting-Glucose-East-Asians-2021": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastGlu_MAGIC_2021/Fasting-Glucose-East-Asians-2021.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "TG_Teslovich_2010": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/TG_Teslovich_2010/TG_Teslovich_2010.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "FastInsu_adjBMI_MAGIC_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastInsu_adjBMI_MAGIC_Europeans/FastInsu_adjBMI_MAGIC_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "BMI_GIANT_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/BMI_GIANT_Europeans/BMI_GIANT_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "BMI_GIANT_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/BMI_GIANT_Mixed/BMI_GIANT_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "HDL_GLGC_Expanded": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/HDL_GLGC_Expanded/HDL_GLGC_Expanded.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "2hrGlu_MAGIC_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/2hrGlu_MAGIC_Europeans/2hrGlu_MAGIC_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes_Suzuki_2019": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/Type-2-Diabetes_Suzuki_2019/Type-2-Diabetes_Suzuki_2019.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR_Mixed/WHR_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHRadjBMI_GIANT_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHRadjBMI_GIANT_Europeans/WHRadjBMI_GIANT_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "T2D_DIAGRAM_European": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/T2D_DIAGRAM_European/T2D_DIAGRAM_European.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR-adj-BMI-Males_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR-adj-BMI-Males_GIANT_2018/WHR-adj-BMI-Males_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR_European": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR_European/WHR_European.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "MAGIC_ISI_Model_2_AgeSexBMI.txt": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/MAGIC_ISI_Model_2_AgeSexBMI.txt/MAGIC_ISI_Model_2_AgeSexBMI.txt.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHRadjBMI_GIANT_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHRadjBMI_GIANT_Mixed/WHRadjBMI_GIANT_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "HDL_GCLC_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/HDL_GCLC_Mixed/HDL_GCLC_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "TG_GCLC_Mixed": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/TG_GCLC_Mixed/TG_GCLC_Mixed.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "BMI-Females_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/BMI-Females_GIANT_2018/BMI-Females_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "MAGIC_ISI_Model_1_AgeSexOnly.txt": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/MAGIC_ISI_Model_1_AgeSexOnly.txt/MAGIC_ISI_Model_1_AgeSexOnly.txt.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes-MVP-Transethnic": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/T2D_MVP_2020/Type-2-Diabetes-MVP-Transethnic.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes-MVP-Asian": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/T2D_MVP_2020/Type-2-Diabetes-MVP-Asian.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes-MVP-African": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/T2D_MVP_2020/Type-2-Diabetes-MVP-African.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes-MVP-European": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/T2D_MVP_2020/Type-2-Diabetes-MVP-European.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR-Females_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR-Females_GIANT_2018/WHR-Females_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR_GIANT_2018/WHR_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Type-2-Diabetes_Spracklen_2020": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/Type-2-Diabetes_Spracklen_2020/Type-2-Diabetes_Spracklen_2020.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "WHR-adj-BMI-Females_GIANT_2018": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/WHR-adj-BMI-Females_GIANT_2018/WHR-adj-BMI-Females_GIANT_2018.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "FastGlu_MAGIC_Europeans": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/FastGlu_MAGIC_Europeans/FastGlu_MAGIC_Europeans.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "MI_European": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/MI_European/MI_European.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 1
+        },
+        "Adipose_Subcutaneous.allpairs.eQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Adipose_Subcutaneous.allpairs.txt.gz.eQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Adipose_Visceral_Omentum.allpairs.eQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Adipose_Visceral_Omentum.allpairs.txt.gz.eQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Pancreas.allpairs.eQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Pancreas.allpairs.txt.gz.eQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Liver.allpairs.eQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Liver.allpairs.txt.gz.eQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Adipose_Visceral_Omentum.sQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Adipose_Visceral_Omentum.sQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Adipose_Subcutaneous.sQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Adipose_Subcutaneous.sQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Pancreas.sQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Pancreas.sQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        },
+        "Liver.sQTLs": {
+            "file": "/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Liver.sQTLs.txt.gz",
+            "study_type": "qtl",
+            "selection_format": "effect_size",
+            "ref_genome": "tg",
+            "trait_set": 2
+        }
+    },
+    "ref_genomes": {
+        "117AX": {
+            "file": "/oak/stanford/groups/smontgom/nicolerg/LAVA/REVISED_COLOC/geno/gtex.admixed.MAC10.phased.hg38.recode.sorted.vcf.gz",
+            "N": 117,
+            "af_attribute": "AF"
+        },
+        "tg": {
+            "file": "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{chrom}_GRCh38.genotypes.20170504.vcf.gz",
+            "N": 2504,
+            "af_attribute": "AF"
+        }
+    },
+    "plot_none": "True"
+}

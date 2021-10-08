@@ -18,7 +18,7 @@ import traceback
 import gzip
 import os
 import time 
-from progress.bar import Bar
+from progressbar import Bar
 import pandas as pd
 import logging
 

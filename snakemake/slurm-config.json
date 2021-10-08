@@ -4,8 +4,8 @@
         "nCPUs"     : "1",
         "time"      : "24:00:00",
         "mem"       : "6G",
-        "account"   : "default",
-        "partition" : "interactive",
+        "account"   : "smontgom",
+        "partition" : "batch",
         "mail"      : "FAIL",
         "output"    : "log/cluster/{rule}.{wildcards.trait1}.{wildcards.trait2}.log"
     },
@@ -29,12 +29,10 @@
     },
     "coloc"         :
     {
-        "nCPUs"     : "1",
         "mem"       : "1G"
     },
     "finemap"       :
     {
-        "nCPUs"     : "1",
         "mem"       : "4G"
     }
 }

@@ -81,6 +81,9 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 		elif "gene" in list(table.columns.values):
 			table = table[table['gene'] == trait].copy()
 			table = table.rename(index=str, columns={"gene": "feature"})
+		elif "ensembl" in list(table.columns.values):
+			table = table[table['ensembl'] == trait].copy()
+			table = table.rename(index=str, columns={"ensembl": "feature"})
 		else:
 			return("No trait column specified; trait filtering is impossible")
 	else:
@@ -100,6 +103,7 @@ def get_sumstats(trait_file, chrom, pos, suffix, trait="none"):
 				
 	if "effect_allele" in list(table.columns.values):
 		table['effect_allele'] = table["effect_allele"].str.upper()
+	if "non_effect_allele" in list(table.columns.values):
 		table['non_effect_allele'] = table["non_effect_allele"].str.upper()
 
 	if 'zscore' in table.columns.values:
@@ -302,18 +306,29 @@ def get_ref_vcf(dataframe, vcf_ref_file, suffix):
 
 	# Remove variants where alt/ref don't match between GWAS/eQTL and VCF
 	# Flipped is okay. A/C and C/A are fine, A/C and A/G not fine.
-	
-	# Only need to pay attention to the "trait1" file since they will have already been harmonized by now for "trait2" file
-	keep_indices = \
-		(((merged['non_effect_allele_trait1'] == merged[f'REF{suffix}']) & (merged['effect_allele_trait1'] == merged[f'ALT{suffix}'])) | \
-		((merged['effect_allele_trait1'] == merged[f'REF{suffix}']) & (merged['non_effect_allele_trait1'] == merged[f'ALT{suffix}']))) 
+
+	merged = merged.reset_index(drop=True)
+
+	if "effect_allele_trait1" in list(merged.columns.values) and "non_effect_allele_trait1" in list(merged.columns.values):
+		
+		# Only need to pay attention to the "trait1" file since they will have already been harmonized by now for "trait2" file
+		keep_indices = \
+			(((merged['non_effect_allele_trait1'] == merged[f'REF{suffix}']) & (merged['effect_allele_trait1'] == merged[f'ALT{suffix}'])) | \
+			((merged['effect_allele_trait1'] == merged[f'REF{suffix}']) & (merged['non_effect_allele_trait1'] == merged[f'ALT{suffix}']))) 
+		merged = merged[keep_indices]
+
+	elif "effect_allele_trait2" in list(merged.columns.values) and "non_effect_allele_trait2" in list(merged.columns.values):
+
+		keep_indices = \
+			(((merged['non_effect_allele_trait2'] == merged[f'REF{suffix}']) & (merged['effect_allele_trait2'] == merged[f'ALT{suffix}'])) | \
+			((merged['effect_allele_trait2'] == merged[f'REF{suffix}']) & (merged['non_effect_allele_trait2'] == merged[f'ALT{suffix}'])))
+		merged = merged[keep_indices]
 
 	# ^ Probably need to harmonize these too for FINEMAP, but we haven't gotten there quite yet
+	# ^ what did I mean when I said this? I think this is no longer true now?
 
 	# NOTE: Might be useful to write out a "short" version of this table for steps like COLOC that don't
 	# need all the genotype data, along with a "long" version for those like FINEMAP that do need it
-	merged = merged.reset_index(drop=True)
-	merged = merged[keep_indices]
 
 	return merged
 

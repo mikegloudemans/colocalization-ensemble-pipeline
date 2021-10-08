@@ -1,10 +1,10 @@
 # cluster execution
-snakemake -j 20 --cluster-config slurm-config.json \
+snakemake -j 24 --cluster-config slurm-config.json \
 					--latency-wait 90 \
                                         --stats stats.txt \
                                         --keep-going \
 					--rerun-incomplete \
-					--configfile ir-debug.config \
+					--configfile rna-config.json \
 					--cluster \
 					"sbatch --account={cluster.account} \
 						--partition={cluster.partition} \

@@ -16,12 +16,12 @@ type_trait2 = args[7]
 data = suppressWarnings(suppressMessages(as.data.frame(read_delim(infile, delim='\t'))))
 
 # remove incomplete cases
-data = data[complete.cases(data),]
+#data = data[complete.cases(data),]
 
 # GWAS data
-dataset1 = list(pvalues=data$pvalue_trait1, MAF=data$ref_af, s=s_trait1, N=N_trait1, type=type_trait1)
+dataset1 = list(pvalues=data$pvalue_trait1, MAF=data[["ref_af_vcf1"]], s=s_trait1, N=N_trait1, type=type_trait1)
 # eQTL data
-dataset2 = list(pvalues=data$pvalue_trait2, MAF=data$ref_af, N=N_trait2, type=type_trait2)
+dataset2 = list(pvalues=data$pvalue_trait2, MAF=data[["ref_af_vcf1"]], N=N_trait2, type=type_trait2)
 
 sink(file="/dev/null")
 results = coloc.abf(dataset1, dataset2)
@@ -52,4 +52,3 @@ h3 = results$summary[5]
 h4 = results$summary[6]
 
 cat(chr, pos, file_trait1, file_trait2, pvalue_trait1, pvalue_trait2, feature1, feature2, N_snps, h0, h1, h2, h3, h4, sep='\t')
-

@@ -5,6 +5,7 @@ import copy
 with open("snakemake/colocalization-config.json") as f:
 	config = json.load(f)
 
+'''
 ts1_unglobbed = ["/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/*/*.gz"]
 ts2_unglobbed = ["/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Adipose*.gz",
 			"/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Pancreas*.gz",
@@ -14,7 +15,9 @@ ts2_unglobbed = ["/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/A
 			"/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Pancreas*.gz",
 			"/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Liver*.gz",
 			"/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/sqtls/Skeletal*.gz"]
-
+'''
+ts1_unglobbed = ["/oak/stanford/groups/smontgom/mgloud/projects/insulin_resistance/data/gwas/formatted/sumstats/hg38/BMI_GIANT_2018/BMI_GIANT_2018.txt.gz"]
+ts2_unglobbed = ["/oak/stanford/groups/smontgom/mgloud/gtex-data-indexed/eqtls/Liver*.gz"]
 
 trait_set_1 = []
 trait_set_2 = []

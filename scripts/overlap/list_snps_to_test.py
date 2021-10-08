@@ -13,7 +13,6 @@ lookup_file = sys.argv[2]
 output_file = sys.argv[3]
 lookup_threshold = float(sys.argv[4])
 lookup_window = int(sys.argv[5])
-fixed_chrom = int(sys.argv[6])
 
 def main():
 
@@ -33,6 +32,8 @@ def main():
 		lookup_trait_index = header.index("gene")
 	elif "feature" in header:
 		lookup_trait_index = header.index("feature")
+	elif "ensembl" in header:
+		lookup_trait_index = header.index("ensembl")
 	else:
 		lookup_trait_index = -1
   
@@ -44,9 +45,6 @@ def main():
 			f.readline()
 			for line in f:
 				chrom, pos, source_pvalue, source_trait = line.strip().split()
-
-				if chrom != str(fixed_chrom):
-					continue
 
 				min_pos = max(1, int(pos)-lookup_window)
 				max_pos = int(pos)+lookup_window

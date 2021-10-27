@@ -18,8 +18,7 @@ import traceback
 import gzip
 import os
 import time 
-from progress.bar import Bar
-import pandas as pd
+from progressbar import Bar
 import logging
 
 # Custom libraries
@@ -46,53 +45,53 @@ def main():
 
     settings = config.load_config(config_file)
     settings["software_master_dir"] = os.path.abspath(os.path.dirname(sys.argv[0]))
-	
+        
     logging.info('Verify that input files exist...')
     if not "overlap_loci" in settings["selection_basis"]:
         
-	# Verify that all GWAS and eQTL files exist; if not, abort with an error message.
+        # Verify that all GWAS and eQTL files exist; if not, abort with an error message.
         for f in settings["gwas_experiments"]:
             if not os.path.exists(f):
                 raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
         for f in settings["eqtl_experiments"]:
             if not os.path.exists(f):
                 raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
-		
+        
     else:
-	
-	# check for existence of files present in "overlap_loci" file
-	gwas_files = set([])
-	eqtl_files = set([])
-	
-	# check required columns and existence of files 
-	with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
-	    
-	    header = f.readline().strip().split("\t")
-	    
-	    check_columns = ['chr' in header,
-			     'snp_pos' in header,
-			     'source_pvalue' in header,
-			     'lookup_pvalue' in header,
-			     'lookup_trait' in header,
-			     'source_file' in header,
-			     'lookup_file' in header]
 
-	    if not all(check_columns):
-		raise Exception("Error: A required column in {} is missing. Please see 'README.txt.'.".format(settings["selection_basis"]["overlap_loci"]))
-	
-	    gwas_index = header.index("source_file")
-	    eqtl_index = header.index("lookup_file")
-	    for line in f:
-		gwas_files.add(line.strip().split("\t")[gwas_index])
-		eqtl_files.add(line.strip().split("\t")[eqtl_index])
-	
-	for f in gwas_files:
-	    if not os.path.exists(f):
-	        raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
-	for f in eqtl_files:
-	    if not os.path.exists(f):
-		raise Exception("Error: requested eQTL file {0} does not exist.".format(f))
-			
+        # check for existence of files present in "overlap_loci" file
+        gwas_files = set([])
+        eqtl_files = set([])
+
+        # check required columns and existence of files 
+        with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
+            
+            header = f.readline().strip().split("\t")
+    
+            check_columns = ['chr' in header,
+                             'snp_pos' in header,
+                             'source_pvalue' in header,
+                             'lookup_pvalue' in header,
+                             'lookup_trait' in header,
+                             'source_file' in header,
+                             'lookup_file' in header]
+
+            if not all(check_columns):
+                raise Exception("Error: A required column in {} is missing. Please see 'README.txt.'.".format(settings["selection_basis"]["overlap_loci"]))
+
+            gwas_index = header.index("source_file")
+            eqtl_index = header.index("lookup_file")
+            for line in f:
+                gwas_files.add(line.strip().split("\t")[gwas_index])
+                eqtl_files.add(line.strip().split("\t")[eqtl_index])
+
+        for f in gwas_files:
+            if not os.path.exists(f):
+                raise Exception("Error: requested GWAS file {0} does not exist.".format(f))
+        for f in eqtl_files:
+            if not os.path.exists(f):
+                raise Exception("Error: requested eQTL file {0} does not exist.".format(f))                
+
     max_cores = int(sys.argv[2]) # this is actually threads, not cores 
 
     logging.info('Set up directories...')
@@ -130,112 +129,112 @@ def main():
     save_state(config_file, base_output_dir)
 
     if not "overlap_loci" in settings["selection_basis"]:
-	dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir)
-	
+        dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir)
+        
     else:
-	logging.info("'overlap_loci' selection basis.")
-	
-	g = os.path.basename(settings["selection_basis"]["overlap_loci"]).split('.')
-	g = '.'.join(g[0:len(g)-1]).replace('.','_')
-	
-	logging.info("Starting analysis for {}.".format(os.path.basename(settings["selection_basis"]["overlap_loci"])))
-	
-	def initialize_file(f, header):
-	    if os.path.isfile(f):
-	        raise Exception("Output file already exists: {}".format(f))
-	    else: 
+        logging.info("'overlap_loci' selection basis.")
+        
+        g = os.path.basename(settings["selection_basis"]["overlap_loci"]).split('.')
+        g = '.'.join(g[0:len(g)-1]).replace('.','_')
+        
+        logging.info("Starting analysis for {}.".format(os.path.basename(settings["selection_basis"]["overlap_loci"])))
+        
+        def initialize_file(f, header):
+            if os.path.isfile(f):
+                raise Exception("Output file already exists: {}".format(f))
+            else: 
                 with open(f, "w") as w:
                     w.write(header)
-	
-	# Single output file for all loci
-	# Write headers
+        
+        # Single output file for all loci
+        # Write headers
         if "finemap" in settings["methods"]:
-	    out = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
-		
+            out = "{0}/{1}_finemap_clpp_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp\t-log_gwas_pval\t-log_eqtl_pval\tbase_gwas_file\tclpp_mod\n")
+                
         if "coloc" in settings["methods"]:
-	    out = "{0}/{1}_coloc_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
+            out = "{0}/{1}_coloc_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tclpp_h0\tclpp_h1\tclpp_h2\tclpp_h3\tclpp_h4\tbase_gwas_file\n")
 
         if "ecaviar" in settings["methods"]:
-	    out = "{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+            out = "{0}/{1}_ecaviar_clpp_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "rtc" in settings["methods"]:
-	    out = "{0}/{1}_rtc_score_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
+            out = "{0}/{1}_rtc_score_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\trtc_score\tbase_gwas_file\n")
 
         if "caviarbf" in settings["methods"]:
-	    out = "{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
+            out = "{0}/{1}_caviarbf_clpp_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tclpp\n")
 
         if "twas" in settings["methods"]:
-	    out = "{0}/{1}_twas_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
+            out = "{0}/{1}_twas_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tfeature\tn_snps\tgwas_trait\tbase_gwas_file\ttwas_log_pval\ttwas_perm_log_pval\n")
         
         if "smr" in settings["methods"]:
-	    out = "{0}/{1}_smr_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
+            out = "{0}/{1}_smr_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\theidi_pval\n")
 
         if "gsmr" in settings["methods"]:
-	    out = "{0}/{1}_gsmr_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
+            out = "{0}/{1}_gsmr_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tnum_sites\tbase_gwas_file\tsmr_neg_log_pval\n")
 
         if "metaxcan" in settings["methods"]:
-	    out = "{0}/{1}_metaxcan_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
+            out = "{0}/{1}_metaxcan_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tfeature\tconditional_level\tnum_sites\tgwas_trait\tbase_gwas_file\ttwas_log_pval\n")
 
         if "baseline" in settings["methods"]:
-	    out = "{0}/{1}_baseline_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
+            out = "{0}/{1}_baseline_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tbaseline_pval\tbaseline_pval2\tbaseline_pval3\tbaseline_pval4\tbaseline_pval5\n")
 
         if "ensemble" in settings["methods"]:
-	    out = "{0}/{1}_ensemble_status.txt".format(base_output_dir, g)
-	    initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
-	
-	# get total number of tests (wc of file)
+            out = "{0}/{1}_ensemble_status.txt".format(base_output_dir, g)
+            initialize_file(out, "ref_snp\teqtl_file\tgwas_trait\tfeature\tn_snps\tbase_gwas_file\tensemble_score\n")
+        
+        # get total number of tests (wc of file)
         with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
             for i, l in enumerate(f):
                 pass
         global num_tests
-	global tested
-	num_tests = i + 1
-	tested = 0
-	
+        global tested
+        num_tests = i + 1
+        tested = 0
+        
         def update_progress(result):
-	    global tested 
-	    global num_tests 
-	    tested += 1
+            global tested 
+            global num_tests 
+            tested += 1
             logging.info("{} out of {} tests complete.".format(tested, num_tests))
-	
-	pool = Pool(max_cores)
-	
-	# iterate over loci
-	with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
-	    header = f.readline().strip().split("\t")
-	    gwas_index = header.index("source_file")
-	    eqtl_index = header.index("lookup_file")
-	    chrom_index = header.index("chr")
-	    snp_pos_index = header.index("snp_pos")
-	    feature_index = header.index("lookup_trait")
-	    if "trait" in header:
-	        trait_index = header.index("trait")
-	    else:
-		trait_index = header.index("source_file")
+        
+        pool = Pool(max_cores)
+        
+        # iterate over loci
+        with open(settings["selection_basis"]["overlap_loci"], 'r') as f:
+            header = f.readline().strip().split("\t")
+            gwas_index = header.index("source_file")
+            eqtl_index = header.index("lookup_file")
+            chrom_index = header.index("chr")
+            snp_pos_index = header.index("snp_pos")
+            feature_index = header.index("lookup_trait")
+            if "trait" in header:
+                trait_index = header.index("trait")
+            else:
+                trait_index = header.index("source_file")
 
-	    for line in f:
-		eqtl_file = line.strip().split("\t")[eqtl_index]
-		gwas_file = line.strip().split("\t")[gwas_index]
-		chrom = line.strip().split("\t")[chrom_index]
-		snp_pos = line.strip().split("\t")[snp_pos_index]
-		trait = os.path.basename(line.strip().split("\t")[trait_index])
-		feature = line.strip().split("\t")[feature_index]
-		
-		# format SNP
-		this_snp = tuple([chrom, snp_pos])
-		
-		# skip if it's not autosomal
-		if "chr" in str(this_snp[0]):
+            for line in f:
+                eqtl_file = line.strip().split("\t")[eqtl_index]
+                gwas_file = line.strip().split("\t")[gwas_index]
+                chrom = line.strip().split("\t")[chrom_index]
+                snp_pos = line.strip().split("\t")[snp_pos_index]
+                trait = os.path.basename(line.strip().split("\t")[trait_index])
+                feature = line.strip().split("\t")[feature_index]
+                
+                # format SNP
+                this_snp = tuple([chrom, snp_pos])
+                
+                # skip if it's not autosomal
+                if "chr" in str(this_snp[0]):
                     try:
                         c = int(this_snp[0][3:])
                     except:
@@ -245,41 +244,41 @@ def main():
                         c = int(this_snp[0])
                     except:
                         continue
-		
-		ready_snp = SNP.SNP(this_snp) 
-		pool.apply_async(analyze_snp_wrapper, 
-				 args=(gwas_file, 
-				       eqtl_file, 
-				       ready_snp, 
-				       settings, 
-				       base_output_dir, 
-				       base_tmp_dir, 
-				       trait,
-				       feature), 
-				 kwds=dict(restrict_gene=-1), 
-				 callback=update_progress)
-	    pool.close()
-	    pool.join()
+                
+                ready_snp = SNP.SNP(this_snp) 
+                pool.apply_async(analyze_snp_wrapper, 
+                                 args=(gwas_file, 
+                                       eqtl_file, 
+                                       ready_snp, 
+                                       settings, 
+                                       base_output_dir, 
+                                       base_tmp_dir, 
+                                       trait,
+                                       feature), 
+                                 kwds=dict(restrict_gene=-1), 
+                                 callback=update_progress)
+            pool.close()
+            pool.join()
 
-	    # Clean up after ourselves
-	    if not settings["debug"]:
-	        subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)	
-	
+            # Clean up after ourselves
+            if not settings["debug"]:
+                subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)        
+        
 def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
-	
+        
     # TODO: make this cleaner? 
-	
+        
     gwas_files = sorted([f for f in settings["gwas_experiments"]])
     eqtl_files = sorted([f for f in settings["eqtl_experiments"]])
 
     # For each GWAS experiment:
     for gwas_file in gwas_files:
-		     
-	logging.info("Initialize anlaysis for {}.".format(os.path.basename(gwas_file)))
+                     
+        logging.info("Initialize anlaysis for {}.".format(os.path.basename(gwas_file)))
         
-	g = os.path.basename(gwas_file).split('.')
-	gwas_suffix = '.'.join(g[0:len(g)]).replace('.','_')
-	
+        g = os.path.basename(gwas_file).split('.')
+        gwas_suffix = '.'.join(g[0:len(g)]).replace('.','_')
+        
         #gwas_suffix = gwas_file.split("/")[-1].replace(".", "_")
         
         # Write header of output file for FINEMAP
@@ -351,7 +350,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
         for trait in traits:
 
-	    logging.info("Starting analysis for {}.".format(trait))
+            logging.info("Starting analysis for {}.".format(trait))
 
             gwas_snp_list = []
             # Get a list of which SNPs we should test in this GWAS.
@@ -377,7 +376,7 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
                 logging.info(eqtl_file)
 
                 eqtl_snp_list = []
-		if "eqtl" in settings["selection_basis"] or "both" in settings["selection_basis"]:
+                if "eqtl" in settings["selection_basis"] or "both" in settings["selection_basis"]:
                     # If a "selection subset" is specified for the eQTL experiment, then genes will
                     # only be tested if they are in this subset.
                     if "selection_subset" in settings['eqtl_experiments'][eqtl_file]:
@@ -388,16 +387,16 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
 
                 snp_list = eqtl_snp_list + gwas_snp_list
                 logging.info("Testing {2} SNPs ({0} GWAS hits and {1} eQTL hits).".format(len(gwas_snp_list), len(eqtl_snp_list), len(snp_list)))
-		
-		num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
+                
+                num_tests = len(eqtl_snp_list) + len(gwas_snp_list)
 
-		bar = Bar('Processing', max=num_tests)
+                bar = Bar('Processing', max=num_tests)
 
-		def update_bar(result):
-		    bar.next()
-		
-		feature = None
-		
+                def update_bar(result):
+                    bar.next()
+                
+                feature = None
+                
                 # Run key SNPs in parallel
                 pool = Pool(max_cores)
                 for i in xrange(0, len(eqtl_snp_list)):
@@ -416,14 +415,14 @@ def dispatch_all_loci(settings, max_cores, base_output_dir, base_tmp_dir):
                 for i in xrange(0, len(gwas_snp_list)):
                     snp = gwas_snp_list[i]
                     pool.apply_async(analyze_snp_wrapper, args=(gwas_file, eqtl_file, snp[0], settings, base_output_dir, base_tmp_dir, trait, feature), kwds=dict(restrict_gene=snp[1]), callback=update_bar)
-		pool.close()
+                pool.close()
                 pool.join()
 
                 # Clean up after ourselves
                 if not settings["debug"]:
                     subprocess.call("rm -r {0} 2> /dev/null".format(base_tmp_dir), shell=True)
 
-		bar.finish()
+                bar.finish()
 
                 # Make SplicePlots if appropriate
                 if "splice_plots" in settings and eqtl_file in settings["splice_plots"]:
@@ -504,7 +503,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
     # if "feature" is specified, only test this gene 
     if feature is not None:
         feature = feature.replace(":", ".")
-	genes = [feature]
+        genes = [feature]
 
     # Loop through all genes now
     for gene in genes:
@@ -514,7 +513,6 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # Make sure this is a gene we actually care about
         if "selection_subset" in settings['eqtl_experiments'][eqtl_file] and gene not in settings['eqtl_experiments'][eqtl_file]["selection_subset"]:
             continue
-        #print gene
 
         allow_insignificant_gwas = restrict_gene != -1
 
@@ -531,7 +529,7 @@ def analyze_snp(gwas_file, eqtl_file, snp, settings, base_output_dir, base_tmp_d
         # any important metadata about the experiment such as the directory,
         # and the Config object.
         task = TestLocus(combined, settings, base_output_dir, base_tmp_dir, gene, snp, gwas_file, eqtl_file, trait)
-	task.run()
+        task.run()
 
 # At start of run, save settings so we'll know what they were when we ran it.
 def save_state(config_file, base_output_dir):

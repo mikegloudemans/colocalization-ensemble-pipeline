@@ -120,9 +120,9 @@ def get_gwas_data(gwas_file, snp, settings, trait):
         header = gwas.readline()
 
     raw_gwas = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(gwas_file, \
-            snp.chrom, snp.pos - window, snp.pos + window), shell=True) + \
+            snp.chrom, max(1, snp.pos - window), snp.pos + window), shell=True) + \
             subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(gwas_file, \
-            snp.chrom, snp.pos - window, snp.pos + window), shell=True)
+            snp.chrom, max(1, snp.pos - window), snp.pos + window), shell=True)
     gwas_table = pd.read_csv(StringIO(header + raw_gwas), sep="\t")
     gwas_table['pvalue'] = gwas_table['pvalue'].astype(float)
 
@@ -206,9 +206,9 @@ def get_eqtl_data(eqtl_file, snp, settings):
         header = eqtl.readline()
 
     raw_eqtls = subprocess.check_output("tabix {0} {1}:{2}-{3}".format(eqtl_file, \
-            snp.chrom, snp.pos - window, snp.pos + window), shell=True)
+            snp.chrom, max(1, snp.pos - window), snp.pos + window), shell=True)
     raw_eqtls += subprocess.check_output("tabix {0} chr{1}:{2}-{3}".format(eqtl_file, \
-            snp.chrom, snp.pos - window, snp.pos + window), shell=True)
+            snp.chrom, max(1, snp.pos - window), snp.pos + window), shell=True)
     eqtl_table = pd.read_csv(StringIO(header + raw_eqtls), sep="\t", index_col=False)
 
     if eqtl_table.shape[0] == 0:
@@ -303,8 +303,8 @@ def combine_summary_statistics(gwas_data, eqtl_data, gene, snp, settings, unsafe
     # gene, or on the outside fringe of the range. If this is the case, then skip it.
     # NOTE: Modify the 50000 cutoff if it doesn't seem like it's giving enough room for LD decay to fall off.
 
-    if snp.pos > max(eqtl_subset['snp_pos']) - 50000 or snp.pos < min(eqtl_subset['snp_pos']) + 50000:
-            return "SNP outside range."
+    #if snp.pos > max(eqtl_subset['snp_pos']) - 50000 or snp.pos < min(eqtl_subset['snp_pos']) + 50000:
+    #        return "SNP outside range."
 
     # If not explicitly allowing them, remove pvalues with danger
     # of underflow.

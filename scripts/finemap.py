@@ -164,10 +164,8 @@ def launch_finemap(locus, window, top_hits):
     for i in range(len(gwas_probs)):
             assert gwas_probs[i][0] == eqtl_probs[i][0]
 
-    #finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
+    finemap_clpp = sum([gwas_probs[i][1] * eqtl_probs[i][1] for i in range(len(gwas_probs))])
     
-    finemap_clpp = 1 - reduce(mul, [1-(gwas_probs[i][1]*eqtl_probs[i][1]) for i in range(len(gwas_probs))])
-
     ld_file = "{6}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_gwas.fixed.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, locus.tmpdir)
     finemap_clpp_mod = get_clpp_mod(gwas_probs, eqtl_probs, ld_file)
 
@@ -212,7 +210,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
         while line.startswith("##"):
             line = f.readline()
         header = line.strip().split()
-      
+    
     # get the proper chromosome prefix
     if "chr_prefix" in ref:
         chrom_prefix = ref["chr_prefix"]
@@ -302,7 +300,7 @@ def load_and_filter_variants(filename, locus, combined, ref, window, ref_types):
 
     keep = merged['POS'][keep_indices]
     vcf = vcf[vcf['POS'].isin(list(keep))]
-    
+
     # Subset SNPs down to SNPs present in the reference VCF.
     combined = combined[combined['snp_pos'].isin(list(vcf["POS"]))]
 
@@ -328,7 +326,11 @@ def compute_ld(input_vcf, locus, data_type):
 
     # Repeatedly compute LD until we've eliminated all NaNs.
     removal_list = []
+    print "starting"
     while True:
+
+        print vcf.shape[0]
+
         if vcf.shape[0] == 0:
             return "Fail: All SNPs have been eliminated through VCF filtering."
 
@@ -348,7 +350,6 @@ def compute_ld(input_vcf, locus, data_type):
             lines = [int(n.split(":")[0])-1 for n in subprocess.check_output("grep -n nan {7}/ecaviar/{0}/{1}_{2}/{3}/{4}_fastqtl_level{5}_{6}.ld".format(locus.gwas_suffix, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gene, locus.conditional_level, data_type, locus.tmpdir), shell=True).strip().split("\n")]
         except:
             break
-
 
         # Save IDs of items being removed
         removal_list.extend(list(vcf.iloc[lines]['ID']))

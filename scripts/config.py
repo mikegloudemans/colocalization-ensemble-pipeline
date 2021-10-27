@@ -47,7 +47,8 @@ def load_config(filename):
 
     # Default window of analysis = 500000 bp on either side of SNP
     if "window" not in config:
-        config["window"] = 500000
+        #config["window"] = 500000
+        config["window"] = 1000000
 
     if debug:
         config["debug"] = True

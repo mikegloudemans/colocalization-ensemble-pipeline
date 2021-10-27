@@ -93,7 +93,8 @@ class TestLocus:
             # though technically it should usually work? Fix this later
             if "finemap" in self.settings["methods"] or "ecaviar" in self.settings["methods"] or "caviarbf" in self.settings["methods"]:
                 if not self.settings["debug"]:
-                    finemap.purge_tmp_files(self)
+                    pass
+                    #finemap.purge_tmp_files(self)
             
             if "coloc" in self.settings["methods"]:
                 try:

@@ -6,10 +6,6 @@
 # scatterplot for the given locus. 
 
 import subprocess
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
-import pylab
 import math
 import numpy as np
 import pandas as pd
@@ -105,7 +101,8 @@ def locus_compare(locus):
     eqtl_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_eqtl_lc_data.txt".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
  
     # Subset down to the region of interest, save this region
-    vcf_file = "/mnt/lab_data/montgomery/shared/1KG/hg38/ALL.chr{0}_GRCh38.genotypes.20170504.vcf.gz".format(locus.chrom)
+    # TODO: This file should be selected programmatically, really, depending on whether hg38 or hg19
+    vcf_file = "/oak/stanford/groups/smontgom/shared/1KG/hg38/ALL.chr{0}_GRCh38.genotypes.20170504.vcf.gz".format(locus.chrom)
     vcf_tmp = "{0}/locuscompare/{4}/{6}/{1}_{2}/{3}/{5}_vcf_tmp.vcf".format(locus.tmpdir, locus.chrom, locus.pos, locus.eqtl_suffix, locus.gwas_suffix, locus.gene, trait)
     with gzip.open(vcf_file) as f:
         line = f.readline()
@@ -114,7 +111,11 @@ def locus_compare(locus):
         with open(vcf_tmp, "w") as w:
             w.write(line)
     subprocess.check_call('tabix {3} {0}:{1}-{2} >> {4}'.format(locus.chrom, locus.pos - locus.settings["window"], locus.pos + locus.settings["window"], vcf_file, vcf_tmp), shell=True)
-     
+    
+    # Get variant closest to the user-selected reference variant
+
+    lead = list(data_copy["rsid"])[np.argmin(np.array(data_copy["snp_pos"].apply(lambda x: abs(locus.pos - x))))]
+ 
     gwas_data = data_copy.loc[:,["rsid", "pvalue_gwas"]]
     gwas_data.to_csv(gwas_tmp, header=["rsid", "pval"], index=False, sep="\t")
     eqtl_data = data_copy.loc[:,["rsid", "pvalue_eqtl"]]
@@ -123,14 +124,18 @@ def locus_compare(locus):
     gwas_data = gwas_data.reset_index()
     eqtl_data = eqtl_data.reset_index()
 
-    gwas_lead = list(gwas_data["rsid"])[np.argmin(np.array(gwas_data["pvalue_gwas"]))]
-    eqtl_lead = list(eqtl_data["rsid"])[np.argmin(np.array(eqtl_data["pvalue_eqtl"]))]
-    gwas_lead = "rs7599054"
-    eqtl_lead = "rs7599054"
+    #gwas_lead = list(gwas_data["rsid"])[np.argmin(np.array(gwas_data["pvalue_gwas"]))]
+    #eqtl_lead = list(eqtl_data["rsid"])[np.argmin(np.array(eqtl_data["pvalue_eqtl"]))]
+    gwas_lead = lead
+    eqtl_lead = lead
 
     # Call it once for top SNP in study 1, once for top SNP in study 2,
     # as reference SNP.
     # For now we'll just assume 1000 Genomes is the reference population
+    if "debug" in locus.settings and locus.settings["debug"] == True:
+        print "Rscript", "{0}/locuscompare.R".format(locus.settings["software_master_dir"]), gwas_tmp, eqtl_tmp, gwas_out_file, title_gwas, title_eqtl, vcf_tmp, gwas_lead, pop
+        print "Rscript", "{0}/locuscompare.R".format(locus.settings["software_master_dir"]), gwas_tmp, eqtl_tmp, eqtl_out_file, title_gwas, title_eqtl, vcf_tmp, eqtl_lead, pop
+
     subprocess.check_call(["Rscript", "{0}/locuscompare.R".format(locus.settings["software_master_dir"]), gwas_tmp, eqtl_tmp, gwas_out_file, title_gwas, title_eqtl, vcf_tmp, gwas_lead, pop])
     subprocess.check_call(["Rscript", "{0}/locuscompare.R".format(locus.settings["software_master_dir"]), gwas_tmp, eqtl_tmp, eqtl_out_file, title_gwas, title_eqtl, vcf_tmp, eqtl_lead, pop])
 
